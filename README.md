@@ -75,6 +75,42 @@ revocação, acurácia e ROC-AUC. Também salva o relatório de validação cruz
 reproduzidos pelo comando acima. O classificador permanece disponível para a
 comparação posterior com as características selecionadas pelo algoritmo genético.
 
+## Seleção de características por algoritmo genético
+
+O algoritmo genético representa as 19 características originais como um
+cromossomo binário. Cada bit indica se a característica será utilizada na
+regressão logística. A aptidão combina o F1-score médio em validação cruzada
+estratificada (três partições) e uma penalização proporcional à quantidade de
+características. O conjunto de teste permanece reservado para a comparação final.
+
+A configuração padrão utiliza 24 indivíduos, 15 gerações, seleção por torneio
+de três participantes, cruzamento de um ponto (probabilidade 0,8), mutação por
+indivíduo (probabilidade 0,2, seguida de inversão de cada bit com chance de `1/d`),
+elitismo de um indivíduo e penalização `λ = 0,02`. A busca utiliza semente 42,
+impede cromossomos vazios e reutiliza avaliações de subconjuntos já calculadas.
+
+Com o CSV na pasta indicada, execute:
+
+```powershell
+python -m scripts.run_genetic
+```
+
+O comando apresenta o desempenho do melhor indivíduo de cada geração, salva
+`results/genetic_selection.json` com a seleção e o histórico da busca e treina
+`results/genetic.joblib` com o subconjunto selecionado, usando os dados de
+desenvolvimento. Os arquivos podem ser reproduzidos pelo comando acima.
+
+É possível verificar o funcionamento com uma execução reduzida:
+
+```powershell
+python -m scripts.run_genetic --population 6 --generations 2
+```
+
+O experimento principal utiliza os parâmetros padrão. As métricas de teste serão
+obtidas na comparação final dos dois modelos.
+
 ## Artigo
 
-O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação teórica e a metodologia do estudo, seguindo o padrão da Sociedade Brasileira de Computação (SBC).
+O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação
+teórica e a metodologia do estudo, seguindo o padrão da Sociedade Brasileira
+de Computação (SBC).
