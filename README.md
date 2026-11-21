@@ -23,9 +23,9 @@ A divisão dos dados é estratificada, com 80% para desenvolvimento e 20% para t
 - **Numéricos (`tenure`, `MonthlyCharges`, `TotalCharges`):** imputação pela mediana e padronização.
 - **Categóricos (16 colunas):** imputação pela categoria mais frequente e codificação one-hot, ignorando categorias desconhecidas na transformação.
 
-O transformador é criado sem ajuste prévio; sua estimação deverá ocorrer dentro de cada partição de treinamento da validação cruzada. A seleção genética opera sobre as 19 características originais, incluindo integralmente o grupo one-hot quando uma característica categórica é selecionada.
+O transformador é criado sem ajuste prévio e ajustado dentro de cada partição de treinamento da validação cruzada. A seleção genética opera sobre as 19 características originais, incluindo integralmente o grupo one-hot quando uma característica categórica é selecionada.
 
-## Executar a análise exploratória
+## Instalação e execução
 
 Requer Python 3.10 ou superior. No PowerShell, a partir da raiz do repositório:
 
@@ -33,10 +33,12 @@ Requer Python 3.10 ou superior. No PowerShell, a partir da raiz do repositório:
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-python -m scripts.analyze_data --data data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+python -m scripts.analyze_data
+python -m scripts.compare_models
+python -m scripts.predict --cliente examples/cliente_exemplo.json
 ```
 
-O comando gera `results/analise_dados.json` e `results/analise_dados.md`, com estatísticas agregadas de qualidade, distribuição de classes e cancelamentos por contrato e tipo de conexão. Pode-se alterar o destino por `--output outro-diretorio`.
+O comando de análise gera `results/analise_dados.json` e `results/analise_dados.md`, com estatísticas agregadas de qualidade, distribuição de classes e cancelamentos por contrato e tipo de conexão. Pode-se alterar o destino por `--output outro-diretorio`.
 
 Para executar os testes automatizados:
 
@@ -52,7 +54,7 @@ A inspeção do CSV identificou **1.869 cancelamentos (26,54%)**, **5.174 perman
 
 ## Metodologia do experimento
 
-O estudo compara a regressão logística de referência com a mesma técnica após a seleção de atributos por algoritmo genético. A função de aptidão considera o F1-score médio em validação cruzada estratificada e uma penalização proporcional à quantidade de características. O conjunto de teste será utilizado exclusivamente na avaliação final dos modelos.
+O estudo compara a regressão logística de referência com a mesma técnica após a seleção de atributos por algoritmo genético. A função de aptidão considera o F1-score médio em validação cruzada estratificada e uma penalização proporcional à quantidade de características. O conjunto de teste é utilizado exclusivamente na avaliação final dos modelos.
 
 ## Classificador de referência
 
@@ -129,8 +131,7 @@ O comando apresenta o F1-score de cada modelo e registra em `results/`:
 O relatório apresenta F1-score, precisão, revocação, acurácia e ROC-AUC, além
 da quantidade de características e do tempo da busca genética. A análise
 interpreta falsos positivos e falsos negativos. Os arquivos de `results/` são
-gerados localmente e ficam fora do versionamento; os números experimentais
-que fundamentarem a conclusão serão registrados na documentação final.
+gerados localmente e ficam fora do versionamento; os resultados experimentais estão descritos na seção seguinte.
 
 ## Resultados experimentais
 

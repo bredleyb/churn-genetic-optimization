@@ -60,7 +60,7 @@ As diferenças entre os grupos descrevem associações observadas na base e não
 | Dividir em 80% desenvolvimento e 20% teste, de forma estratificada | Reserva um conjunto independente para a comparação final. |
 | Selecionar atributos antes do one-hot | Cada gene do algoritmo genético representa uma característica original. |
 
-As imputações, a padronização e a codificação serão ajustadas somente nos exemplos de treinamento de cada partição da validação cruzada. A seleção genética e a escolha dos parâmetros do modelo utilizarão exclusivamente os dados de desenvolvimento.
+As imputações, a padronização e a codificação são ajustadas somente nos exemplos de treinamento de cada partição da validação cruzada. A seleção genética e a escolha dos parâmetros do modelo utilizam exclusivamente os dados de desenvolvimento.
 
 ## Reprodução
 
