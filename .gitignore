@@ -10,6 +10,7 @@ venv/
 
 # Dataset bruto e artefatos locais
 /data/raw/
+/results/
 *.joblib
 *.pkl
 

@@ -54,6 +54,27 @@ A inspeção do CSV identificou **1.869 cancelamentos (26,54%)**, **5.174 perman
 
 O estudo compara a regressão logística de referência com a mesma técnica após a seleção de atributos por algoritmo genético. A função de aptidão considera o F1-score médio em validação cruzada estratificada e uma penalização proporcional à quantidade de características. O conjunto de teste será utilizado exclusivamente na avaliação final dos modelos.
 
+## Classificador de referência
+
+A regressão logística utiliza todas as 19 características originais, com imputação,
+*one-hot encoding* e padronização dentro de um único pipeline do scikit-learn.
+A avaliação é feita com validação cruzada estratificada em três partições somente
+nos 80% reservados ao desenvolvimento. O conjunto de teste (20%) permanece
+intocado para a comparação final com a seleção genética.
+
+Após obter o CSV e instalar as dependências, execute:
+
+```powershell
+python -m scripts.train_baseline
+```
+
+O comando apresenta as médias e os desvios-padrão de F1-score, precisão,
+revocação, acurácia e ROC-AUC. Também salva o relatório de validação cruzada em
+`results/baseline_cv.json` e o classificador treinado em
+`results/baseline.joblib`. Esses arquivos são gerados localmente e podem ser
+reproduzidos pelo comando acima. O classificador permanece disponível para a
+comparação posterior com as características selecionadas pelo algoritmo genético.
+
 ## Artigo
 
 O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) segue o padrão da Sociedade Brasileira de Computação (SBC). Os arquivos-fonte estão disponíveis em [main.tex](docs/artigo/main.tex) e [referencias.bib](docs/artigo/referencias.bib). A compilação utiliza os arquivos oficiais `sbc-template.sty` e `sbc.bst` do [SBC Conferences Template](https://www.overleaf.com/latex/templates/sbc-conferences-template/blbxwjwzdngr).
