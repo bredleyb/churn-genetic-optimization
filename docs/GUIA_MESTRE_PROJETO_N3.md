@@ -620,7 +620,7 @@ python -m pytest -q
 - [x] Prazos 27/11 e 30/11 conferidos no Word.
 - [x] Fluxo de commits sem PR/wiki definido.
 - [x] Guia mestre escrito (este arquivo; confirmar antes de marcar como versionado no Git).
-- [ ] Repositório GitHub criado/URL conferida (não presumido).
+- [x] Repositório GitHub criado e URL verificada: https://github.com/bredleyb/churn-genetic-optimization.
 
 **Gate:** todos os requisitos conhecidos rastreados; próximo foco artigo.
 
@@ -836,7 +836,7 @@ python -m pytest -q
 
 ### 15.2. Informações ainda não conhecidas
 
-- `[PENDÊNCIA]` URL e nome definitivos do repositório GitHub; se já tiver sido criado, localizar e inspecionar antes de inferir.
+- `[CONFIRMADO]` Repositório público: https://github.com/bredleyb/churn-genetic-optimization ; branch principal `main`, arquivos iniciais publicados e verificados.
 - `[PENDÊNCIA]` Número de integrantes, nomes e distribuição real do trabalho (não inventar).
 - `[PENDÊNCIA]` Canal de envio do artigo de 23/11 e do link em 27/11, limite de páginas e horários; formato gráfico do artigo **já definido como SBC** pelo usuário.
 - `[PENDÊNCIA]` Conteúdo específico dos exercícios de 16/11 e 23/11, e estado de sua realização.
@@ -857,8 +857,8 @@ PROBLEMA_DEFINIDO = SIM
 DATASET_DE_REFERENCIA_DEFINIDO = SIM (Telco Customer Churn; ainda sem CSV explorado neste projeto)
 METODO_AG_DEFINIDO = SIM
 METODOLOGIA_EXPERIMENTAL_PROPOSTA = SIM
-REPOSITORIO_REMOTO_CRIADO = NÃO VERIFICADO
-ESTRUTURA_LOCAL_INICIAL_PREPARADA = SIM (pacote gerado em 21/11, sem push)
+REPOSITORIO_REMOTO_CRIADO = SIM (https://github.com/bredleyb/churn-genetic-optimization ; arquivos iniciais verificados)
+ESTRUTURA_INICIAL_PUBLICADA = SIM (README, .gitignore, guia mestre, artigos .tex/.bib e README próprio)
 ARTIGO_ESCRITO_E_ENTREGUE = NÃO VERIFICADO
 CODIGO_IMPLEMENTADO = NÃO VERIFICADO
 MODELO_TREINADO = NÃO VERIFICADO
@@ -961,8 +961,9 @@ Ao finalizar qualquer etapa, a IA deve:
 
 | Data | Marco | Ação / evidência | Arquivos / commit real | Resultado / pendência |
 |---|---|---|---|---|
-| 21/11/2026 | M0 | Word relido integralmente, requisitos e decisões consolidados | `GUIA_MESTRE_PROJETO_N3.md` (criado fora do Git inicialmente) | Artigo de 23/11 é próxima prioridade |
+| 21/11/2026 | M0 | Word relido integralmente, requisitos e decisões consolidados | `GUIA_MESTRE_PROJETO_N3.md` | Artigo de 23/11 é próxima prioridade |
 | 21/11/2026 | M1 | Usuário definiu padrão LaTeX SBC brasileiro; template SBC Conferences do Overleaf identificado | Guia mestre atualizado | Artigo ainda não escrito; formato definido |
+| 21/11/2026 | M0/M1 | Repositório remoto criado, primeiro commit e arquivos iniciais do artigo SBC publicados | `https://github.com/bredleyb/churn-genetic-optimization` ; commit inicial `f10835a` | Estrutura verificada no GitHub; artigo ainda pendente |
 | 21/11/2026 | M2 (preparação local) | Estrutura inicial montada com README, .gitignore, guia e arquivos-fonte iniciais SBC | Pacote local `churn-genetic-optimization/`; SEM remoto/commit | Criar repositório no GitHub e concluir artigo |
 
 ---
