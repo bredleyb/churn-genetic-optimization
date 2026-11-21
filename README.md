@@ -1,42 +1,34 @@
-# Otimização da identificação de cancelamento de clientes com algoritmo genético
+# Seleção de Características com Algoritmo Genético para Previsão de Cancelamento de Clientes
 
-Projeto acadêmico N3 de Aprendizagem de Máquina.
+Projeto de Aprendizagem de Máquina desenvolvido por Bredley Bauer, Gabriel Coelho e Gustavo Haiduk Pereira.
 
 ## Objetivo
 
-Investigar se a seleção de características por **algoritmo genético** modifica o desempenho e a complexidade de um classificador supervisionado para identificar cancelamento de clientes (*customer churn*), em comparação com o mesmo classificador utilizando todas as características elegíveis.
+Investigar o uso de um algoritmo genético na seleção de características para prever o cancelamento de clientes (*customer churn*). O estudo compara o desempenho de um classificador treinado com todas as variáveis elegíveis ao de outro, da mesma arquitetura, treinado com um subconjunto selecionado pelo algoritmo genético.
 
-## Dados
+A aplicação considera o uso de previsões por equipes de análise e retenção de clientes de serviços recorrentes.
 
-Dataset inicialmente definido: [Telco Customer Churn (Kaggle — blastchar)](https://www.kaggle.com/datasets/blastchar/telco-customer-churn). O arquivo ainda não foi importado ou analisado no projeto. A fonte e o esquema serão verificados na etapa de preparação.
+## Conjunto de dados
 
-## Método proposto
+O estudo utiliza como referência o [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn), disponibilizado no Kaggle. A base reúne informações sobre contratos, serviços contratados, cobranças e permanência de clientes de telecomunicações, além da variável-alvo `Churn`, que indica o cancelamento do serviço.
 
-- Construir um classificador de referência (*baseline*) com todas as características elegíveis.
-- Empregar algoritmo genético para selecionar um subconjunto de características.
-- Treinar o mesmo classificador sobre as características selecionadas.
-- Comparar os modelos com um protocolo consistente de validação e métricas de classificação.
-- Permitir previsão para um novo perfil de cliente.
+## Metodologia
 
-**Situação:** planejamento concluído; implementação e resultados experimentais pendentes. Este README será atualizado com instruções de execução e resultados reais antes de 27/11/2026.
+A abordagem descrita no artigo compreende:
 
-## Entregas
+1. Exploração dos dados e preparação das variáveis numéricas e categóricas.
+2. Treinamento de um modelo de referência por regressão logística.
+3. Seleção de características por algoritmo genético, com cromossomos binários e função de aptidão baseada em F1-score de validação cruzada e penalização pela quantidade de atributos.
+4. Treinamento e avaliação comparativa dos modelos com e sem seleção genética, utilizando um conjunto de teste reservado.
+5. Previsão de cancelamento para uma nova entrada por meio de um script Python.
 
-| Data | Entregável |
-| --- | --- |
-| 23/11/2026 | Artigo acadêmico em formato SBC |
-| 27/11/2026 | Repositório completo e link entregue à professora |
-| 30/11/2026 | Apresentação e demonstração |
+A avaliação considera F1-score, precisão, revocação, matriz de confusão, redução de atributos e custo computacional da busca genética.
 
-## Documentação
+## Artigo
 
-- [`docs/GUIA_MESTRE_PROJETO_N3.md`](docs/GUIA_MESTRE_PROJETO_N3.md): requisitos, metodologia planejada, limitações, cronograma e rastreabilidade.
-- [`docs/artigo/`](docs/artigo/): fontes LaTeX para o artigo SBC e instruções de uso no Overleaf.
+O artigo acadêmico utiliza o padrão da Sociedade Brasileira de Computação (SBC):
 
-## Execução
+- [Texto-fonte em LaTeX](docs/artigo/main.tex)
+- [Referências bibliográficas em BibTeX](docs/artigo/referencias.bib)
 
-A implementar após a etapa de desenvolvimento. Nenhum modelo foi treinado até o momento.
-
-## Resultados
-
-Aguardando execução e avaliação experimental. Nenhum valor de desempenho é reivindicado nesta versão.
+Para compilação, os arquivos devem ser utilizados com os estilos `sbc-template.sty` e `sbc.bst` do [SBC Conferences Template](https://www.overleaf.com/latex/templates/sbc-conferences-template/blbxwjwzdngr).
