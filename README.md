@@ -56,4 +56,4 @@ O estudo compara a regressão logística de referência com a mesma técnica ap�
 
 ## Artigo
 
-O texto acadêmico segue o padrão da Sociedade Brasileira de Computação (SBC): [main.tex](docs/artigo/main.tex) e [referencias.bib](docs/artigo/referencias.bib). Sua compilação utiliza os arquivos oficiais `sbc-template.sty` e `sbc.bst` do [SBC Conferences Template](https://www.overleaf.com/latex/templates/sbc-conferences-template/blbxwjwzdngr).
+O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) segue o padrão da Sociedade Brasileira de Computação (SBC). Os arquivos-fonte estão disponíveis em [main.tex](docs/artigo/main.tex) e [referencias.bib](docs/artigo/referencias.bib). A compilação utiliza os arquivos oficiais `sbc-template.sty` e `sbc.bst` do [SBC Conferences Template](https://www.overleaf.com/latex/templates/sbc-conferences-template/blbxwjwzdngr).
