@@ -138,6 +138,44 @@ A comparação foi executada com os 7.043 registros do conjunto Telco Customer C
 
 As demais métricas, matrizes de confusão, características selecionadas e limitações estão descritas em [Resultados experimentais](docs/resultados_experimentais.md).
 
+## Demonstração com um novo cliente
+
+O script de previsão recebe um cliente em formato JSON, valida as 19 características
+originais e utiliza os classificadores treinados para indicar cancelamento ou
+permanência, acompanhados da probabilidade estimada de cancelamento.
+
+Após executar `python -m scripts.compare_models` para gerar os modelos na pasta
+`results/`, utilize um dos perfis de exemplo:
+
+```powershell
+python -m scripts.predict --cliente examples/cliente_exemplo.json
+python -m scripts.predict --cliente examples/cliente_exemplo_2.json
+```
+
+Por padrão, o programa mostra as previsões **dos dois modelos** para o mesmo
+cliente. É possível selecionar apenas um:
+
+```powershell
+python -m scripts.predict --cliente examples/cliente_exemplo.json --modelo genetico
+python -m scripts.predict --cliente examples/cliente_exemplo.json --modelo baseline
+```
+
+Para testar outro perfil, faça uma cópia de um dos JSONs em `examples/` e altere os
+valores das características. Os nomes e as categorias seguem o dataset original;
+`tenure` indica meses, `MonthlyCharges` e `TotalCharges` são valores numéricos,
+e `SeniorCitizen` utiliza 0 ou 1. `TotalCharges` também aceita `null`, tratado
+pela imputação do modelo. Os exemplos são fictícios e não possuem `customerID`
+nem a resposta `Churn`.
+
+Na execução dos modelos utilizados no experimento, `cliente_exemplo.json` recebeu
+previsão de **cancelamento** (82,04% na referência e 76,66% no genético). O perfil
+`cliente_exemplo_2.json` recebeu previsão de **permanência** (0,37% e 0,71% de
+probabilidade de cancelamento, respectivamente).
+
+Os percentuais representam estimativas dos classificadores para esses perfis, não
+garantias individuais de cancelamento. Os modelos `.joblib` são gerados localmente
+e devem ser carregados apenas quando provenientes do próprio treinamento do projeto.
+
 ## Artigo
 
 O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação
