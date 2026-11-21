@@ -106,8 +106,31 @@ desenvolvimento. Os arquivos podem ser reproduzidos pelo comando acima.
 python -m scripts.run_genetic --population 6 --generations 2
 ```
 
-O experimento principal utiliza os parâmetros padrão. As métricas de teste serão
-obtidas na comparação final dos dois modelos.
+O experimento principal utiliza os parâmetros padrão.
+
+## Comparação dos modelos
+
+A avaliação final utiliza a mesma divisão estratificada para os dois modelos.
+A regressão logística de referência e a busca genética são ajustadas apenas
+com os dados de desenvolvimento. Depois da seleção, os dois classificadores
+são treinados novamente nesses dados e avaliados no mesmo conjunto de teste.
+
+```powershell
+python -m scripts.compare_models
+```
+
+O comando apresenta o F1-score de cada modelo e registra em `results/`:
+
+- `comparacao_modelos.md`: tabela de métricas, matrizes de confusão, atributos
+  selecionados e limitações da avaliação;
+- `comparacao_modelos.json`: métricas e parâmetros para reprodução;
+- `baseline.joblib` e `genetic.joblib`: classificadores treinados.
+
+O relatório apresenta F1-score, precisão, revocação, acurácia e ROC-AUC, além
+da quantidade de características e do tempo da busca genética. A análise
+interpreta falsos positivos e falsos negativos. Os arquivos de `results/` são
+gerados localmente e ficam fora do versionamento; os números experimentais
+que fundamentarem a conclusão serão registrados na documentação final.
 
 ## Artigo
 
