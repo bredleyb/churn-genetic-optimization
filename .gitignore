@@ -1,0 +1,31 @@
+# Python e ambientes locais
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Dataset bruto e artefatos locais
+/data/raw/
+*.joblib
+*.pkl
+
+# Arquivos auxiliares LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# Editor / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
