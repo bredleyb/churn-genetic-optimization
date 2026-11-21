@@ -77,4 +77,4 @@ comparação posterior com as características selecionadas pelo algoritmo gené
 
 ## Artigo
 
-O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) segue o padrão da Sociedade Brasileira de Computação (SBC). Os arquivos-fonte estão disponíveis em [main.tex](docs/artigo/main.tex) e [referencias.bib](docs/artigo/referencias.bib). A compilação utiliza os arquivos oficiais `sbc-template.sty` e `sbc.bst` do [SBC Conferences Template](https://www.overleaf.com/latex/templates/sbc-conferences-template/blbxwjwzdngr).
+O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação teórica e a metodologia do estudo, seguindo o padrão da Sociedade Brasileira de Computação (SBC).
