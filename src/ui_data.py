@@ -8,8 +8,8 @@ from src.prediction import VALID_CATEGORIES, prepare_customer
 
 
 PROFILE_FILES = {
-    "Cliente 1 · maior probabilidade": "cliente_exemplo.json",
-    "Cliente 2 · menor probabilidade": "cliente_exemplo_2.json",
+    "Exemplo 1": "cliente_exemplo.json",
+    "Exemplo 2": "cliente_exemplo_2.json",
 }
 
 LABELS = {
