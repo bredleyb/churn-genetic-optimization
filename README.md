@@ -177,6 +177,25 @@ Os percentuais representam estimativas dos classificadores para esses perfis, n�
 garantias individuais de cancelamento. Os modelos `.joblib` são gerados localmente
 e devem ser carregados apenas quando provenientes do próprio treinamento do projeto.
 
+## Interface de demonstração
+
+A interface local permite selecionar um perfil fictício, editar as 19 características
+originais e comparar as probabilidades estimadas pelos dois modelos. Os campos
+dependentes de telefonia e internet são ajustados quando o serviço correspondente
+é alterado. O desempenho no teste é lido de `results/comparacao_modelos.json`.
+
+Após instalar as dependências e gerar os modelos com `python -m scripts.compare_models`,
+execute na raiz do projeto:
+
+```powershell
+python -m streamlit run streamlit_app.py
+```
+
+A interface abre no navegador e funciona localmente, sem publicar dados na internet.
+Se os modelos ainda não tiverem sido treinados, o programa informa o comando
+necessário. A demonstração pelo terminal, em `scripts/predict.py`, continua
+disponível.
+
 ## Artigo
 
 O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação
