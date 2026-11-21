@@ -132,6 +132,12 @@ interpreta falsos positivos e falsos negativos. Os arquivos de `results/` são
 gerados localmente e ficam fora do versionamento; os números experimentais
 que fundamentarem a conclusão serão registrados na documentação final.
 
+## Resultados experimentais
+
+A comparação foi executada com os 7.043 registros do conjunto Telco Customer Churn, mantendo 20% dos dados reservados para teste. A seleção genética reduziu o número de características originais de 19 para 9 (52,63%). No conjunto de teste, a regressão logística completa alcançou **F1-score de 0,6040** e o modelo com seleção genética obteve **0,5869**. A redução das variáveis foi acompanhada de uma pequena perda de desempenho preditivo.
+
+As demais métricas, matrizes de confusão, características selecionadas e limitações estão descritas em [Resultados experimentais](docs/resultados_experimentais.md).
+
 ## Artigo
 
 O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação

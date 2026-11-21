@@ -2,7 +2,7 @@
 
 ## Fonte e características
 
-O conjunto [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) apresenta informações sobre 7.043 clientes de telecomunicações. Para esta conferência, foi utilizada uma [cópia pública do arquivo CSV](https://github.com/keerty34/Churn/blob/main/WA_Fn-UseC_-Telco-Customer-Churn.csv) com o nome e esquema correspondentes ao conjunto disponibilizado no Kaggle. A reprodução da análise utiliza o CSV obtido na fonte original.
+O conjunto [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) apresenta informações sobre 7.043 clientes de telecomunicações. A análise foi reproduzida com o arquivo CSV do conjunto original, seguindo o procedimento descrito neste repositório.
 
 A base possui 21 colunas: `customerID`, `Churn` e 19 características candidatas. O cancelamento (`Churn = Yes`) é a classe positiva.
 
@@ -19,7 +19,7 @@ A base possui 21 colunas: `customerID`, `Churn` e 19 características candidatas
 | Cancelaram (`Yes`) | 1.869 (26,54%) |
 | Permaneceram (`No`) | 5.174 (73,46%) |
 
-As demais colunas não apresentam valores vazios nessa cópia. A classe positiva é minoritária, o que fundamenta o uso de F1-score, precisão e revocação durante a avaliação.
+As demais colunas não apresentam valores vazios no arquivo analisado. A classe positiva é minoritária, o que fundamenta o uso de F1-score, precisão e revocação durante a avaliação.
 
 ## Distribuições descritivas
 
@@ -70,4 +70,4 @@ Depois de obter o arquivo `WA_Fn-UseC_-Telco-Customer-Churn.csv` e colocá-lo em
 python -m scripts.analyze_data
 ```
 
-O script gera relatórios agregados em JSON e Markdown e verifica a divisão estratificada dos dados. Os perfis são descritivos; as métricas de desempenho dos modelos dependerão do treinamento e da avaliação experimental.
+O script gera relatórios agregados em JSON e Markdown e verifica a divisão estratificada dos dados. Os perfis são descritivos; os resultados da avaliação dos modelos estão disponíveis em [Resultados experimentais](resultados_experimentais.md).
