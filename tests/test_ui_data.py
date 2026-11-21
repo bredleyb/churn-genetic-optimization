@@ -17,6 +17,7 @@ from src.ui_data import (
     QUICK_FEATURES,
     align_services,
     experiment_summary,
+    format_generation_line,
     label_for,
     load_profile,
     model_input,
@@ -103,3 +104,14 @@ def test_experiment_summary_uses_actual_report_fields():
     assert result["genetico"]["f1"] == 0.4
     with pytest.raises(ValueError, match="incompleto"):
         experiment_summary({})
+
+
+def test_generation_log_uses_real_search_record():
+    line = format_generation_line({
+        "geracao": 3,
+        "melhor_f1_cv": 0.6015,
+        "melhor_aptidao": 0.588868,
+        "caracteristicas": 12,
+    })
+    assert line == ("Geração 03 | F1 (CV): 0,6015 | "
+                    "aptidão: 0,5889 | características: 12")

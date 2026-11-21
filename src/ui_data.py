@@ -149,3 +149,13 @@ def experiment_summary(report: dict) -> dict:
         "reduction_pct": 100 * (total - chosen) / total,
         "selected_features": list(gen["caracteristicas"]),
     }
+
+
+def format_generation_line(record: dict) -> str:
+    """Formata somente medições reais informadas pelo algoritmo genético."""
+    generation = int(record["geracao"])
+    f1 = f"{float(record['melhor_f1_cv']):.4f}".replace(".", ",")
+    fitness = f"{float(record['melhor_aptidao']):.4f}".replace(".", ",")
+    count = int(record["caracteristicas"])
+    return (f"Geração {generation:02d} | F1 (CV): {f1} | "
+            f"aptidão: {fitness} | características: {count}")

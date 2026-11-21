@@ -23,9 +23,9 @@ A divisão dos dados é estratificada, com 80% para desenvolvimento e 20% para t
 - **Numéricos (`tenure`, `MonthlyCharges`, `TotalCharges`):** imputação pela mediana e padronização.
 - **Categóricos (16 colunas):** imputação pela categoria mais frequente e codificação one-hot, ignorando categorias desconhecidas na transformação.
 
-O transformador é criado sem ajuste prévio e ajustado dentro de cada partição de treinamento da validação cruzada. A seleção genética opera sobre as 19 características originais, incluindo integralmente o grupo one-hot quando uma característica categórica é selecionada.
+O transformador é criado sem ajuste prévio; sua estimação deverá ocorrer dentro de cada partição de treinamento da validação cruzada. A seleção genética opera sobre as 19 características originais, incluindo integralmente o grupo one-hot quando uma característica categórica é selecionada.
 
-## Instalação e execução
+## Executar a análise exploratória
 
 Requer Python 3.10 ou superior. No PowerShell, a partir da raiz do repositório:
 
@@ -33,12 +33,10 @@ Requer Python 3.10 ou superior. No PowerShell, a partir da raiz do repositório:
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-python -m scripts.analyze_data
-python -m scripts.compare_models
-python -m scripts.predict --cliente examples/cliente_exemplo.json
+python -m scripts.analyze_data --data data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
 ```
 
-O comando de análise gera `results/analise_dados.json` e `results/analise_dados.md`, com estatísticas agregadas de qualidade, distribuição de classes e cancelamentos por contrato e tipo de conexão. Pode-se alterar o destino por `--output outro-diretorio`.
+O comando gera `results/analise_dados.json` e `results/analise_dados.md`, com estatísticas agregadas de qualidade, distribuição de classes e cancelamentos por contrato e tipo de conexão. Pode-se alterar o destino por `--output outro-diretorio`.
 
 Para executar os testes automatizados:
 
@@ -54,7 +52,7 @@ A inspeção do CSV identificou **1.869 cancelamentos (26,54%)**, **5.174 perman
 
 ## Metodologia do experimento
 
-O estudo compara a regressão logística de referência com a mesma técnica após a seleção de atributos por algoritmo genético. A função de aptidão considera o F1-score médio em validação cruzada estratificada e uma penalização proporcional à quantidade de características. O conjunto de teste é utilizado exclusivamente na avaliação final dos modelos.
+O estudo compara a regressão logística de referência com a mesma técnica após a seleção de atributos por algoritmo genético. A função de aptidão considera o F1-score médio em validação cruzada estratificada e uma penalização proporcional à quantidade de características. O conjunto de teste será utilizado exclusivamente na avaliação final dos modelos.
 
 ## Classificador de referência
 
@@ -131,7 +129,8 @@ O comando apresenta o F1-score de cada modelo e registra em `results/`:
 O relatório apresenta F1-score, precisão, revocação, acurácia e ROC-AUC, além
 da quantidade de características e do tempo da busca genética. A análise
 interpreta falsos positivos e falsos negativos. Os arquivos de `results/` são
-gerados localmente e ficam fora do versionamento; os resultados experimentais estão descritos na seção seguinte.
+gerados localmente e ficam fora do versionamento; os números experimentais
+que fundamentarem a conclusão serão registrados na documentação final.
 
 ## Resultados experimentais
 
@@ -177,24 +176,12 @@ Os percentuais representam estimativas dos classificadores para esses perfis, n�
 garantias individuais de cancelamento. Os modelos `.joblib` são gerados localmente
 e devem ser carregados apenas quando provenientes do próprio treinamento do projeto.
 
-## Interface de demonstração
 
-A interface local permite selecionar um perfil fictício, editar as 19 características
-originais e comparar as probabilidades estimadas pelos dois modelos. Os campos
-dependentes de telefonia e internet são ajustados quando o serviço correspondente
-é alterado. O desempenho no teste é lido de `results/comparacao_modelos.json`.
+### Acompanhar a busca genética na interface
 
-Após instalar as dependências e gerar os modelos com `python -m scripts.compare_models`,
-execute na raiz do projeto:
+A seção **Execução do algoritmo genético**, abaixo da previsão, permite iniciar uma nova busca com os parâmetros do experimento principal (24 indivíduos, 15 gerações, validação cruzada em três partições). Durante a execução, uma barra de progresso, um gráfico e um registro textual são atualizados pelos resultados reais de cada geração. Ao final, a interface apresenta as características selecionadas e os subconjuntos avaliados.
 
-```powershell
-python -m streamlit run streamlit_app.py
-```
-
-A interface abre no navegador e funciona localmente, sem publicar dados na internet.
-Se os modelos ainda não tiverem sido treinados, o programa informa o comando
-necessário. A demonstração pelo terminal, em `scripts/predict.py`, continua
-disponível.
+Essa execução lê o CSV original em `data/raw/` e mantém os modelos e relatórios já treinados em `results/` inalterados. O F1 exibido na evolução é obtido na validação cruzada do indivíduo escolhido pela aptidão, distinto do F1 medido no conjunto de teste reservado. A visualização permanece disponível na sessão do navegador até a próxima execução ou recarregamento da sessão.
 
 ## Artigo
 

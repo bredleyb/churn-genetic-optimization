@@ -4,13 +4,16 @@ Execute a partir da raiz: python -m streamlit run streamlit_app.py
 """
 
 import json
+
+import pandas as pd
 from html import escape
 from pathlib import Path
 
 import streamlit as st
 from joblib import load
 
-from src.data import FEATURE_COLUMNS
+from src.data import FEATURE_COLUMNS, load_dataset, split_dataset
+from src.genetic import GeneticConfig, select_features
 from src.prediction import predict_customer
 from src.ui_data import (
     BILLING_FEATURES,
@@ -20,6 +23,7 @@ from src.ui_data import (
     PROFILE_FILES,
     align_services,
     experiment_summary,
+    format_generation_line,
     label_for,
     load_profile,
     model_input,
@@ -28,6 +32,7 @@ from src.ui_data import (
 
 ROOT = Path(__file__).resolve().parent
 RESULTS = ROOT / "results"
+DATASET = ROOT / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
 MODEL_NAMES = {
     "baseline": ("Regressão logística", "baseline.joblib"),
     "genetico": ("Seleção genética", "genetic.joblib"),
@@ -262,6 +267,95 @@ def _render_metrics(summary: dict) -> None:
                    "As probabilidades individuais utilizam limiar de classificação de 50%.")
 
 
+
+def _history_chart(history: list[dict], *, slot=None) -> None:
+    """Exibe F1 do indivíduo com melhor aptidão, por geração real."""
+    chart_data = pd.DataFrame({
+        "Geração": [int(item["geracao"]) for item in history],
+        "F1 em validação cruzada": [float(item["melhor_f1_cv"]) for item in history],
+    })
+    target = slot if slot is not None else st
+    target.line_chart(
+        chart_data, x="Geração", y="F1 em validação cruzada",
+        color="#0F766E", height=230,
+    )
+
+
+def _render_search_result(run: dict) -> None:
+    """Mantém a execução concluída disponível nas atualizações da página."""
+    result = run["result"]
+    elapsed = f"{result.elapsed_seconds:.1f}".replace(".", ",")
+    st.caption(
+        f"Busca concluída: {len(result.selected_features)} características; "
+        f"{result.evaluated_subsets} subconjuntos distintos avaliados; {elapsed} s."
+    )
+    _history_chart(run["history"])
+    selected = ", ".join(LABELS[name] for name in result.selected_features)
+    st.caption(f"Características selecionadas: {selected}.")
+    with st.expander("Registro das gerações"):
+        st.code("\n".join(format_generation_line(item) for item in run["history"]),
+                language=None, height=235, wrap_lines=True)
+
+
+def _run_search() -> None:
+    """Executa a busca verdadeira e atualiza a interface a cada geração."""
+    config = GeneticConfig()  # Mesmos parâmetros do experimento principal.
+    history: list[dict] = []
+    with st.status("Preparando os dados...", expanded=True) as status:
+        bar = st.progress(0, text=f"0 de {config.generations} gerações")
+        chart_slot = st.empty()
+        terminal_slot = st.empty()
+
+        def on_generation(record: dict) -> None:
+            history.append(dict(record))
+            generation = int(record["geracao"])
+            bar.progress(generation / config.generations,
+                         text=f"{generation} de {config.generations} gerações")
+            status.update(label=f"Busca genética — geração {generation}/{config.generations}")
+            _history_chart(history, slot=chart_slot)
+            terminal_slot.code(
+                "\n".join(format_generation_line(item) for item in history[-8:]),
+                language=None, height=195, wrap_lines=True,
+            )
+
+        try:
+            dataset = load_dataset(DATASET)
+            x_dev, _, y_dev, _ = split_dataset(dataset, random_state=config.random_state)
+            status.update(label="Avaliando a população inicial...")
+            result = select_features(x_dev, y_dev, config, on_generation=on_generation)
+            failure = None
+        except (OSError, ValueError) as exc:
+            failure = exc
+
+    if failure is not None:
+        status.update(label="Erro na busca genética", state="error", expanded=True)
+        st.error(f"Não foi possível executar a busca: {failure}")
+        return
+    status.update(label="Busca genética concluída", state="complete", expanded=False)
+    st.session_state["genetic_run"] = {"history": history, "result": result}
+    _render_search_result(st.session_state["genetic_run"])
+
+
+def _render_search_monitor() -> None:
+    """Mantém a execução experimental independente da previsão do cliente."""
+    st.markdown("<h2 class='churn-heading'>Execução do algoritmo genético</h2>",
+                unsafe_allow_html=True)
+    st.caption("15 gerações · 24 indivíduos · validação cruzada em 3 partições.")
+    if not DATASET.is_file():
+        st.info("Para executar a busca, coloque o CSV original em "
+                "`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`.")
+        return
+    clicked = st.button("Executar busca genética", type="secondary")
+    if clicked:
+        st.session_state.pop("genetic_run", None)
+        _run_search()
+    elif st.session_state.get("genetic_run"):
+        _render_search_result(st.session_state["genetic_run"])
+    else:
+        st.caption("A execução será exibida aqui, geração por geração. "
+                   "Os modelos utilizados nas previsões permanecem inalterados.")
+
+
 def main() -> None:
     with st.container(key="churn-shell", width=1240):
         st.markdown(
@@ -381,6 +475,9 @@ def main() -> None:
                 st.markdown("<h2 class='churn-heading'>Comparação dos modelos</h2>",
                             unsafe_allow_html=True)
                 st.caption("As métricas serão exibidas após o treinamento.")
+
+        st.divider()
+        _render_search_monitor()
 
 
 if __name__ == "__main__":
