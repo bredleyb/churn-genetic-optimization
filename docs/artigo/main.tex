@@ -1,0 +1,62 @@
+\documentclass[12pt]{article}
+
+% Requer sbc-template.sty e sbc.bst do modelo oficial da SBC.
+\usepackage{sbc-template}
+\usepackage{graphicx,url}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+
+\sloppy
+
+\title{Otimização da Identificação de Cancelamento de Clientes por Seleção de Características com Algoritmo Genético}
+
+% PENDENTE: substituir por nomes reais do grupo.
+\author{Nome dos integrantes\inst{1}}
+% PENDENTE: confirmar instituição, curso e e-mail apropriado.
+\address{Instituição de ensino e curso a confirmar}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper proposes the use of a genetic algorithm for feature selection in a supervised customer churn classification task. The proposed methodology compares a baseline classifier using the full eligible feature set with the same classifier trained on an evolved subset. Model performance and feature reduction will be assessed using a consistent evaluation protocol. Experimental results remain pending.
+\end{abstract}
+
+\begin{resumo}
+Este trabalho propõe a utilização de um algoritmo genético para selecionar características de entrada de um classificador supervisionado destinado à identificação de cancelamento de clientes. A metodologia prevê comparar um classificador de referência, treinado com todas as características elegíveis, à mesma técnica aplicada a um subconjunto selecionado evolutivamente. A comparação considerará o desempenho preditivo e a quantidade de características utilizadas. Os resultados experimentais serão obtidos após a implementação.
+\end{resumo}
+
+\section{Introdução}
+A identificação de clientes com propensão ao cancelamento de serviços, conhecida como \textit{customer churn prediction}, pode auxiliar empresas que oferecem serviços recorrentes na priorização de ações de relacionamento e retenção. O problema será tratado como classificação binária supervisionada, usando registros históricos rotulados quanto à ocorrência de cancelamento.
+
+O objetivo do estudo é investigar como a seleção de características por algoritmo genético afeta o desempenho e a complexidade de um classificador, em comparação com uma versão sem essa seleção. O público potencial da solução inclui equipes de análise e retenção de clientes. A base de referência é o \textit{Telco Customer Churn}, disponível no Kaggle \cite{blastchartelco}.
+
+\section{Fundamentação Teórica}
+\subsection{Aprendizagem supervisionada e classificação}
+% PENDENTE: desenvolver com precisão e referências.
+\subsection{Cancelamento de clientes}
+% PENDENTE: desenvolver com contexto e limites preditivos.
+\subsection{Seleção de características}
+% PENDENTE: fundamentar com Guyon e Elisseeff (2003).
+\subsection{Algoritmos genéticos}
+% PENDENTE: desenvolver população, cromossomos, fitness, seleção, cruzamento, mutação e elitismo.
+
+\section{Metodologia Proposta}
+\subsection{Base de dados e preparação}
+% PENDENTE: descrever variáveis e tratamentos como PREVISTOS, antes de medir no CSV.
+\subsection{Modelo de referência}
+% PENDENTE: definir classificador e justificativa.
+\subsection{Seleção genética de características}
+% PENDENTE: especificar máscara binária e aptidão medida na validação.
+\subsection{Estratégia de avaliação e demonstração}
+% PENDENTE: divisão treino/teste, CV, métricas e previsão em nova entrada.
+
+\section{Considerações Finais}
+A proposta permitirá investigar o comportamento da busca evolutiva na seleção de variáveis para a previsão de cancelamento. Seus possíveis benefícios e custos deverão ser examinados após o treinamento e a avaliação experimental. Não se antecipa superioridade de desempenho da estratégia genética em relação ao modelo de referência.
+
+\bibliographystyle{sbc}
+\bibliography{referencias}
+
+\end{document}
