@@ -130,11 +130,15 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
-    assert ui.buttons == ["Restaurar perfil", "Calcular previsão"]
-    restore = next(options for name, options in ui.button_options if name == "Restaurar perfil")
-    assert restore["icon"] == ":material/refresh:"
-    assert restore["type"] == "tertiary"
-    assert callable(restore["on_click"])
+    assert ui.buttons == ["1", "2", "+", "Restaurar perfil", "Calcular previsão"]
+    options = {name: settings for name, settings in ui.button_options}
+    assert options["1"]["type"] == "primary"
+    assert options["2"]["type"] == "secondary"
+    assert options["+"]["on_click"] is not None
+    assert options["Restaurar perfil"]["icon"] == ":material/refresh:"
+    assert options["Restaurar perfil"]["type"] == "tertiary"
+    assert options["Restaurar perfil"]["disabled"] is True
+    assert callable(options["Restaurar perfil"]["on_click"])
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
     assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups
@@ -189,6 +193,10 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "position:absolute;right:0;top:0" in style
     assert ".churn-run-check {\n  border:2px" in style
     assert "st-key-dashboard-restore-action" in style
+    assert "st-key-dashboard-profile-choices" in style
+    assert "border-radius:50%!important" in style
+    assert "button:disabled" in style
+    assert "QUICK_FIELD_COLUMNS" not in style
     assert 'icon=":material/restart_alt:"' not in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
@@ -614,4 +622,115 @@ def test_scroll_cues_component_is_visual_only(monkeypatch):
     assert len(mount) == 1
     assert mount[0]["data"] is None
     assert mount[0]["on_value_change"] is None
-    assert ui.buttons == ["Restaurar perfil", "Calcular previsão"]
+    assert ui.buttons == ["1", "2", "+", "Restaurar perfil", "Calcular previsão"]
+
+
+def test_example_selector_preserves_values_across_switches_and_restores(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_example_selector_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    assert app._is_profile_pristine()
+    initial = ui.session_state["customer_values"]["MonthlyCharges"]
+    ui.session_state["field_MonthlyCharges"] = 90.0
+    app._remember_field("MonthlyCharges")
+    assert not app._is_profile_pristine()
+
+    app._create_example()
+    assert ui.session_state["profile_choice"] == "Exemplo 3"
+    assert ui.session_state["customer_values"]["MonthlyCharges"] == 90.0
+    assert app._is_profile_pristine()
+    ui.session_state["field_MonthlyCharges"] = 100.0
+    app._remember_field("MonthlyCharges")
+    assert not app._is_profile_pristine()
+    app._select_example("Exemplo 1")
+    assert ui.session_state["customer_values"]["MonthlyCharges"] == 90.0
+    app._select_example("Exemplo 3")
+    assert ui.session_state["customer_values"]["MonthlyCharges"] == 100.0
+    app._reset_profile()
+    assert app._is_profile_pristine()
+    assert ui.session_state["customer_values"]["MonthlyCharges"] == 90.0
+    app._select_example("Exemplo 1")
+    app._reset_profile()
+    assert ui.session_state["customer_values"]["MonthlyCharges"] == initial
+    assert app._is_profile_pristine()
+
+
+def test_new_examples_stop_at_five_and_hide_creation_button(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_example_limit_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    for name in ("Exemplo 3", "Exemplo 4", "Exemplo 5"):
+        app._create_example()
+        assert ui.session_state["profile_choice"] == name
+    assert len(ui.session_state["example_profiles"]) == 5
+    with pytest.raises(ValueError, match="Limite de 5"):
+        app._create_example()
+
+    ui.buttons.clear()
+    ui.button_options.clear()
+    app.main()
+    assert ui.buttons[:5] == ["1", "2", "3", "4", "5"]
+    assert "+" not in ui.buttons
+    assert "Restaurar perfil" in ui.buttons
+    assert "Calcular previsão" in ui.buttons
+
+
+def test_quick_fields_share_one_grid_specification(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_quick_grid_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    assert app.QUICK_FIELD_COLUMNS == (0.55, 0.45)
+    app.main()
+    from inspect import getsource
+    render = getsource(app._render_client_panel)
+    assert render.count("st.columns(QUICK_FIELD_COLUMNS") == 2
+    assert 'st.selectbox("Perfil de exemplo"' not in render
+
+
+def test_example_switch_preserves_dependent_service_state(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_example_services_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    original = ui.session_state["customer_values"]["InternetService"]
+    ui.session_state["field_InternetService"] = "No"
+    app._on_service_change("InternetService")
+    assert ui.session_state["customer_values"]["InternetService"] == "No"
+    assert all(ui.session_state["customer_values"][key] == "No internet service"
+               for key in app.INTERNET_FEATURES)
+    app._select_example("Exemplo 2")
+    app._select_example("Exemplo 1")
+    assert ui.session_state["customer_values"]["InternetService"] == "No"
+    assert all(ui.session_state["customer_values"][key] == "No internet service"
+               for key in app.INTERNET_FEATURES)
+    app._reset_profile()
+    assert ui.session_state["customer_values"]["InternetService"] == original
+
+
+def test_legacy_session_migrates_active_example_without_losing_edits(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_example_migration_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    values = app.load_profile(ROOT, "Exemplo 1")
+    values["tenure"] = 42
+    ui.session_state.update({
+        "profile_choice": "Exemplo 1", "customer_values": values.copy(),
+        "form_initialized": True,
+    })
+    app._ensure_examples()
+    assert ui.session_state["example_profiles"]["Exemplo 1"]["values"]["tenure"] == 42
+    assert ui.session_state["example_profiles"]["Exemplo 1"]["original"]["tenure"] == 3
+    app._reset_profile()
+    assert ui.session_state["customer_values"]["tenure"] == 3

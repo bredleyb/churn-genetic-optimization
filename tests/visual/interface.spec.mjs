@@ -337,11 +337,20 @@ for (const { width, height } of viewports) {
         await expect(page.getByRole('textbox', { name: 'Tempo como cliente' })).toHaveValue('3 meses');
         const restore = page.getByRole('button', { name: 'Restaurar perfil' });
         await expect(restore).toBeVisible();
+        const firstExample = page.getByRole('button', { name: '1', exact: true });
+        const secondExample = page.getByRole('button', { name: '2', exact: true });
+        const createExample = page.getByRole('button', { name: '+', exact: true });
+        await expect(firstExample).toBeVisible();
+        await expect(secondExample).toBeVisible();
+        await expect(createExample).toBeVisible();
         const [restoreBox, profileBox] = await Promise.all([
-          restore.boundingBox(), page.getByRole('combobox', { name: 'Perfil de exemplo' }).boundingBox(),
+          restore.boundingBox(), firstExample.boundingBox(),
         ]);
-        expect(Math.abs(restoreBox.y - profileBox.y), 'Ícone de restauro fora do alinhamento').toBeLessThanOrEqual(3);
-        expect(Math.abs(restoreBox.height - profileBox.height), 'Ícone de restauro com altura diferente').toBeLessThanOrEqual(3);
+        expect(Math.abs(
+          restoreBox.y + restoreBox.height/2 - profileBox.y - profileBox.height/2),
+          'Ícone de restauro e círculo fora do mesmo centro vertical').toBeLessThanOrEqual(3);
+        expect(restoreBox.height).toBe(42);
+        await expect(restore).toBeDisabled();
         const restoreAppearance = await restore.evaluate(button => {
           const icon = button.querySelector('[data-testid="stIconMaterial"]');
           const outer = button.getBoundingClientRect();
@@ -354,14 +363,14 @@ for (const { width, height } of viewports) {
                                               (outer.y + outer.height / 2)) : null,
           };
         });
-        expect(restoreAppearance.background).toBe('rgb(14, 16, 19)');
+        expect(restoreAppearance.background).toBe('rgb(0, 0, 0)');
         expect(restoreAppearance.iconOffset, 'Símbolo de restauro não encontrado').not.toBeNull();
         expect(restoreAppearance.iconOffset, 'Ícone de restauro desalinhado horizontalmente').toBeLessThanOrEqual(2);
         expect(restoreAppearance.iconVerticalOffset, 'Ícone de restauro desalinhado verticalmente').toBeLessThanOrEqual(2);
         await expect(restore.locator('[data-testid="stIconMaterial"]')).toHaveCount(1);
         await restore.hover();
         await expect.poll(() => restore.evaluate(el => getComputedStyle(el).backgroundColor))
-          .toBe('rgb(32, 33, 36)');
+          .toBe('rgb(0, 0, 0)');
         // Streamlit 1.67 usa um botão real com aria-label="Open" para expansão.
         // Verificar a superfície pintada, não um pseudo-elemento antigo/invisível.
         const selects = page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"]');
@@ -381,10 +390,8 @@ for (const { width, height } of viewports) {
             .toBe('rgb(14, 16, 19)');
         }
         await page.mouse.move(0, 0);
-        const profileArrow = page.locator('.st-key-dashboard-client-fields [data-testid="stSelectbox"]')
-          .first().getByRole('button', { name: 'Open' });
-        await profileArrow.hover();
-        await expect.poll(() => profileArrow.evaluate(el => getComputedStyle(el).backgroundColor))
+        await secondExample.hover();
+        await expect.poll(() => secondExample.evaluate(el => getComputedStyle(el).backgroundColor))
           .toBe('rgb(32, 33, 36)');
         await page.mouse.move(0, 0);
         const tabsBar = page.locator('.st-key-dashboard-detail-tabs [role="tablist"]');
@@ -475,6 +482,19 @@ for (const { width, height } of viewports) {
           expect(Math.abs(item.height - 20), 'Altura dos rótulos divergente').toBeLessThanOrEqual(1);
           expect(Math.abs(item.textOffset), 'Texto do rótulo descentralizado').toBeLessThanOrEqual(2);
           expect(Math.abs(item.gap - 6), 'Espaçamento rótulo/campo divergente').toBeLessThanOrEqual(2);
+        }
+        // Os dois pares da grade rápida compartilham as mesmas larguras e posições.
+        const columns = page.locator('.st-key-dashboard-quick-fields [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]');
+        await expect(columns).toHaveCount(4);
+        const bounds = await Promise.all((await columns.all()).map(column => column.boundingBox()));
+        for (const [first, second, name] of [
+          [bounds[0], bounds[2], 'Tempo/Serviço de internet'],
+          [bounds[1], bounds[3], 'Tipo de contrato/Cobrança mensal'],
+        ]) {
+          expect(Math.abs(first.x - second.x), name + ': desalinhamento horizontal')
+            .toBeLessThanOrEqual(2);
+          expect(Math.abs(first.width - second.width), name + ': larguras diferentes')
+            .toBeLessThanOrEqual(2);
         }
         // O campo de meses e o seletor usam exatamente o mesmo fundo.
         const fills = await Promise.all([
