@@ -24,18 +24,24 @@ _COMPONENT_CSS = """
 .n3-tenure {display:flex;flex-direction:column;gap:6px;min-width:0;
   font-family:var(--n3-font-ui,"Familjen Grotesk",sans-serif);}
 .n3-tenure label {display:block;min-height:20px;color:var(--n3-secondary,#d8d8d8);
-  font-size:15px;line-height:20px;font-weight:400;white-space:nowrap;}
+  font-size:15px;line-height:20px;font-weight:400;white-space:nowrap;
+  transform:translateY(var(--n3-field-text-shift,-1px));}
 .n3-tenure-field {box-sizing:border-box;display:flex;align-items:stretch;
   width:100%;height:var(--n3-field-height,42px);min-width:0;overflow:hidden;
   background:var(--n3-field-fill,#0e1013);border:1px solid var(--n3-outline,#55585d);
   border-radius:var(--n3-field-radius,4px);}
-.n3-tenure-field:focus-within {outline:2px solid var(--n3-text,#f5f5f5);outline-offset:1px;}
+/* O painel pai recorta overflow-x; o anel de foco deve caber DENTRO da borda. */
+.n3-tenure-field:focus-within {
+  outline:none;border-color:var(--n3-text,#f5f5f5);
+  box-shadow:inset 0 0 0 1px var(--n3-text,#f5f5f5);
+}
 .n3-tenure-field input {box-sizing:border-box;flex:1;min-width:0;width:0;
   height:100%;padding:0 10px;outline:0;border:0;border-radius:0;
   background:transparent;color:var(--n3-text,#f5f5f5);
   font:400 var(--n3-field-text-size,14px)/var(--n3-field-text-line,20px)
     var(--n3-font-ui,"Familjen Grotesk",sans-serif);
-  font-variant-numeric:tabular-nums;}
+  font-variant-numeric:tabular-nums;
+  transform:translateY(var(--n3-field-text-shift,-1px));}
 .n3-tenure-field button {box-sizing:border-box;flex:0 0 32px;width:32px;
   height:100%;padding:0;border:0;border-radius:0;
   display:flex;align-items:center;justify-content:center;

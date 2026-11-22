@@ -57,6 +57,8 @@ st.markdown(
   --n3-field-height:42px; --n3-field-radius:4px;
   --n3-field-fill:#0E1013; --n3-field-action-fill:#0E1013;
   --n3-field-text-size:14px; --n3-field-text-line:20px;
+  /* Familjen Grotesk tem centro ótico ligeiramente abaixo do line-box. */
+  --n3-field-text-shift:-1px;
   --n3-page-pad:12px; --n3-panel-pad:12px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
@@ -123,6 +125,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client label p {
   font-size:15px!important;line-height:20px!important;
   color:var(--n3-secondary)!important;margin:0!important;
+  transform:translateY(var(--n3-field-text-shift))!important;
 }
 .st-key-dashboard-client [data-testid="stVerticalBlock"] {gap:.65rem;}
 .st-key-dashboard-client-fields [data-testid="stVerticalBlock"] {gap:.62rem;}
@@ -143,6 +146,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   border:0!important;border-radius:0!important;box-shadow:none!important;
   color:var(--n3-text)!important;font-family:var(--n3-font-ui)!important;
   font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
+  transform:translateY(var(--n3-field-text-shift))!important;
 }
 /* O input do BaseWeb não pode conservar padding vertical próprio.
    Todos os seletores compartilham centralização e faixa de ação com os números. */
@@ -153,17 +157,34 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
   vertical-align:middle!important;
 }
+/* Ajuste ótico do conteúdo selecionado, sem mover borda ou área clicável. */
+.st-key-dashboard-client [data-baseweb="select"] > div > div:first-child {
+  transform:translateY(var(--n3-field-text-shift))!important;
+}
+/* O select inteiro abre as opções. A faixa da seta é desenhada sobre a
+   superfície clicável, independentemente dos wrappers internos do BaseWeb. */
+.st-key-dashboard-client [data-baseweb="select"] > div {
+  position:relative!important;isolation:isolate!important;
+}
+.st-key-dashboard-client [data-baseweb="select"] > div::before {
+  content:"";position:absolute;top:0;right:0;bottom:0;width:32px;
+  pointer-events:none;z-index:0;
+  background:var(--n3-field-action-fill);
+  border-radius:0 calc(var(--n3-field-radius) - 1px) calc(var(--n3-field-radius) - 1px) 0;
+  transition:background-color .12s ease;
+}
+.st-key-dashboard-client [data-baseweb="select"] > div:hover::before,
+.st-key-dashboard-client [data-baseweb="select"] > div:focus-within::before {
+  background:var(--n3-elevated);
+}
+.st-key-dashboard-client [data-baseweb="select"] > div > * {
+  position:relative!important;z-index:1;
+}
 .st-key-dashboard-client [data-baseweb="select"] > div > div:last-child {
   box-sizing:border-box!important;
   height:calc(var(--n3-field-height) - 2px)!important;min-width:32px!important;
   display:flex!important;align-items:center!important;justify-content:center!important;
-  background:var(--n3-field-action-fill)!important;
-  border-radius:0 calc(var(--n3-field-radius) - 1px) calc(var(--n3-field-radius) - 1px) 0!important;
-  transition:background-color .12s ease!important;
-}
-.st-key-dashboard-client [data-baseweb="select"] > div > div:last-child:hover,
-.st-key-dashboard-client [data-baseweb="select"] > div > div:last-child:focus-within {
-  background:var(--n3-elevated)!important;
+  background:transparent!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] button {
   box-sizing:border-box!important;min-width:32px!important;width:32px!important;
@@ -188,6 +209,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-restore-action [data-testid="stButton"] button {
   box-sizing:border-box!important;width:42px!important;min-width:42px!important;
   height:var(--n3-field-height)!important;min-height:var(--n3-field-height)!important;
+  position:relative!important;
   display:flex!important;justify-content:center!important;align-items:center!important;
   padding:0!important;margin-left:auto!important;
   color:var(--n3-secondary)!important;background:var(--n3-field-fill)!important;
@@ -197,20 +219,20 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-elevated)!important;color:var(--n3-text)!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button > div {
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  width:100%!important;height:100%!important;margin:0!important;padding:0!important;
+  position:static!important;margin:0!important;padding:0!important;
 }
+/* Independente da árvore interna que Streamlit utiliza para ícone e rótulo. */
 .st-key-dashboard-restore-action [data-testid="stButton"] [data-testid="stIconMaterial"] {
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  box-sizing:border-box!important;width:20px!important;height:20px!important;
-  margin:0!important;padding:0!important;line-height:1!important;
-  font-size:20px!important;vertical-align:middle!important;
+  position:absolute!important;left:50%!important;top:calc(50% + var(--n3-field-text-shift))!important;
+  transform:translate(-50%,-50%)!important;
+  box-sizing:border-box!important;display:block!important;
+  width:20px!important;height:20px!important;margin:0!important;padding:0!important;
+  line-height:20px!important;font-size:20px!important;text-align:center!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button p {
   position:absolute!important;width:1px!important;height:1px!important;
   overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;
 }
-.st-key-dashboard-restore-action [data-testid="stIconMaterial"] {font-size:19px!important;}
 /* Área analítica: cinco seções com função definida, uma só superfície principal. */
 .st-key-dashboard-workspace {
   display:grid!important;grid-template-rows:auto auto minmax(150px,1fr) auto minmax(116px,19dvh)!important;
@@ -855,7 +877,7 @@ def _render_workspace_heading(status: str, *, slot) -> None:
         indicator = ""
     slot.markdown(
         f'<header class="churn-workspace-heading" data-run-state="{status}">'
-        '<h2 class="churn-panel-heading">Previsão</h2>'
+        '<div class="churn-panel-heading" role="heading" aria-level="2">Previsão</div>'
         f'{indicator}</header>',
         unsafe_allow_html=True,
     )
@@ -1120,7 +1142,9 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 
 
 def _render_client_panel() -> bool:
-    st.markdown('<h2 class="churn-panel-heading">Cliente</h2>', unsafe_allow_html=True)
+    # Evitar o link de âncora automático que o Streamlit insere em h2.
+    st.markdown('<div class="churn-panel-heading" role="heading" aria-level="2">Cliente</div>',
+                unsafe_allow_html=True)
     with st.container(key="dashboard-client-fields", border=False):
         a, b = st.columns([0.82, 0.18], gap="small", wrap=False)
         with a:
@@ -1129,7 +1153,7 @@ def _render_client_panel() -> bool:
         with b:
             with st.container(key="dashboard-restore-action", border=False):
                 st.button(
-                    "Restaurar perfil", icon=":material/restart_alt:",
+                    "Restaurar perfil", icon=":material/refresh:",
                     help="Restaurar os dados do perfil selecionado.",
                     key="restore_profile", type="tertiary",
                     on_click=_reset_profile, use_container_width=True,
