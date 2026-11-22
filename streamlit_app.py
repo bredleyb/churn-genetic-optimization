@@ -396,6 +396,12 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
     box-sizing:border-box!important;height:100%!important;max-height:100%!important;
     min-height:0!important;overflow:hidden!important;
   }
+  /* O MarkdownContainer do Streamlit traz margem inferior de -16px.
+     Centralizado em um wrapper flex de altura integral, isso desloca o
+     console 8px para baixo, além do limite real do monitor. */
+  .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-console) {
+    margin-bottom:0!important;
+  }
   .st-key-dashboard-monitor-section .churn-console {
     box-sizing:border-box!important;height:100%!important;max-height:100%!important;
     min-height:0!important;margin:0!important;overflow:hidden!important;
@@ -439,7 +445,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
    faixa inferior; os campos técnicos ficam largos o suficiente para leitura. */
 @media (min-width:1000px) and (max-width:1150px) and (min-height:761px) {
   .st-key-dashboard-desktop-detail {
-    grid-template-rows:minmax(0,1fr) minmax(223px,29dvh)!important;
+    grid-template-rows:minmax(0,1fr) minmax(274px,36dvh)!important;
   }
   .st-key-dashboard-selection-section {
     grid-template-columns:minmax(0,1fr)!important;
@@ -457,6 +463,11 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .st-key-dashboard-desktop-detail {
     grid-template-rows:minmax(160px,1fr) minmax(255px,auto) minmax(125px,14dvh)!important;
     gap:8px!important;
+  }
+  /* A faixa de 255px precisa ser ocupada pelo wrapper, que o Streamlit
+     deixava em altura automática; com isso as métricas não ficam cortadas. */
+  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-selection-section) {
+    height:100%!important;max-height:100%!important;min-height:0!important;
   }
   .st-key-dashboard-selection-section {
     grid-template-columns:minmax(0,1fr)!important;

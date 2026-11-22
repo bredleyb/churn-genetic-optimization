@@ -51,3 +51,34 @@ def test_package_created_even_when_reports_are_missing(tmp_path):
         assert manifest["status"] == "falhou"
         assert manifest["resumo_playwright"] == {"disponivel": False}
         assert "LEIA-PRIMEIRO.txt" in zipped.namelist()
+
+
+def test_package_uses_unique_name_when_previous_archive_is_locked(tmp_path, monkeypatch):
+    """Não retorna um ZIP desatualizado quando o Windows bloqueia a substituição."""
+    import os
+    import scripts.package_visual_results as packager
+
+    target = tmp_path / "results" / ARCHIVE_NAME
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"arquivo anterior")
+    original_replace = os.replace
+    calls = []
+
+    def simulated_replace(source, destination):
+        calls.append(Path(destination))
+        if Path(destination) == target:
+            raise PermissionError("[WinError 5] Acesso negado")
+        original_replace(source, destination)
+
+    monkeypatch.setattr(packager.os, "replace", simulated_replace)
+    archive = package(tmp_path, exit_code=1, mode="comparacao")
+
+    assert archive != target
+    assert archive.name.startswith("testes-visuais-para-revisao-")
+    assert archive.suffix == ".zip"
+    assert archive.is_file()
+    assert target.read_bytes() == b"arquivo anterior"
+    assert len(calls) == 2
+    with ZipFile(archive) as zipped:
+        manifest = json.loads(zipped.read("manifesto.json"))
+        assert manifest["status"] == "falhou"

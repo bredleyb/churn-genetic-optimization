@@ -114,7 +114,16 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
             zipped.writestr("manifesto.json", json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
             for source, name in candidates:
                 zipped.write(source, arcname=name)
-        os.replace(staging, output)
+        try:
+            os.replace(staging, output)
+        except PermissionError:
+            # O Windows impede substituir um ZIP aberto por outro programa.
+            # Guardar as evidências atuais com nome distinto evita enviar
+            # acidentalmente o pacote antigo depois de uma falha de testes.
+            suffix = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+            output = output.with_name(f"{output.stem}-{suffix}{output.suffix}")
+            os.replace(staging, output)
+            print("Aviso: o ZIP anterior está bloqueado; resultado salvo com outro nome.")
     finally:
         if staging.exists():
             staging.unlink()

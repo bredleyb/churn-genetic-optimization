@@ -22,6 +22,7 @@ async function geometry(page, stage, testInfo) {
         width: box.width, height: box.height, overflowY: css.overflowY, position: css.position, display: css.display,
         scrollHeight: element.scrollHeight, clientHeight: element.clientHeight,
         scrollWidth: element.scrollWidth, clientWidth: element.clientWidth,
+        marginBottom: css.marginBottom,
       };
     };
     const root = document.scrollingElement || document.documentElement;
@@ -47,6 +48,7 @@ async function geometry(page, stage, testInfo) {
       technical: bounds('.st-key-dashboard-desktop-detail .churn-technical'),
       chromosome: bounds('.st-key-dashboard-desktop-detail .churn-chromosome'),
       monitor: bounds('.st-key-dashboard-desktop-detail .churn-console'),
+      consoleMarkdown: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-console)'),
       monitorTitle: bounds('.st-key-dashboard-desktop-detail .churn-monitor-title'),
       logDownload: bounds('.st-key-dashboard-desktop-detail [data-testid="stDownloadButton"] button'),
       selection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-selection-section'),
@@ -108,6 +110,8 @@ async function geometry(page, stage, testInfo) {
     // quando um overflow hidden poderia esconder uma sobreposição.
     expect(layout.chart.bottom, `${stage}: gráfico invade a seleção`)
       .toBeLessThanOrEqual(layout.selection.y + 2);
+    expect(layout.consoleMarkdown, `${stage}: contêiner Markdown do console ausente`).toBeTruthy();
+    expect(layout.consoleMarkdown.marginBottom, `${stage}: margem negativa desloca o console`).toBe('0px');
     expect(layout.monitor.bottom, `${stage}: console fica oculto ou cortado`)
       .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
     expect(layout.monitorTitle.bottom, `${stage}: título do monitor sobrepõe console`)
