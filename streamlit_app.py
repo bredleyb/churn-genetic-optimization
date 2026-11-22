@@ -129,9 +129,32 @@ html, body, #root {overflow: hidden !important; background: #0B111B !important;}
   /* Sem alturas internas em pixels: as colunas empilhadas devem ocupar apenas sua cota do viewport. */
   .churn-topbar {height:45px;}
   .churn-topbar .churn-top-meta {display:none;}
-  .st-key-dashboard-client {height:calc(43dvh - 27px)!important;}
-  .st-key-dashboard-client-fields {height:calc(43dvh - 142px)!important;}
-  .st-key-dashboard-workspace {height:calc(57dvh - 62px)!important;}
+  /* O st.columns empilha as colunas abaixo de 640 px. É preciso limitar
+     também a linha externa: controlar só os cartões internos deixa o tamanho
+     natural das colunas ultrapassar a janela. */
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 43fr) minmax(0, 57fr) !important;
+    gap: 8px !important;
+    height: calc(100dvh - 82px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    align-content: stretch !important;
+  }
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .st-key-dashboard-client, .st-key-dashboard-workspace {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+  }
+  .st-key-dashboard-client-fields {height:calc(43dvh - 162px)!important;}
   .churn-kpis {grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
   .churn-kpi {padding:7px 5px;}
   .churn-kpi-label {font-size:9px;}

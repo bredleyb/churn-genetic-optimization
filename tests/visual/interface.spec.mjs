@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 // O dashboard ocupa a altura do navegador: são permitidas rolagens somente nos painéis.
 const viewports = [1440, 1024, 768, 390];
 
-async function checkDashboardGeometry(page, stage, width) {
+async function checkDashboardGeometry(page, stage, width, testInfo) {
   const layout = await page.evaluate(() => {
     const rect = selector => {
       const el = document.querySelector(selector);
@@ -25,8 +25,27 @@ async function checkDashboardGeometry(page, stage, width) {
       clientFields: rect('.st-key-dashboard-client-fields'),
       clientFooter: rect('.st-key-dashboard-client-footer'),
       calculateButton: rect('.st-key-dashboard-client-footer button'),
+      mobileRow: rect('[data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)'),
+      clientColumn: rect('[data-testid="stColumn"]:has(.st-key-dashboard-client)'),
+      workspaceColumn: rect('[data-testid="stColumn"]:has(.st-key-dashboard-workspace)'),
+      mobileRowStyles: (() => {
+        const el = document.querySelector('[data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)');
+        if (!el) return null;
+        const style = getComputedStyle(el);
+        return {display: style.display, gridTemplateRows: style.gridTemplateRows,
+                height: style.height, minHeight: style.minHeight, overflowY: style.overflowY};
+      })(),
     };
   });
+  // Anexar geometria e CSS calculado para diagnosticar falhas móveis no ZIP.
+  if (width <= 620 && testInfo) {
+    await testInfo.attach(`geometria-${stage}-${width}.json`, {
+      body: JSON.stringify(layout, null, 2), contentType: 'application/json',
+    });
+    expect(layout.mobileRow, `${stage}: linha principal do dashboard não localizada`).toBeTruthy();
+    expect(layout.mobileRowStyles.display, `${stage}: linha móvel precisa usar grid`).toBe('grid');
+    expect(layout.mobileRow.bottom, `${stage}: grade principal ultrapassa a tela`).toBeLessThanOrEqual(layout.height + 2);
+  }
   expect(layout.client, `${stage}: painel Cliente ausente`).toBeTruthy();
   expect(layout.workspace, `${stage}: painel Execução ausente`).toBeTruthy();
   expect(layout.scrollWidth, `${stage}: rolagem horizontal da página`).toBeLessThanOrEqual(layout.clientWidth + 2);
@@ -47,6 +66,9 @@ async function checkDashboardGeometry(page, stage, width) {
     expect(layout[name].bottom, `${stage}: ${name} fora do painel Cliente`).toBeLessThanOrEqual(layout.client.bottom + 2);
   }
   expect(layout.clientFields.overflowY, `${stage}: campos sem rolagem interna`).toMatch(/auto|scroll/);
+  if (width <= 620) {
+    expect(layout.client.bottom, `${stage}: painéis móveis sobrepostos`).toBeLessThanOrEqual(layout.workspace.y + 2);
+  }
 }
 
 async function capture(page, testInfo, name) {
@@ -75,7 +97,7 @@ for (const width of viewports) {
         await expect(page.locator('.churn-kpi-value').first()).toHaveText('—');
         const bg = await page.locator('.stApp').evaluate(el => getComputedStyle(el).backgroundColor);
         expect(bg, 'O tema deve ser escuro').toBe('rgb(11, 17, 27)');
-        await checkDashboardGeometry(page, 'Inicial', width);
+        await checkDashboardGeometry(page, 'Inicial', width, testInfo);
         await page.mouse.move(0, 0);
         await expect(page).toHaveScreenshot(`dashboard-01-inicial-${width}.png`, { fullPage: false });
       });
@@ -85,7 +107,7 @@ for (const width of viewports) {
         await expect(page.locator('.churn-console')).toContainText(/\[G\d{2}\]/, { timeout: 120_000 });
         await expect(page.locator('.churn-bit')).toHaveCount(19);
         await capture(page, testInfo, `dashboard-02-processamento-${width}.png`);
-        await checkDashboardGeometry(page, 'Processamento', width);
+        await checkDashboardGeometry(page, 'Processamento', width, testInfo);
       });
 
       await test.step('Resultados e comparação visíveis no dashboard', async () => {
@@ -95,7 +117,7 @@ for (const width of viewports) {
         await expect(page.locator('.churn-console')).toContainText('[FIM]');
         await expect(page.locator('.churn-tech-item')).toHaveCount(4);
         await expect(page.locator('.churn-bit')).toHaveCount(19);
-        await checkDashboardGeometry(page, 'Concluído', width);
+        await checkDashboardGeometry(page, 'Concluído', width, testInfo);
         await page.mouse.move(0, 0);
         await expect(page).toHaveScreenshot(`dashboard-03-concluido-${width}.png`, {
           fullPage: false,
@@ -112,7 +134,7 @@ for (const width of viewports) {
         await expect(page.locator('.churn-kpi-value').first()).toHaveText('—');
         await expect(page.getByText(/Os dados do cliente foram alterados/)).toBeVisible();
         await expect(page.locator('.churn-console')).toContainText('[FIM]');
-        await checkDashboardGeometry(page, 'Editado', width);
+        await checkDashboardGeometry(page, 'Editado', width, testInfo);
         await page.mouse.move(0, 0);
         await expect(page).toHaveScreenshot(`dashboard-04-editado-${width}.png`, {
           fullPage: false,
