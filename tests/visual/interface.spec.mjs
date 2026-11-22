@@ -429,9 +429,9 @@ test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }
       expect(sizes.rendered, `Texto cortado: ${expected}`)
         .toBeLessThanOrEqual(sizes.available + 1);
     }
-    await page.getByRole('button', { name: '+', exact: true }).click();
+    await page.getByRole('button', { name: 'Aumentar um mês', exact: true }).click();
     await expect(months).toHaveValue('121 meses');
-    await page.getByRole('button', { name: '−', exact: true }).click();
+    await page.getByRole('button', { name: 'Diminuir um mês', exact: true }).click();
     await expect(months).toHaveValue('120 meses');
     await months.fill('abc');
     await months.press('Tab');

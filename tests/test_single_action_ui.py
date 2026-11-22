@@ -110,7 +110,7 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
-    assert ui.buttons == ["Restaurar", "−", "+", "Calcular previsão"]
+    assert ui.buttons == ["Restaurar", "Diminuir um mês", "Aumentar um mês", "Calcular previsão"]
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
     assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups

@@ -591,6 +591,14 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-tenure-control [data-testid="stColumn"]:last-child button {
   border-radius:0 4px 4px 0!important;
 }
+/* O texto completo mantém o nome acessível; o ícone fica centralizado. */
+.st-key-dashboard-tenure-control [data-testid="stButton"] button p {
+  position:absolute!important;width:1px!important;height:1px!important;
+  overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;
+}
+.st-key-dashboard-tenure-control [data-testid="stButton"] button [data-testid="stIconMaterial"] {
+  font-size:20px!important;
+}
 .st-key-dashboard-tenure-control [data-testid="stTextInput"] div[data-baseweb="input"] {
   min-width:0!important;overflow:hidden!important;
 }
@@ -1102,10 +1110,12 @@ def _render_client_panel() -> bool:
                             on_change=_on_tenure_change, label_visibility="collapsed",
                         )
                     with minus_col:
-                        st.button("−", key="tenure_minus", help="Diminuir um mês",
+                        st.button("Diminuir um mês", key="tenure_minus",
+                                  icon=":material/remove:", help="Diminuir um mês",
                                   on_click=_step_tenure, args=(-1,), type="tertiary")
                     with plus_col:
-                        st.button("+", key="tenure_plus", help="Aumentar um mês",
+                        st.button("Aumentar um mês", key="tenure_plus",
+                                  icon=":material/add:", help="Aumentar um mês",
                                   on_click=_step_tenure, args=(1,), type="tertiary")
                     if st.session_state.get("tenure_error"):
                         st.caption(st.session_state["tenure_error"])
