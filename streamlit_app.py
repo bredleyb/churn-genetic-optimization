@@ -15,6 +15,7 @@ from src.evaluation import evaluate_test
 from src.genetic import GeneticConfig, select_features
 from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
+from src.tenure_control import render_tenure_control
 from src.ui_data import (
     BILLING_FEATURES,
     INTERNET_FEATURES,
@@ -110,7 +111,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   height:20px!important;margin:0!important;padding:0!important;
   font-size:16px!important;line-height:20px!important;font-weight:600!important;
   letter-spacing:0!important;white-space:nowrap!important;
-  text-align:center!important;color:var(--n3-muted)!important;
+  text-align:center!important;color:var(--n3-outline)!important;
 }
 /* Base visual compartilhada por seletores e entradas numéricas nativas. */
 .st-key-dashboard-client [data-testid="stWidgetLabel"] {
@@ -160,6 +161,26 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client-footer button:focus-visible {outline:2px solid #fff!important;outline-offset:3px!important;}
 .st-key-dashboard-client-fields button[kind="tertiary"],
 .st-key-dashboard-client-fields button {font-size:14px!important;color:var(--n3-secondary)!important;}
+/* Restauro do perfil: ação compacta alinhada ao seletor, com nome acessível. */
+.st-key-dashboard-restore-action {
+  min-width:0!important;margin-top:26px!important;
+}
+.st-key-dashboard-restore-action [data-testid="stButton"] button {
+  box-sizing:border-box!important;width:42px!important;min-width:42px!important;
+  height:var(--n3-field-height)!important;min-height:var(--n3-field-height)!important;
+  display:flex!important;justify-content:center!important;align-items:center!important;
+  padding:0!important;margin-left:auto!important;
+  color:var(--n3-secondary)!important;background:var(--n3-control)!important;
+  border:1px solid var(--n3-outline)!important;border-radius:var(--n3-field-radius)!important;
+}
+.st-key-dashboard-restore-action [data-testid="stButton"] button:hover {
+  background:var(--n3-elevated)!important;color:var(--n3-text)!important;
+}
+.st-key-dashboard-restore-action [data-testid="stButton"] button p {
+  position:absolute!important;width:1px!important;height:1px!important;
+  overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;
+}
+.st-key-dashboard-restore-action [data-testid="stIconMaterial"] {font-size:19px!important;}
 /* Área analítica: cinco seções com função definida, uma só superfície principal. */
 .st-key-dashboard-workspace {
   display:grid!important;grid-template-rows:auto auto minmax(150px,1fr) auto minmax(116px,19dvh)!important;
@@ -564,7 +585,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   border-radius:50%;animation:n3-run-spin .75s linear infinite;
 }
 .churn-run-check {
-  position:relative;border:2px solid var(--n3-text);border-radius:50%;
+  border:2px solid var(--n3-text);border-radius:50%;
   width:20px;height:20px;box-sizing:border-box;
   animation:n3-check-in .2s ease-out both;
 }
@@ -649,6 +670,8 @@ def _apply_profile(profile_name: str) -> None:
     for feature in FEATURE_COLUMNS:
         st.session_state[f"field_{feature}"] = example[feature]
     st.session_state["field_total_missing"] = example["total_missing"]
+    # Um novo perfil inicia uma instância limpa do editor de meses.
+    st.session_state["tenure_revision"] = st.session_state.get("tenure_revision", 0) + 1
     st.session_state["workflow_run"] = None
 
 
@@ -672,6 +695,19 @@ def _remember_field(feature: str) -> None:
     saved = st.session_state["customer_values"].copy()
     saved[feature] = st.session_state[f"field_{feature}"]
     st.session_state["customer_values"] = saved
+
+
+def _on_tenure_component_change() -> None:
+    """Sincroniza meses antes de cada rerun, mantendo a entrada e o modelo coerentes."""
+    key = f'n3-tenure-{st.session_state["tenure_revision"]}'
+    component = st.session_state.get(key, {})
+    changed = component.get("value") if hasattr(component, "get") else None
+    if changed is None:
+        return
+    value = max(0, min(999, int(changed)))
+    if value != st.session_state["field_tenure"]:
+        st.session_state["field_tenure"] = value
+        _remember_field("tenure")
 
 
 def _on_service_change(feature: str) -> None:
@@ -1056,22 +1092,30 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 def _render_client_panel() -> bool:
     st.markdown('<h2 class="churn-panel-heading">Cliente</h2>', unsafe_allow_html=True)
     with st.container(key="dashboard-client-fields", border=False):
-        a, b = st.columns([0.72, 0.28], gap="small", wrap=False)
+        a, b = st.columns([0.82, 0.18], gap="small", wrap=False)
         with a:
             st.selectbox("Perfil de exemplo", list(PROFILE_FILES), key="profile_choice",
                          on_change=_choose_profile)
         with b:
-            st.button("Restaurar", on_click=_reset_profile, type="tertiary")
+            with st.container(key="dashboard-restore-action", border=False):
+                st.button(
+                    "Restaurar perfil", icon=":material/restart_alt:",
+                    help="Restaurar os dados do perfil selecionado.",
+                    key="restore_profile", type="tertiary",
+                    on_click=_reset_profile, use_container_width=True,
+                )
         with st.container(key="dashboard-quick-fields", border=False):
             a, b = st.columns([0.62, 0.38], gap="small", wrap=False)
             with a:
                 with st.container(key="dashboard-tenure-control", border=False):
-                    st.number_input(
-                        "Tempo como cliente",
-                        min_value=0, max_value=999, step=1, format="%d",
-                        help="Informe o tempo de permanência em meses.",
-                        key="field_tenure", on_change=_remember_field, args=("tenure",),
+                    months = render_tenure_control(
+                        st, value=int(st.session_state["field_tenure"]),
+                        revision=st.session_state["tenure_revision"],
+                        on_change=_on_tenure_component_change,
                     )
+                    if months != st.session_state["field_tenure"]:
+                        st.session_state["field_tenure"] = months
+                        _remember_field("tenure")
             with b:
                 _select_field("Contract")
             a, b = st.columns([0.55, 0.45], gap="small", wrap=False)
@@ -1161,6 +1205,8 @@ def main() -> None:
         for name in (*FEATURE_COLUMNS, "total_missing"):
             profile[name] = st.session_state.get(f"field_{name}", profile[name])
         st.session_state["customer_values"] = profile
+
+    st.session_state.setdefault("tenure_revision", 1)
 
     with st.container(key="dashboard-shell", border=False):
         client_col, workspace_col = st.columns([0.30, 0.70], gap="small", wrap=True)
