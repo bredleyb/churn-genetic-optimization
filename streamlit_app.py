@@ -270,20 +270,11 @@ def _select_field(feature: str, *, disabled: bool = False, help_text: str | None
 
 
 def _render_client_details() -> None:
-    tab = st.segmented_control(
-        "Características adicionais",
-        ["Perfil", "Telefonia", "Internet", "Cobrança"],
-        default="Perfil", key="detail_tab", required=True,
-        label_visibility="collapsed", width="stretch",
-    )
+    tab = st.selectbox("Editar características", ["Perfil", "Telefonia", "Internet", "Cobrança"],
+                       key="detail_tab")
     if tab == "Perfil":
-        a, b = st.columns(2, gap="small", wrap=True)
-        with a:
-            _select_field(PROFILE_FEATURES[0])
-            _select_field(PROFILE_FEATURES[1])
-        with b:
-            _select_field(PROFILE_FEATURES[2])
-            _select_field(PROFILE_FEATURES[3])
+        for feature in PROFILE_FEATURES:
+            _select_field(feature)
     elif tab == "Telefonia":
         _select_field("PhoneService")
         _select_field(
@@ -292,14 +283,12 @@ def _render_client_details() -> None:
         )
     elif tab == "Internet":
         inactive = st.session_state["field_InternetService"] == "No"
-        a, b = st.columns(2, gap="small", wrap=True)
-        for i, feature in enumerate(INTERNET_FEATURES):
-            with (a if i % 2 == 0 else b):
-                _select_field(feature, disabled=inactive,
-                              help_text="Indisponível sem serviço de internet.")
+        for feature in INTERNET_FEATURES:
+            _select_field(feature, disabled=inactive,
+                          help_text="Indisponível sem serviço de internet.")
     else:
-        _select_field(BILLING_FEATURES[0])
-        _select_field(BILLING_FEATURES[1])
+        for feature in BILLING_FEATURES:
+            _select_field(feature)
         st.checkbox("Total cobrado indisponível", key="field_total_missing")
         st.number_input(
             LABELS["TotalCharges"], min_value=0.0, step=1.0,
@@ -322,53 +311,44 @@ def _is_stale(run: dict) -> bool:
 def _format_probability(entry: dict) -> tuple[str, str, str]:
     probability = max(0, min(100, float(entry["probabilidade_cancelamento"]) * 100))
     label = "Cancelamento" if entry["classe"] == 1 else "Permanência"
-    style = "is-high" if entry["classe"] == 1 else "is-low"
-    return f"{probability:.2f}".replace(".", ",") + "%", label, style
+    semantics = "is-negative" if entry["classe"] == 1 else "is-positive"
+    return f"{probability:.2f}".replace(".", ",") + "%", label, semantics
 
 
-def _render_kpis(run: dict | None, status: str, *, slot) -> None:
-    if run is not None and status == "complete":
-        bval, bfoot, bstyle = _format_probability(run["predictions"]["baseline"])
-        gval, gfoot, gstyle = _format_probability(run["predictions"]["genetico"])
-        count = str(run["summary"]["genetic_count"]) + "/19"
-    else:
-        bval = gval = "—"
-        bfoot = gfoot = "Aguardando previsão"
-        bstyle = gstyle = ""
-        count = "—/19"
-    states = {
-        "idle": ("Pronto", "Inicie pelo painel Cliente"),
-        "running": ("Em execução", "Busca genética em andamento"),
-        "complete": ("Concluído", "Modelos avaliados"),
-        "stale": ("Alterado", "Previsão desatualizada"),
-        "error": ("Erro", "Verifique o registro"),
-    }
-    state_label, state_detail = states[status]
-    def card(label: str, value: str, foot: str, style: str = "") -> str:
-        return (f'<div class="churn-kpi"><div class="churn-kpi-label">{escape(label)}</div>'
-                f'<div class="churn-kpi-value {style}">{escape(value)}</div>'
-                f'<div class="churn-kpi-foot">{escape(foot)}</div></div>')
-    html = ('<section class="churn-kpis" aria-label="Indicadores principais">'
-            + card("Referência", bval, bfoot, bstyle)
-            + card("Seleção genética", gval, gfoot, gstyle)
-            + card("Características", count, "Atributos selecionados")
-            + card("Processamento", state_label, state_detail)
-            + '</section>')
-    slot.markdown(html, unsafe_allow_html=True)
+def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> None:
+    """Comparação protagonista. A cor é aplicada apenas à classe prevista."""
+    ready = run is not None and status == "complete"
+    count = run["summary"]["genetic_count"] if run is not None else None
+    reference = _format_probability(run["predictions"]["baseline"]) if ready else ("—", "Aguardando", "")
+    genetic = _format_probability(run["predictions"]["genetico"]) if ready else ("—", "Aguardando", "")
+    states = {"idle":"Pronto", "running":"Processando", "complete":"Concluído",
+              "stale":"Dados alterados", "error":"Erro"}
+    def result(model: str, details: str, entry: tuple[str,str,str]) -> str:
+        value, outcome, semantic = entry
+        return (f'<div class="churn-model" aria-label="{escape(model)}">'
+                f'<div class="churn-model-name">{escape(model)}</div>'
+                f'<div class="churn-model-detail">{escape(details)}</div>'
+                f'<div class="churn-prediction-value">{escape(value)}</div>'
+                f'<div class="churn-outcome {semantic}">{escape(outcome)}</div></div>')
+    markup = ('<section class="churn-comparison" aria-label="Comparação dos modelos">'
+              '<div class="churn-section-top"><h3>Previsão do cliente</h3>'
+              f'<span class="churn-state {"is-error" if status=="error" else ""}">{escape(states[status])}</span></div>'
+              '<div class="churn-models">'
+              + result("Referência", "19 características", reference)
+              + result("Seleção genética", f"{count}/19 características" if count is not None else "Aguardando seleção", genetic)
+              + '</div></section>')
+    slot.markdown(markup, unsafe_allow_html=True)
 
 
 def _render_console(events: list[str], *, slot, complete: bool = False) -> None:
-    # Registro integral permanece em memória; o monitor mostra as últimas linhas.
-    visible = events[-22:] if complete else events[-9:]
+    # Exibir últimas mensagens no início visível; o histórico integral segue disponível no download.
+    visible = list(reversed(events[-9:]))
     rows = []
     for line in visible:
-        kind = ("is-result" if " | F1" in line or line.startswith("[FIM]")
-                else "is-step" if "avaliando" in line or line.startswith("[GERAÇÃO]")
-                else "")
+        kind = ("is-result" if line.startswith("[FIM]") else
+                "is-step" if line.startswith("[GERAÇÃO]") else "")
         rows.append(f'<span class="churn-log-line {kind}">{escape(line)}</span>')
     markup = ('<section class="churn-console" aria-label="Eventos da busca genética">'
-              '<div class="churn-console-head"><span>Monitor de execução</span>'
-              '<small>EVENTOS REAIS</small></div>'
               '<div class="churn-console-lines" role="log" aria-live="polite">'
               + "".join(rows) + '</div></section>')
     slot.markdown(markup, unsafe_allow_html=True)
@@ -382,59 +362,75 @@ def _render_chromosome(chromosome: tuple[int, ...], title: str, *, slot) -> None
         for name, bit in zip(FEATURE_COLUMNS, chromosome)
     )
     markup = ('<section class="churn-chromosome" aria-label="Cromossomo de 19 características">'
-              f'<div class="churn-chromosome-head"><strong>{escape(title)}</strong>'
-              f'<span>{sum(chromosome)}/19</span></div>'
+              '<div class="churn-section-top"><h3>Características selecionadas</h3>'
+              f'<span class="churn-selection-count">{sum(chromosome)} / 19</span></div>'
               f'<div class="churn-bits">{bits}</div>'
-              '<div class="churn-legend">1 incluída · 0 excluída</div></section>')
+              '<div class="churn-chromosome-note">1 = incluída · 0 = excluída</div></section>')
     slot.markdown(markup, unsafe_allow_html=True)
 
 
 def _history_chart(history: list[dict], *, slot) -> None:
-    if not history:
-        slot.markdown('<div class="churn-chart-fallback">Aguardando a primeira geração</div>',
-                      unsafe_allow_html=True)
-        return
-    chart_data = pd.DataFrame({
-        "Geração": [int(item["geracao"]) for item in history],
-        "F1 (CV)": [float(item["melhor_f1_cv"]) for item in history],
-    })
-    slot.line_chart(chart_data, x="Geração", y="F1 (CV)",
-                    color="#30B6A7", height=175)
+    """SVG proporcional, sem bibliotecas de gráficos ou dependências de rede.
+
+    A escala inicia em zero e permanece constante nas 15 gerações, evitando
+    sugerir uma melhora maior por mudanças automáticas dos limites do eixo.
+    """
+    values = [max(0.0, min(1.0, float(item["melhor_f1_cv"]))) for item in history]
+    # Para resultados superiores a 0,8, ampliar o eixo em vez de truncar o dado.
+    ceiling = max(0.8, min(1.0, (int(max(values) * 5 + 0.999999) / 5) if values else 0.8))
+    points = " ".join(
+        f'{1000 * (i / 14):.2f},{240 * (1 - value / ceiling):.2f}'
+        for i, value in enumerate(values)
+    )
+    line = (f'<polyline class="churn-chart-line" points="{points}"/>' if values else '')
+    grid = ''.join(f'<line x1="0" y1="{i*60}" x2="1000" y2="{i*60}"/>' for i in range(5))
+    markup = (
+        '<section class="churn-chart" aria-label="Evolução do F1-score em validação cruzada">'
+        '<div class="churn-section-top"><h3>Evolução do F1-score</h3>'
+        '<span class="churn-chart-descriptor">Validação cruzada · 15 gerações</span></div>'
+        '<div class="churn-chart-plot">'
+        '<div class="churn-chart-axis-y">' +
+        "".join(f'<span>{(ceiling * tick / 4):.1f}</span>'.replace(".", ",") for tick in range(4, -1, -1)) +
+        '</div>'
+        '<div class="churn-chart-plot-main">'
+        f'<svg class="churn-chart-svg" viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" '
+        f'aria-label="Evolução do F1 em validação cruzada; {len(values)} gerações">'
+        f'<g class="churn-chart-grid">{grid}</g>{line}</svg>'
+        '<div class="churn-chart-axis-x"><span>1</span><span>5</span><span>10</span><span>15</span></div>'
+        '</div></div>'
+        f'<div class="churn-chart-caption">{"Melhor F1 (CV): " + format(max(values), ".4f").replace(".", ",") if values else "Aguardando a primeira geração"}</div>'
+        '</section>'
+    )
+    slot.markdown(markup, unsafe_allow_html=True)
 
 
 def _render_technical(run: dict | None, *, slot, stale: bool = False) -> None:
     if run is None:
-        metrics = (("F1 referência", "—"), ("F1 genético", "—"),
-                   ("Subconjuntos", "—"), ("Tempo", "—"))
+        metrics = (("Referência", "—"), ("Genético", "—"), ("ΔF1", "—"))
+        summary = "F1 no teste reservado · 20% dos dados"
     else:
-        s = run["summary"]
-        metrics = (("F1 referência", f'{s["baseline"]["f1"]:.4f}'.replace(".", ",")),
-                   ("F1 genético", f'{s["genetico"]["f1"]:.4f}'.replace(".", ",")),
-                   ("Subconjuntos", str(run["evaluated_subsets"])),
-                   ("Tempo", f'{run["elapsed_seconds"]:.1f}'.replace(".", ",") + " s"))
-    cells = "".join(
-        f'<div class="churn-tech-item"><span>{escape(name)}</span><strong>{escape(value)}</strong></div>'
-        for name, value in metrics
-    )
-    if run is None:
-        note = "F1 calculado no teste reservado · 20% dos dados"
-    else:
-        base_f1 = run["summary"]["baseline"]["f1"]
-        genetic_f1 = run["summary"]["genetico"]["f1"]
-        delta = f"{genetic_f1 - base_f1:+.4f}".replace(".", ",")
-        reduction = f"{run['summary']['reduction_pct']:.2f}".replace(".", ",")
-        note = f"{reduction}% menos características · ΔF1 no teste: {delta}"
-    foot = f'<div class="churn-tech-foot">{escape(note)}</div>'
+        data = run["summary"]
+        base_f1, gen_f1 = data["baseline"]["f1"], data["genetico"]["f1"]
+        metrics = (("Referência", f"{base_f1:.4f}".replace(".", ",")),
+                   ("Genético", f"{gen_f1:.4f}".replace(".", ",")),
+                   ("ΔF1", f"{gen_f1-base_f1:+.4f}".replace(".", ",")))
+        summary = (f'{data["reduction_pct"]:.1f}% de redução · '
+                   f'{run["evaluated_subsets"]} subconjuntos · '
+                   f'{data["test_count"]} clientes no teste')
+    rows = "".join(f'<div class="churn-metric"><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>'
+                   for label,value in metrics)
     warning = ('<div class="churn-stale">Os dados do cliente foram alterados. '
                'Clique em Calcular previsão para atualizar.</div>') if stale else ""
-    slot.markdown(f'<section aria-label="Resumo técnico"><div class="churn-tech">{cells}'
-                  f'</div>{foot}{warning}</section>', unsafe_allow_html=True)
+    slot.markdown('<section class="churn-technical" aria-label="Métricas de teste">'
+                  '<div class="churn-section-top"><h3>Desempenho no teste reservado</h3></div>'
+                  f'<dl class="churn-metrics">{rows}</dl><div class="churn-technical-note">{escape(summary)}</div>'
+                  f'{warning}</section>', unsafe_allow_html=True)
 
 
 def _render_idle(slots: dict) -> None:
-    _render_kpis(None, "idle", slot=slots["kpis"])
-    slots["phase"].markdown('<div class="churn-ready">Aguardando cálculo do cliente</div>', unsafe_allow_html=True)
-    slots["progress"].progress(0.0, text="Geração 0/15")
+    _render_prediction_comparison(None, "idle", slot=slots["comparison"])
+    slots["phase"].markdown('<span class="churn-phase">Pronto para iniciar</span>', unsafe_allow_html=True)
+    slots["progress"].progress(0.0, text="Geração 0 de 15")
     _render_console(["[PRONTO] Aguardando execução do experimento"], slot=slots["console"])
     _render_chromosome(tuple(0 for _ in FEATURE_COLUMNS), "Aguardando avaliação", slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
@@ -443,10 +439,9 @@ def _render_idle(slots: dict) -> None:
 
 def _render_finished_run(run: dict, slots: dict) -> None:
     stale = _is_stale(run)
-    _render_kpis(run, "stale" if stale else "complete", slot=slots["kpis"])
-    slots["phase"].markdown('<div class="churn-phase">Execução concluída · '
-                            f'{len(run["history"])} gerações</div>', unsafe_allow_html=True)
-    slots["progress"].progress(1.0, text="Geração 15/15")
+    _render_prediction_comparison(run, "stale" if stale else "complete", slot=slots["comparison"])
+    slots["phase"].markdown('<span class="churn-phase">15 gerações concluídas</span>', unsafe_allow_html=True)
+    slots["progress"].progress(1.0, text="Geração 15 de 15")
     _render_console(run["events"], slot=slots["console"], complete=True)
     _render_chromosome(run["chromosome"], "Melhor cromossomo", slot=slots["chromosome"])
     _history_chart(run["history"], slot=slots["chart"])
@@ -465,8 +460,8 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
     started = perf_counter()
     events: list[str] = []
     history: list[dict] = []
-    _render_kpis(None, "running", slot=slots["kpis"])
-    slots["progress"].progress(0.0, text=f"Geração 0/{config.generations}")
+    _render_prediction_comparison(None, "running", slot=slots["comparison"])
+    slots["progress"].progress(0.0, text=f"Geração 0 de {config.generations}")
     _render_chromosome(tuple(0 for _ in FEATURE_COLUMNS), "Aguardando avaliação",
                        slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
@@ -499,7 +494,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
             f'{config.generations}</div>', unsafe_allow_html=True,
         )
         slots["progress"].progress(number / config.generations,
-                                   text=f"Geração {number}/{config.generations}")
+                                   text=f"Geração {number} de {config.generations}")
         log("[GERAÇÃO] " + format_generation_line(record))
         _history_chart(history, slot=slots["chart"])
 
@@ -544,7 +539,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
             f"{genetic_result.evaluated_subsets} subconjuntos distintos")
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         st.session_state["workflow_run"] = None
-        _render_kpis(None, "error", slot=slots["kpis"])
+        _render_prediction_comparison(None, "error", slot=slots["comparison"])
         slots["phase"].error("Execução interrompida")
         slots["technical"].error(f"Não foi possível concluir: {exc}")
         return
@@ -575,9 +570,12 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 def _render_client_panel() -> bool:
     st.markdown('<h2 class="churn-panel-heading">Cliente</h2>', unsafe_allow_html=True)
     with st.container(key="dashboard-client-fields", border=False):
-        st.selectbox("Perfil de exemplo", list(PROFILE_FILES), key="profile_choice",
-                     on_change=_choose_profile)
-        st.button("Restaurar exemplo", on_click=_reset_profile, type="tertiary")
+        a, b = st.columns([0.72, 0.28], gap="small", wrap=False)
+        with a:
+            st.selectbox("Perfil de exemplo", list(PROFILE_FILES), key="profile_choice",
+                         on_change=_choose_profile)
+        with b:
+            st.button("Restaurar", on_click=_reset_profile, type="tertiary")
         a, b = st.columns(2, gap="small", wrap=True)
         with a:
             st.number_input(LABELS["tenure"], min_value=0, step=1, key="field_tenure")
@@ -586,8 +584,7 @@ def _render_client_panel() -> bool:
             _select_field("Contract")
             st.number_input(LABELS["MonthlyCharges"], min_value=0.0, step=1.0,
                             format="%.2f", key="field_MonthlyCharges")
-        st.markdown('<div class="churn-subheading">Características adicionais</div>',
-                    unsafe_allow_html=True)
+        st.markdown('<div class="churn-subheading">Outras características</div>', unsafe_allow_html=True)
         _render_client_details()
     with st.container(key="dashboard-client-footer", border=False):
         clicked = st.button("Calcular previsão", type="primary", use_container_width=True,
@@ -598,31 +595,22 @@ def _render_client_panel() -> bool:
 
 
 def _workspace_slots() -> dict:
-    st.markdown('<h2 class="churn-panel-heading">Execução e previsão</h2>',
-                unsafe_allow_html=True)
-    kpis = st.empty()
-    with st.container(key="dashboard-monitor-section", border=False):
-        console_col, meta_col = st.columns([1.15, 0.85], gap="small", wrap=True)
-        with console_col:
-            console = st.empty()
-        with meta_col:
-            phase = st.empty()
-            progress = st.empty()
-            chromosome = st.empty()
+    st.markdown('<h2 class="churn-panel-heading">Análise e execução</h2>', unsafe_allow_html=True)
+    comparison = st.empty()
     with st.container(key="dashboard-analysis-section", border=False):
-        chart_col, technical_col = st.columns([1.1, 0.9], gap="small", wrap=True)
-        with chart_col:
-            st.markdown('<div class="churn-mini-heading">Evolução do F1-score</div>',
-                        unsafe_allow_html=True)
-            chart = st.empty()
-        with technical_col:
-            st.markdown('<div class="churn-mini-heading">Resumo técnico</div>',
-                        unsafe_allow_html=True)
-            technical = st.empty()
-            log = st.empty()
-    return {"kpis": kpis, "phase": phase, "progress": progress,
-            "console": console, "chromosome": chromosome,
-            "chart": chart, "technical": technical, "log": log}
+        chart = st.empty()
+    with st.container(key="dashboard-selection-section", border=False):
+        chromosome = st.empty()
+        technical = st.empty()
+    with st.container(key="dashboard-monitor-section", border=False):
+        st.markdown('<div class="churn-monitor-title">Monitor de execução</div>', unsafe_allow_html=True)
+        phase = st.empty()
+        progress = st.empty()
+        console = st.empty()
+        log = st.empty()
+    return {"comparison":comparison,"chart":chart,"chromosome":chromosome,
+            "technical":technical,"phase":phase,"progress":progress,
+            "console":console,"log":log}
 
 
 def main() -> None:
@@ -634,11 +622,10 @@ def main() -> None:
     with st.container(key="dashboard-shell", border=False):
         st.markdown(
             '<header class="churn-topbar"><h1>Previsão de cancelamento</h1>'
-            '<span class="churn-top-meta">19 características · 15 gerações</span></header>',
+            '<span class="churn-top-meta">Projeto N3 · Seleção genética de características</span></header>',
             unsafe_allow_html=True,
         )
-        # As colunas são mantidas na horizontal em notebook e empilhadas no celular.
-        client_col, workspace_col = st.columns([0.39, 0.61], gap="small", wrap=True)
+        client_col, workspace_col = st.columns([0.30, 0.70], gap="small", wrap=True)
         with client_col:
             with st.container(key="dashboard-client", border=True):
                 clicked = _render_client_panel()
