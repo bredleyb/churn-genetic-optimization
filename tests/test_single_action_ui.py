@@ -32,6 +32,7 @@ class DummyUI(ModuleType):
         self.session_state = {}
         self.clicked = clicked
         self.buttons = []
+        self.button_options = []
         self.panel_keys = []
         self.panel_settings = []
         self.styled_markup = []
@@ -95,6 +96,7 @@ class DummyUI(ModuleType):
 
     def button(self, label, **kwargs):
         self.buttons.append(label)
+        self.button_options.append((label, kwargs))
         return self.clicked and label == "Calcular previsão"
 
     def caption(self, *args, **kwargs):
@@ -126,6 +128,10 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
     assert ui.buttons == ["Restaurar perfil", "Calcular previsão"]
+    restore = next(options for name, options in ui.button_options if name == "Restaurar perfil")
+    assert restore["icon"] == ":material/refresh:"
+    assert restore["type"] == "tertiary"
+    assert callable(restore["on_click"])
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
     assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups
@@ -188,9 +194,15 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "--n3-field-fill:#0E1013" in style
     assert "--n3-field-action-fill:#0E1013" in style
     assert "--n3-field-text-size:14px" in style
+    assert "--n3-field-text-shift:-1px" in style
+    assert "transform:translateY(var(--n3-field-text-shift))!important" in style
+    assert "top:calc(50% + var(--n3-field-text-shift))!important" in style
     assert "background:var(--n3-field-fill)!important" in style
     assert "background:var(--n3-field-action-fill)!important" in style
-    assert "> div > div:last-child:hover" in style
+    assert "> div:hover::before" in style
+    assert 'pointer-events:none;z-index:0' in style
+    assert "background:var(--n3-elevated);" in style
+    assert "transform:translate(-50%,-50%)!important" in style
     assert "height:calc(var(--n3-field-height) - 2px)!important" in style
     assert "st-key-dashboard-tenure-control" in style
     assert 'st-key-dashboard-client [data-testid="stNumberInput"] button' in style
@@ -423,7 +435,8 @@ def test_prediction_heading_has_three_visible_states(monkeypatch):
 
     slot = Capture()
     app._render_workspace_heading("idle", slot=slot)
-    assert "Previsão</h2>" in slot.content
+    assert 'role="heading" aria-level="2">Previsão</div>' in slot.content
+    assert "<h2" not in slot.content
     assert "churn-run-icon" not in slot.content
     assert "Pronto" not in slot.content
 
@@ -536,6 +549,10 @@ def test_tenure_css_matches_shared_field_tokens():
     assert "var(--n3-field-action-fill,#0e1013)" in _COMPONENT_CSS
     assert "var(--n3-field-text-size,14px)" in _COMPONENT_CSS
     assert "height:var(--n3-field-height,42px)" in _COMPONENT_CSS
+    assert "outline:none;border-color:var(--n3-text,#f5f5f5)" in _COMPONENT_CSS
+    assert "box-shadow:inset 0 0 0 1px" in _COMPONENT_CSS
+    assert "outline-offset:1px" not in _COMPONENT_CSS
+    assert "transform:translateY(var(--n3-field-text-shift,-1px))" in _COMPONENT_CSS
 
 
 def test_protected_tenure_cursor_uses_shadow_dom_focus():
@@ -544,3 +561,16 @@ def test_protected_tenure_cursor_uses_shadow_dom_focus():
     assert 'input.addEventListener("click", settleCaret' in js
     assert 'input.addEventListener("select"' in js
     assert "requestAnimationFrame(placeCaret)" in js
+
+
+def test_client_header_has_accessible_role_without_auto_anchor(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_heading_role_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app.main()
+    rendered = "\n".join(ui.styled_markup)
+    assert '<div class="churn-panel-heading" role="heading" aria-level="2">Cliente</div>' in rendered
+    assert '<div class="churn-panel-heading" role="heading" aria-level="2">Previsão</div>' in rendered
+    assert '<h2 class="churn-panel-heading">' not in rendered

@@ -326,6 +326,11 @@ for (const { width, height } of viewports) {
             `${name}: texto fora do centro`).toBeLessThanOrEqual(2);
           expect(['none', 'normal']).toContain(appearance.before);
           expect(['none', 'normal']).toContain(appearance.after);
+          const markup = await heading.evaluate(el => ({
+            tag:el.tagName, role:el.getAttribute('role'), level:el.getAttribute('aria-level'),
+            anchors:el.querySelectorAll('a').length,
+          }));
+          expect(markup).toEqual({tag:'DIV',role:'heading',level:'2',anchors:0});
         }
         await expect(page.locator('.churn-run-icon')).toHaveCount(0);
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
@@ -353,14 +358,25 @@ for (const { width, height } of viewports) {
         expect(restoreAppearance.iconOffset, 'Símbolo de restauro não encontrado').not.toBeNull();
         expect(restoreAppearance.iconOffset, 'Ícone de restauro desalinhado horizontalmente').toBeLessThanOrEqual(2);
         expect(restoreAppearance.iconVerticalOffset, 'Ícone de restauro desalinhado verticalmente').toBeLessThanOrEqual(2);
+        await expect(restore.locator('[data-testid="stIconMaterial"]')).toHaveCount(1);
         await restore.hover();
         await expect.poll(() => restore.evaluate(el => getComputedStyle(el).backgroundColor))
           .toBe('rgb(32, 33, 36)');
-        const expandArrow = page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div > div:last-child').first();
-        await expect(expandArrow).toBeVisible();
-        await expandArrow.hover();
-        await expect.poll(() => expandArrow.evaluate(el => getComputedStyle(el).backgroundColor))
-          .toBe('rgb(32, 33, 36)');
+        // A área da seta reage ao hover na superfície clicável inteira do select,
+        // sem depender de qual wrapper interno o BaseWeb escolheu renderizar.
+        const selects = page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div');
+        await expect(selects).toHaveCount(2);
+        for (const field of await selects.all()) {
+          const before = await field.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
+          expect(before, 'Fundo padrão da região de expansão incorreto').toBe('rgb(14, 16, 19)');
+          const rect = await field.boundingBox();
+          await field.hover({ position: { x: rect.width - 16, y: rect.height / 2 } });
+          await expect.poll(() => field.evaluate(el => getComputedStyle(el, '::before').backgroundColor))
+            .toBe('rgb(32, 33, 36)');
+          await page.mouse.move(0, 0);
+          await expect.poll(() => field.evaluate(el => getComputedStyle(el, '::before').backgroundColor))
+            .toBe('rgb(14, 16, 19)');
+        }
         await page.mouse.move(0, 0);
         const tabsBar = page.locator('.st-key-dashboard-detail-tabs [role="tablist"]');
         const lastTab = page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Extras' });
@@ -424,6 +440,18 @@ for (const { width, height } of viewports) {
                                     radius:getComputedStyle(el).borderTopLeftRadius}));
         expect(Math.abs(selector.height - time.field.height)).toBeLessThanOrEqual(2);
         expect(parseFloat(selector.radius)).toBeCloseTo(4, 0);
+        // O ajuste óptico da fonte é compartilhado por rótulos e valores;
+        // a borda e os botões permanecem alinhados pelo layout.
+        const opticOffsets = await Promise.all([
+          page.locator('.st-key-dashboard-client [data-testid="stWidgetLabel"] p').first(),
+          page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div > div:first-child').first(),
+          page.locator('input[aria-label="Cobrança mensal"]'),
+          page.locator('.n3-tenure-field input'),
+          page.locator('.n3-tenure label'),
+        ].map(locator => locator.evaluate(el =>
+          new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)));
+        expect(opticOffsets, 'Rótulos e valores devem usar o mesmo ajuste óptico')
+          .toEqual([-1, -1, -1, -1, -1]);
         // Serviço de internet deve usar a mesma centralização vertical dos outros seletores.
         const internetCenter = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"]:has(input[aria-label="Serviço de internet"])')
           .evaluate(root => {
@@ -584,6 +612,18 @@ test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }
     const months = page.getByRole('textbox', { name: 'Tempo como cliente' });
     await expect(months).toHaveValue('3 meses');
     await months.click();
+    const focused = await page.locator('.n3-tenure-field').evaluate(el => ({
+      outline:getComputedStyle(el).outlineStyle,
+      shadow:getComputedStyle(el).boxShadow,
+    }));
+    expect(focused.outline, 'O anel de foco não deve ultrapassar a borda').toBe('none');
+    expect(focused.shadow, 'O foco deve ter contorno interno').toContain('inset');
+    const [tenureRect, clientRect] = await Promise.all([
+      page.locator('.n3-tenure-field').boundingBox(),
+      page.locator('.st-key-dashboard-client-fields').boundingBox(),
+    ]);
+    expect(tenureRect.x, 'A borda esquerda de Tempo está recortada')
+      .toBeGreaterThanOrEqual(clientRect.x - 1);
     const caret = () => months.evaluate(input => ({
       start:input.selectionStart, end:input.selectionEnd,
       digits:input.value.match(/^\d+/)[0].length,
