@@ -185,6 +185,13 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "churn-run-check" in style
     assert "--n3-field-height:42px" in style
     assert "--n3-field-radius:4px" in style
+    assert "--n3-field-fill:#0E1013" in style
+    assert "--n3-field-action-fill:#0E1013" in style
+    assert "--n3-field-text-size:14px" in style
+    assert "background:var(--n3-field-fill)!important" in style
+    assert "background:var(--n3-field-action-fill)!important" in style
+    assert "> div > div:last-child:hover" in style
+    assert "height:calc(var(--n3-field-height) - 2px)!important" in style
     assert "st-key-dashboard-tenure-control" in style
     assert 'st-key-dashboard-client [data-testid="stNumberInput"] button' in style
     assert "line-height:var(--n3-field-text-line)!important" in style
@@ -521,3 +528,19 @@ def test_tenure_component_callback_updates_state_before_rerun(monkeypatch):
     ui.session_state["n3-tenure-1"] = {}
     app._on_tenure_component_change()
     assert ui.session_state["field_tenure"] == 42
+
+
+def test_tenure_css_matches_shared_field_tokens():
+    from src.tenure_control import _COMPONENT_CSS
+    assert "var(--n3-field-fill,#0e1013)" in _COMPONENT_CSS
+    assert "var(--n3-field-action-fill,#0e1013)" in _COMPONENT_CSS
+    assert "var(--n3-field-text-size,14px)" in _COMPONENT_CSS
+    assert "height:var(--n3-field-height,42px)" in _COMPONENT_CSS
+
+
+def test_protected_tenure_cursor_uses_shadow_dom_focus():
+    js = (ROOT / "src" / "tenure_control.mjs").read_text(encoding="utf-8")
+    assert "input.getRootNode().activeElement === input" in js
+    assert 'input.addEventListener("click", settleCaret' in js
+    assert 'input.addEventListener("select"' in js
+    assert "requestAnimationFrame(placeCaret)" in js

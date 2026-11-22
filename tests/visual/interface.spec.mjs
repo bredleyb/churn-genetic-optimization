@@ -337,6 +337,31 @@ for (const { width, height } of viewports) {
         ]);
         expect(Math.abs(restoreBox.y - profileBox.y), 'Ícone de restauro fora do alinhamento').toBeLessThanOrEqual(3);
         expect(Math.abs(restoreBox.height - profileBox.height), 'Ícone de restauro com altura diferente').toBeLessThanOrEqual(3);
+        const restoreAppearance = await restore.evaluate(button => {
+          const icon = button.querySelector('[data-testid="stIconMaterial"]');
+          const outer = button.getBoundingClientRect();
+          const inner = icon?.getBoundingClientRect();
+          return {
+            background:getComputedStyle(button).backgroundColor,
+            iconOffset:inner ? Math.abs((inner.x + inner.width / 2) -
+                                      (outer.x + outer.width / 2)) : null,
+            iconVerticalOffset:inner ? Math.abs((inner.y + inner.height / 2) -
+                                              (outer.y + outer.height / 2)) : null,
+          };
+        });
+        expect(restoreAppearance.background).toBe('rgb(14, 16, 19)');
+        expect(restoreAppearance.iconOffset, 'Símbolo de restauro não encontrado').not.toBeNull();
+        expect(restoreAppearance.iconOffset, 'Ícone de restauro desalinhado horizontalmente').toBeLessThanOrEqual(2);
+        expect(restoreAppearance.iconVerticalOffset, 'Ícone de restauro desalinhado verticalmente').toBeLessThanOrEqual(2);
+        await restore.hover();
+        await expect.poll(() => restore.evaluate(el => getComputedStyle(el).backgroundColor))
+          .toBe('rgb(32, 33, 36)');
+        const expandArrow = page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div > div:last-child').first();
+        await expect(expandArrow).toBeVisible();
+        await expandArrow.hover();
+        await expect.poll(() => expandArrow.evaluate(el => getComputedStyle(el).backgroundColor))
+          .toBe('rgb(32, 33, 36)');
+        await page.mouse.move(0, 0);
         const tabsBar = page.locator('.st-key-dashboard-detail-tabs [role="tablist"]');
         const lastTab = page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Extras' });
         const [tabBounds, listBounds] = await Promise.all([lastTab.boundingBox(), tabsBar.boundingBox()]);
@@ -384,13 +409,32 @@ for (const { width, height } of viewports) {
         }
         expect(Math.abs(time.field.height - charge.field.height)).toBeLessThanOrEqual(1);
         expect(time.font).toBe(charge.font);
+        expect(time.font).toBe('14px');
         expect(time.line).toBe(charge.line);
+        // O campo de meses e o seletor usam exatamente o mesmo fundo.
+        const fills = await Promise.all([
+          page.locator('.n3-tenure-field').evaluate(el => getComputedStyle(el).backgroundColor),
+          page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div').first()
+            .evaluate(el => getComputedStyle(el).backgroundColor),
+        ]);
+        expect(fills).toEqual(['rgb(14, 16, 19)', 'rgb(14, 16, 19)']);
         expect(time.buttons.map(button => button.width)).toEqual(charge.buttons.map(button => button.width));
         const selector = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div')
           .first().evaluate(el => ({height:el.getBoundingClientRect().height,
                                     radius:getComputedStyle(el).borderTopLeftRadius}));
         expect(Math.abs(selector.height - time.field.height)).toBeLessThanOrEqual(2);
         expect(parseFloat(selector.radius)).toBeCloseTo(4, 0);
+        // Serviço de internet deve usar a mesma centralização vertical dos outros seletores.
+        const internetCenter = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"]:has(input[aria-label="Serviço de internet"])')
+          .evaluate(root => {
+            const outer = root.firstElementChild?.getBoundingClientRect();
+            const inner = root.querySelector('input')?.getBoundingClientRect();
+            return outer && inner ? Math.abs((outer.y + outer.height / 2) -
+              (inner.y + inner.height / 2)) : null;
+          });
+        expect(internetCenter, 'Serviço de internet sem input').not.toBeNull();
+        expect(internetCenter, 'Texto de internet deslocado verticalmente')
+          .toBeLessThanOrEqual(2);
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
@@ -546,6 +590,10 @@ test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }
     }));
     let cursor = await caret();
     expect(cursor.start).toBe(cursor.digits);
+    // Clicar depois da unidade não pode deixar o cursor após "meses".
+    const inputWidth = await months.evaluate(input => input.getBoundingClientRect().width);
+    await months.click({ position:{x:inputWidth - 6, y:18} });
+    await expect.poll(async () => (await caret()).start).toBe(cursor.digits);
     await months.press('End');
     cursor = await caret();
     expect(cursor.start).toBe(cursor.digits);
