@@ -125,7 +125,7 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "#30B6A7" not in style
     assert "Painel técnico desktop: a área do console absorve o espaço restante" in style
     assert "Em desktop, a faixa inferior reúne as características e o monitor" in style
-    assert "grid-template-rows:minmax(0,1fr) minmax(274px,36dvh)" in style
+    assert "grid-template-rows:minmax(0,1fr) minmax(184px,24dvh)" in style
     assert '[data-testid="stMarkdownContainer"]:has(.churn-chromosome)' in style
     assert '[data-testid="stMarkdownContainer"]:has(.churn-technical)' in style
 
@@ -240,3 +240,60 @@ def test_stale_result_uses_one_message_and_preserves_test_metrics(monkeypatch):
     assert "ΔF1" in technical.content
     assert "Dados alterados" not in technical.content
     assert "Os dados do cliente foram alterados" not in technical.content
+
+
+def test_phone_service_callback_keeps_values_from_hidden_tabs(monkeypatch):
+    """A troca de aba remove chaves de widgets; os dados do cliente permanecem."""
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_phone_session_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+
+    original_gender = ui.session_state["field_gender"]
+    changed_gender = "Male" if original_gender == "Female" else "Female"
+    ui.session_state["field_gender"] = changed_gender
+    app._remember_field("gender")
+
+    for feature in app.PROFILE_FEATURES:
+        ui.session_state.pop(f"field_{feature}", None)
+    ui.session_state["detail_tab"] = "Telefonia"
+
+    ui.session_state["field_PhoneService"] = "No"
+    app._on_service_change("PhoneService")
+    app._render_client_details()
+
+    assert app._form_data()["gender"] == changed_gender
+    assert app._form_data()["PhoneService"] == "No"
+    assert app._form_data()["MultipleLines"] == "No phone service"
+    assert app._current_customer()["MultipleLines"] == "No phone service"
+
+    ui.session_state["field_PhoneService"] = "Yes"
+    app._on_service_change("PhoneService")
+    assert app._form_data()["MultipleLines"] == "No"
+    ui.session_state.pop("field_gender", None)
+    app._ensure_widget_field("gender")
+    assert ui.session_state["field_gender"] == changed_gender
+
+
+def test_internet_service_callback_keeps_hidden_fields(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_internet_session_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+
+    for name in (*app.PROFILE_FEATURES, *app.INTERNET_FEATURES):
+        ui.session_state.pop(f"field_{name}", None)
+    ui.session_state["field_InternetService"] = "No"
+    app._on_service_change("InternetService")
+    assert app._form_data()["InternetService"] == "No"
+    assert all(app._form_data()[name] == "No internet service" for name in app.INTERNET_FEATURES)
+    assert app._current_customer() is not None
+
+    ui.session_state["field_InternetService"] = "DSL"
+    app._on_service_change("InternetService")
+    assert all(app._form_data()[name] == "No" for name in app.INTERNET_FEATURES)
+    assert app._current_customer() is not None

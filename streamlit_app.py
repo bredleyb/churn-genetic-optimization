@@ -441,23 +441,29 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   }
 }
 
-/* Em 1024 px, distribuir características e métricas na vertical dentro da
-   faixa inferior; os campos técnicos ficam largos o suficiente para leitura. */
+/* Em 1024 px, manter as duas regiões técnicas na mesma faixa inferior.
+   Isso libera altura para mostrar o gráfico sem recortar seus eixos. */
 @media (min-width:1000px) and (max-width:1150px) and (min-height:761px) {
   .st-key-dashboard-desktop-detail {
-    grid-template-rows:minmax(0,1fr) minmax(274px,36dvh)!important;
+    grid-template-rows:minmax(0,1fr) minmax(184px,24dvh)!important;
   }
   .st-key-dashboard-selection-section {
-    grid-template-columns:minmax(0,1fr)!important;
-    grid-template-rows:auto auto!important;align-content:start!important;
-    gap:6px!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-template-rows:minmax(0,1fr)!important;align-content:stretch!important;
+    gap:8px!important;
   }
   .st-key-dashboard-selection-section .churn-bits {
-    grid-template-columns:repeat(19,minmax(0,1fr))!important;
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
   }
-  /* O MarkdownContainer do Streamlit usa margem inferior negativa. Na grade
-     de duas linhas ela reduz artificialmente a altura da primeira linha:
-     -16px de margem + 6px de gap = sobreposição de 10px. */
+  .st-key-dashboard-selection-section .churn-section-top {
+    flex-wrap:wrap!important;gap:4px!important;margin-bottom:6px!important;
+  }
+  .st-key-dashboard-selection-section .churn-metrics {
+    gap:4px!important;
+  }
+  .st-key-dashboard-selection-section .churn-metric dt {
+    white-space:normal!important;
+  }
   .st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-chromosome),
   .st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-technical) {
     margin-bottom:0!important;
@@ -491,6 +497,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 
 def _apply_profile(profile_name: str) -> None:
     example = load_profile(ROOT, profile_name)
+    st.session_state["customer_values"] = example.copy()
     for feature in FEATURE_COLUMNS:
         st.session_state[f"field_{feature}"] = example[feature]
     st.session_state["field_total_missing"] = example["total_missing"]
@@ -505,21 +512,42 @@ def _reset_profile() -> None:
     _apply_profile(st.session_state["profile_choice"])
 
 
+def _ensure_widget_field(feature: str) -> None:
+    """Recupera o valor salvo quando o Streamlit recria um widget de outra aba."""
+    key = f"field_{feature}"
+    if key not in st.session_state:
+        st.session_state[key] = st.session_state["customer_values"][feature]
+
+
+def _remember_field(feature: str) -> None:
+    """Persiste edições independentemente da existência do widget na tela."""
+    saved = st.session_state["customer_values"].copy()
+    saved[feature] = st.session_state[f"field_{feature}"]
+    st.session_state["customer_values"] = saved
+
+
 def _on_service_change(feature: str) -> None:
-    snapshot = {name: st.session_state[f"field_{name}"] for name in FEATURE_COLUMNS}
-    revised = align_services(snapshot, changed=feature)
-    for name in (("MultipleLines",) if feature == "PhoneService" else INTERNET_FEATURES):
+    _remember_field(feature)
+    revised = align_services(st.session_state["customer_values"], changed=feature)
+    st.session_state["customer_values"] = revised
+    dependents = ("MultipleLines",) if feature == "PhoneService" else INTERNET_FEATURES
+    for name in dependents:
         st.session_state[f"field_{name}"] = revised[name]
 
 
 def _form_data() -> dict:
-    data = {name: st.session_state[f"field_{name}"] for name in FEATURE_COLUMNS}
-    data["total_missing"] = st.session_state["field_total_missing"]
+    data = st.session_state["customer_values"].copy()
+    # Preserva também edições diretas no estado dos controles ativos.
+    for name in (*FEATURE_COLUMNS, "total_missing"):
+        key = f"field_{name}"
+        if key in st.session_state:
+            data[name] = st.session_state[key]
     return data
 
 
 def _select_field(feature: str, *, disabled: bool = False, help_text: str | None = None) -> None:
-    callback = _on_service_change if feature in ("InternetService", "PhoneService") else None
+    _ensure_widget_field(feature)
+    callback = _on_service_change if feature in ("InternetService", "PhoneService") else _remember_field
     st.selectbox(
         LABELS[feature], options_for(feature), format_func=label_for,
         key=f"field_{feature}", on_change=callback, args=(feature,),
@@ -547,10 +575,14 @@ def _render_client_details() -> None:
     else:
         for feature in BILLING_FEATURES:
             _select_field(feature)
-        st.checkbox("Total cobrado indisponível", key="field_total_missing")
+        _ensure_widget_field("total_missing")
+        st.checkbox("Total cobrado indisponível", key="field_total_missing",
+                    on_change=_remember_field, args=("total_missing",))
+        _ensure_widget_field("TotalCharges")
         st.number_input(
             LABELS["TotalCharges"], min_value=0.0, step=1.0,
             format="%.2f", key="field_TotalCharges",
+            on_change=_remember_field, args=("TotalCharges",),
             disabled=st.session_state["field_total_missing"],
         )
 
@@ -834,12 +866,16 @@ def _render_client_panel() -> bool:
             st.button("Restaurar", on_click=_reset_profile, type="tertiary")
         a, b = st.columns(2, gap="small", wrap=True)
         with a:
-            st.number_input(LABELS["tenure"], min_value=0, step=1, key="field_tenure")
+            _ensure_widget_field("tenure")
+            st.number_input(LABELS["tenure"], min_value=0, step=1, key="field_tenure",
+                            on_change=_remember_field, args=("tenure",))
             _select_field("InternetService")
         with b:
             _select_field("Contract")
+            _ensure_widget_field("MonthlyCharges")
             st.number_input(LABELS["MonthlyCharges"], min_value=0.0, step=1.0,
-                            format="%.2f", key="field_MonthlyCharges")
+                            format="%.2f", key="field_MonthlyCharges",
+                            on_change=_remember_field, args=("MonthlyCharges",))
         st.markdown('<div class="churn-subheading">Outras características</div>', unsafe_allow_html=True)
         _render_client_details()
     with st.container(key="dashboard-client-footer", border=False):
@@ -878,7 +914,7 @@ def _workspace_slots() -> dict:
             chromosome_desktop = st.empty()
             technical_desktop = st.empty()
         with st.container(key="dashboard-monitor-section", border=False):
-            st.markdown('<div class="churn-monitor-title">Monitor de execução</div>', unsafe_allow_html=True)
+            st.markdown('<div class="churn-monitor-title">Monitor</div>', unsafe_allow_html=True)
             phase_desktop = st.empty()
             progress_desktop = st.empty()
             console_desktop = st.empty()
@@ -913,6 +949,12 @@ def main() -> None:
         st.session_state["profile_choice"] = next(iter(PROFILE_FILES))
         _apply_profile(st.session_state["profile_choice"])
         st.session_state["form_initialized"] = True
+    elif "customer_values" not in st.session_state:
+        # Sessões abertas antes da mudança continuam válidas após atualizar o código.
+        profile = load_profile(ROOT, st.session_state["profile_choice"])
+        for name in (*FEATURE_COLUMNS, "total_missing"):
+            profile[name] = st.session_state.get(f"field_{name}", profile[name])
+        st.session_state["customer_values"] = profile
 
     with st.container(key="dashboard-shell", border=False):
         st.markdown(

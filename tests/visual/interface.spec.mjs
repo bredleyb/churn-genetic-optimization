@@ -45,6 +45,9 @@ async function geometry(page, stage, testInfo) {
       comparison: bounds('.churn-comparison'),
       tabs: bounds('.st-key-dashboard-mobile-detail'),
       chart: bounds('.st-key-dashboard-desktop-detail .churn-chart'),
+      chartPlot: bounds('.st-key-dashboard-desktop-detail .churn-chart-plot'),
+      chartCaption: bounds('.st-key-dashboard-desktop-detail .churn-chart-caption'),
+      chartAxisX: bounds('.st-key-dashboard-desktop-detail .churn-chart-axis-x'),
       technical: bounds('.st-key-dashboard-desktop-detail .churn-technical'),
       chromosome: bounds('.st-key-dashboard-desktop-detail .churn-chromosome'),
       chromosomeMarkdown: bounds('.st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-chromosome)'),
@@ -112,6 +115,15 @@ async function geometry(page, stage, testInfo) {
     // quando um overflow hidden poderia esconder uma sobreposição.
     expect(layout.chart.bottom, `${stage}: gráfico invade a seleção`)
       .toBeLessThanOrEqual(layout.selection.y + 2);
+    if (layout.width === 1024 && layout.height === 768) {
+      for (const part of ['chartPlot', 'chartAxisX', 'chartCaption']) {
+        expect(layout[part], `${stage}: parte do gráfico ausente: ${part}`).toBeTruthy();
+        expect(layout[part].bottom, `${stage}: gráfico recortado em ${part}`)
+          .toBeLessThanOrEqual(layout.chart.bottom + 2);
+      }
+      expect(layout.chart.scrollHeight, `${stage}: conteúdo do gráfico excede sua altura`)
+        .toBeLessThanOrEqual(layout.chart.clientHeight + 2);
+    }
     expect(layout.consoleMarkdown, `${stage}: contêiner Markdown do console ausente`).toBeTruthy();
     expect(layout.consoleMarkdown.marginBottom, `${stage}: margem negativa desloca o console`).toBe('0px');
     expect(layout.monitor.bottom, `${stage}: console fica oculto ou cortado`)
@@ -143,16 +155,13 @@ async function geometry(page, stage, testInfo) {
       expect(layout.chart.height, `${stage}: gráfico sem altura suficiente para projeção`)
         .toBeGreaterThanOrEqual(130);
       expect(layout.chromosome, `${stage}: cromossomo ausente`).toBeTruthy();
-      if (layout.width >= 1200) {
-        expect(layout.chromosome.right, `${stage}: cromossomo sobrepõe métricas`)
-          .toBeLessThanOrEqual(layout.technical.x + 2);
-      } else {
+      expect(layout.chromosome.right, `${stage}: cromossomo sobrepõe métricas`)
+        .toBeLessThanOrEqual(layout.technical.x + 2);
+      if (layout.width <= 1150) {
         for (const name of ['chromosomeMarkdown', 'technicalMarkdown']) {
           expect(layout[name], `${stage}: ${name} ausente`).toBeTruthy();
           expect(layout[name].marginBottom, `${stage}: margem negativa causa sobreposição`).toBe('0px');
         }
-        expect(layout.chromosome.bottom, `${stage}: cromossomo sobrepõe métricas`)
-          .toBeLessThanOrEqual(layout.technical.y + 2);
       }
       for (const name of ['chromosome', 'technical']) {
         expect(layout[name].bottom, `${stage}: ${name} sai da seção de seleção`)
@@ -258,3 +267,26 @@ for (const { width, height } of viewports) {
     }
   });
 }
+
+
+test('1024x768 — telefonia mantém dados das abas anteriores', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1024, height: 768 }, deviceScaleFactor: 1,
+    locale: 'pt-BR', colorScheme: 'dark',
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
+    await page.getByRole('combobox', { name: 'Editar características' }).click();
+    await page.getByRole('option', { name: 'Telefonia', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Serviço de telefone' }).click();
+    await page.getByRole('option', { name: 'Não', exact: true }).click();
+    await expect(page.locator('[data-testid="stException"]')).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Múltiplas linhas telefônicas' }))
+      .toContainText('Sem serviço telefônico');
+    await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
+  } finally {
+    await context.close();
+  }
+});
