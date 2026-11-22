@@ -62,7 +62,8 @@ st.markdown(
   --n3-field-text-shift:-1px;
   --n3-page-pad:12px; --n3-panel-pad:12px;
   --n3-client-shadow-top:0; --n3-client-shadow-bottom:0;
-  --n3-client-shadow-length:44px;
+  --n3-client-shadow-top-length:60px;
+  --n3-client-shadow-bottom-length:52px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
 .stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
@@ -108,27 +109,30 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .st-key-dashboard-client {position:relative!important;display:grid!important;grid-template-rows:20px minmax(0,1fr) auto!important;gap:var(--n3-panel-pad)!important;align-content:stretch!important;}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;}
-.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {height:100%!important;max-height:100%!important;overflow:hidden!important;}
-/* A barra do Cliente possui uma faixa exclusiva, inclusive nos navegadores
-   com scrollbar sobreposta, onde scrollbar-gutter sozinho não reserva espaço. */
+/* Camada de rolagem e máscaras: o topo acompanha a janela de conteúdo,
+   enquanto o rodapé permanece fixo na grade do painel. */
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {
+  position:relative!important;z-index:1!important;
+  height:100%!important;max-height:100%!important;overflow:hidden!important;
+}
+/* Em barras clássicas, stable both-edges cria calhas iguais.
+   Em overlay scrollbars, padding bilateral mantém os controles protegidos. */
 .st-key-dashboard-client-fields {
   box-sizing:border-box!important;height:100%!important;max-height:100%!important;
   min-height:0!important;min-width:0!important;
   overflow-y:auto!important;overflow-x:hidden!important;
-  scrollbar-gutter:stable!important;scrollbar-width:thin!important;
+  scrollbar-gutter:stable both-edges!important;scrollbar-width:thin!important;
   scrollbar-color:var(--n3-outline) transparent!important;
-  padding-inline-end:10px!important;
+  padding-inline:10px!important;
 }
-/* Sombreamentos fixos nos limites do conteúdo rolável. A posição da rolagem
-   altera só duas propriedades CSS; o botão e o título não se movem. */
-.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading) {
-  position:relative!important;z-index:3!important;overflow:visible!important;
-}
-.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading)::after {
-  content:"";position:absolute;top:100%;left:0;right:0;
-  height:var(--n3-client-shadow-length);z-index:2;pointer-events:none;
-  background:linear-gradient(to bottom,rgba(14,16,19,.96),rgba(14,16,19,0));
-  opacity:var(--n3-client-shadow-top,0);transition:opacity .12s ease-out;
+/* O gradiente superior começa na primeira linha realmente rolável, após o
+   espaçamento do título, para cobrir os campos que passam por baixo dele. */
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields)::before {
+  content:"";position:absolute;top:0;left:0;right:0;
+  height:var(--n3-client-shadow-top-length);z-index:2;pointer-events:none;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,.72) 0%,rgba(0,0,0,.34) 44%,rgba(0,0,0,0) 100%);
+  opacity:var(--n3-client-shadow-top,0);transition:opacity .16s ease-out;
 }
 .st-key-dashboard-client-footer {
   position:relative!important;z-index:3!important;overflow:visible!important;
@@ -136,13 +140,14 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .st-key-dashboard-client-footer::before {
   content:"";position:absolute;bottom:100%;left:0;right:0;
-  height:var(--n3-client-shadow-length);pointer-events:none;
-  background:linear-gradient(to top,rgba(14,16,19,.96),rgba(14,16,19,0));
-  opacity:var(--n3-client-shadow-bottom,0);transition:opacity .12s ease-out;
+  height:var(--n3-client-shadow-bottom-length);pointer-events:none;
+  background:linear-gradient(to top,
+    rgba(0,0,0,.48) 0%,rgba(0,0,0,.20) 48%,rgba(0,0,0,0) 100%);
+  opacity:var(--n3-client-shadow-bottom,0);transition:opacity .16s ease-out;
 }
 @media(prefers-reduced-motion:reduce) {
   .st-key-dashboard-client-footer::before,
-  .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading)::after {
+  .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields)::before {
     transition:none!important;
   }
 }
