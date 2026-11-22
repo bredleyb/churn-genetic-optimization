@@ -22,6 +22,9 @@ async function checkDashboardGeometry(page, stage, width) {
       clientWidth: documentRoot.clientWidth,
       client: rect('.st-key-dashboard-client'),
       workspace: rect('.st-key-dashboard-workspace'),
+      clientFields: rect('.st-key-dashboard-client-fields'),
+      clientFooter: rect('.st-key-dashboard-client-footer'),
+      calculateButton: rect('.st-key-dashboard-client-footer button'),
     };
   });
   expect(layout.client, `${stage}: painel Cliente ausente`).toBeTruthy();
@@ -37,6 +40,13 @@ async function checkDashboardGeometry(page, stage, width) {
     expect(panel.height, `${stage}: ${name} sem altura útil`).toBeGreaterThan(100);
     expect(panel.overflowY, `${stage}: ${name} não tem região interna controlada`).toMatch(/auto|hidden|scroll/);
   }
+  // A seção de campos pode rolar, enquanto o botão principal permanece dentro do painel.
+  for (const name of ['clientFields', 'clientFooter', 'calculateButton']) {
+    expect(layout[name], `${stage}: ${name} não encontrado`).toBeTruthy();
+    expect(layout[name].y, `${stage}: ${name} acima do painel Cliente`).toBeGreaterThanOrEqual(layout.client.y - 2);
+    expect(layout[name].bottom, `${stage}: ${name} fora do painel Cliente`).toBeLessThanOrEqual(layout.client.bottom + 2);
+  }
+  expect(layout.clientFields.overflowY, `${stage}: campos sem rolagem interna`).toMatch(/auto|scroll/);
 }
 
 async function capture(page, testInfo, name) {

@@ -54,6 +54,7 @@ html, body, #root {overflow: hidden !important; background: #0B111B !important;}
 .churn-topbar h1 {font-size:20px;line-height:1.2;font-weight:650;letter-spacing:-.025em;margin:0;color:#F1F5F9;}
 .churn-topbar .churn-top-meta {color:#8FA1B6;font-size:12px;white-space:nowrap;}
 .st-key-dashboard-client, .st-key-dashboard-workspace {
+  box-sizing:border-box;
   height:calc(100dvh - 88px)!important; min-height:0!important; overflow:hidden!important;
   background:#111B28!important; border:1px solid #263547!important; border-radius:12px!important;
   padding:14px!important;
@@ -125,6 +126,7 @@ html, body, #root {overflow: hidden !important; background: #0B111B !important;}
   .churn-bits {grid-template-columns:repeat(10,minmax(0,1fr));}
 }
 @media (max-width:620px) {
+  /* Sem alturas internas em pixels: as colunas empilhadas devem ocupar apenas sua cota do viewport. */
   .churn-topbar {height:45px;}
   .churn-topbar .churn-top-meta {display:none;}
   .st-key-dashboard-client {height:calc(43dvh - 27px)!important;}
@@ -492,7 +494,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 
 def _render_client_panel() -> bool:
     st.markdown('<h2 class="churn-panel-heading">Cliente</h2>', unsafe_allow_html=True)
-    with st.container(key="dashboard-client-fields", height=610, border=False):
+    with st.container(key="dashboard-client-fields", border=False):
         st.selectbox("Perfil de exemplo", list(PROFILE_FILES), key="profile_choice",
                      on_change=_choose_profile)
         st.button("Restaurar exemplo", on_click=_reset_profile, type="tertiary")
@@ -558,10 +560,10 @@ def main() -> None:
         # As colunas são mantidas na horizontal em notebook e empilhadas no celular.
         client_col, workspace_col = st.columns([0.39, 0.61], gap="small", wrap=True)
         with client_col:
-            with st.container(key="dashboard-client", height=780, border=True):
+            with st.container(key="dashboard-client", border=True):
                 clicked = _render_client_panel()
         with workspace_col:
-            with st.container(key="dashboard-workspace", height=780, border=True):
+            with st.container(key="dashboard-workspace", border=True):
                 slots = _workspace_slots()
                 if clicked:
                     st.session_state["workflow_run"] = None

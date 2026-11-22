@@ -32,6 +32,7 @@ class DummyUI(ModuleType):
         self.clicked = clicked
         self.buttons = []
         self.panel_keys = []
+        self.panel_settings = []
         self.styled_markup = []
 
     def set_page_config(self, **kwargs):
@@ -45,6 +46,7 @@ class DummyUI(ModuleType):
 
     def container(self, **kwargs):
         self.panel_keys.append(kwargs.get("key"))
+        self.panel_settings.append(kwargs)
         return nullcontext()
 
     def columns(self, spec, **kwargs):
@@ -92,6 +94,10 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     assert "dashboard-workspace" in ui.panel_keys
     assert "dashboard-client-fields" in ui.panel_keys
     assert "dashboard-client-footer" in ui.panel_keys
+    # O Streamlit não deve impor min-height em pixels às colunas empilhadas.
+    for panel in ui.panel_settings:
+        if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
+            assert "height" not in panel
     assert ui.buttons == ["Restaurar exemplo", "Calcular previsão"]
     assert len(executed) == int(clicked)
     if clicked:
