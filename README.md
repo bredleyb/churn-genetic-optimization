@@ -187,10 +187,13 @@ distribuída localmente (licença SIL Open Font License 1.1) nos controles
 e fonte monoespaçada no registro de execução.
 
 - **Cliente:** quatro campos principais, perfil de exemplo com restauro por ícone,
-  abas Perfil, Conta, Serviços e Extras e botão de cálculo na base do painel.
+  abas Perfil, Conta, Serviços e Extras e botão de cálculo fixo na base do painel.
   O tempo de permanência utiliza um componente Streamlit v2 local: o próprio
   campo mostra `X mês`/`X meses`, protege a unidade durante a edição e envia
-  somente o número inteiro ao modelo (0 a 999 meses);
+  somente o número inteiro ao modelo (0 a 999 meses). A rolagem do formulário
+  reserva espaço para a barra e apresenta duas sombras progressivas, no topo
+  e acima do botão, que desaparecem nas respectivas extremidades. Um componente
+  v2 sem interface mede o scroll no navegador sem rerodar o Python;
 - **Comparação:** probabilidades individuais da regressão logística de
   referência (19 características) e da versão com seleção genética;
 - **Gráfico:** evolução do melhor F1-score em validação cruzada, linha branca,

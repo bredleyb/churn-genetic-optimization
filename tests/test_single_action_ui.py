@@ -76,12 +76,13 @@ class DummyUI(ModuleType):
 
     def _component(self, name, **options):
         self.component_specs.append({"name": name, **options})
-        def mount(*, key, data, default, on_value_change):
+        def mount(*, key, data=None, default=None, on_value_change=None):
             self.component_specs.append({
                 "key": key, "data": data, "default": default,
                 "on_value_change": on_value_change,
             })
-            return SimpleNamespace(value=self.component_values.get(key, default["value"]))
+            fallback = default.get("value") if isinstance(default, dict) else None
+            return SimpleNamespace(value=self.component_values.get(key, fallback))
         return mount
 
     def text_input(self, label, *, key, **kwargs):
@@ -123,6 +124,8 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     assert "dashboard-workspace" in ui.panel_keys
     assert "dashboard-client-fields" in ui.panel_keys
     assert "dashboard-client-footer" in ui.panel_keys
+    assert any(item.get("name") == "n3_client_scroll_cues" for item in ui.component_specs)
+    assert any(item.get("key") == "n3-client-scroll-cues" for item in ui.component_specs)
     # O Streamlit não deve impor min-height em pixels às colunas empilhadas.
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
@@ -189,6 +192,15 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert 'icon=":material/restart_alt:"' not in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
+    assert "scrollbar-gutter:stable!important" in style
+    assert "padding-inline-end:10px!important" in style
+    assert "--n3-client-shadow-top:0; --n3-client-shadow-bottom:0" in style
+    assert "opacity:var(--n3-client-shadow-top,0)" in style
+    assert "opacity:var(--n3-client-shadow-bottom,0)" in style
+    assert "pointer-events:none" in style
+    assert '[role="tab"][data-focus-visible]' in style
+    assert 'box-shadow:inset 0 -2px 0 var(--n3-outline)' in style
+    assert '[data-baseweb="tab-list"]' not in style
     assert "--n3-field-height:42px" in style
     assert "--n3-field-radius:4px" in style
     assert "--n3-field-fill:#0E1013" in style
@@ -578,3 +590,22 @@ def test_client_header_has_accessible_role_without_auto_anchor(monkeypatch):
     assert '<div class="churn-panel-heading" role="heading" aria-level="2">Cliente</div>' in rendered
     assert '<div class="churn-panel-heading" role="heading" aria-level="2">Previsão</div>' in rendered
     assert '<h2 class="churn-panel-heading">' not in rendered
+
+
+def test_scroll_cues_component_is_visual_only(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_scroll_cues_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app.main()
+    observers = [item for item in ui.component_specs if item.get("name") == "n3_client_scroll_cues"]
+    assert len(observers) == 1
+    assert "new ResizeObserver" in observers[0]["js"]
+    assert "new MutationObserver" in observers[0]["js"]
+    assert "scrollCueStrengths(" in observers[0]["js"]
+    mount = [item for item in ui.component_specs if item.get("key") == "n3-client-scroll-cues"]
+    assert len(mount) == 1
+    assert mount[0]["data"] is None
+    assert mount[0]["on_value_change"] is None
+    assert ui.buttons == ["Restaurar perfil", "Calcular previsão"]
