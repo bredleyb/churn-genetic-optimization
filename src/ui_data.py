@@ -159,3 +159,22 @@ def format_generation_line(record: dict) -> str:
     count = int(record["caracteristicas"])
     return (f"Geração {generation:02d} | F1 (CV): {f1} | "
             f"aptidão: {fitness} | características: {count}")
+
+
+def format_evaluation_line(event: dict[str, object]) -> str:
+    """Formata eventos reais de início e conclusão de uma validação cruzada."""
+    generation = int(event["geracao"])
+    individual = int(event["individuo"])
+    population = int(event["populacao"])
+    count = len(event["caracteristicas"])
+    if event["etapa"] == "inicio":
+        folds = int(event["dobras"])
+        return (f"[G{generation:02d}] indivíduo {individual:02d}/{population} | "
+                f"avaliando {count}/19 características | CV: {folds} partições")
+    if event["etapa"] == "fim":
+        f1 = f"{float(event['f1_cv']):.4f}".replace(".", ",")
+        fitness = f"{float(event['aptidao']):.4f}".replace(".", ",")
+        evaluated = int(event["avaliados"])
+        return (f"[G{generation:02d}] indivíduo {individual:02d}/{population} | "
+                f"F1: {f1} | aptidão: {fitness} | subconjunto {evaluated}")
+    raise ValueError("Etapa de avaliação desconhecida.")

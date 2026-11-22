@@ -104,9 +104,12 @@ def select_features(
     config: GeneticConfig | None = None,
     *,
     on_generation: Callable[[dict[str, int | float]], None] | None = None,
+    on_evaluation: Callable[[dict[str, object]], None] | None = None,
 ) -> GeneticResult:
     """Seleciona atributos somente com os dados de desenvolvimento.
 
+    O callback opcional on_evaluation informa o início e o fim da avaliação
+    real de cada subconjunto não encontrado no cache, sem alterar a busca.
     Cada subconjunto é avaliado por pipelines ajustados dentro das partições
     de validação. As partições são fixadas para comparar os candidatos e o
     conjunto de teste permanece fora desta função.
@@ -129,10 +132,20 @@ def select_features(
     folds = list(cv.split(x_development, y_development))
     cache: dict[tuple[int, ...], tuple[float, float]] = {}
 
-    def evaluate(chromosome: np.ndarray) -> tuple[float, float]:
+    def evaluate(chromosome: np.ndarray, generation: int, individual: int) -> tuple[float, float]:
         key = tuple(int(bit) for bit in chromosome)
         if key not in cache:
             chosen = [name for name, bit in zip(FEATURE_COLUMNS, key) if bit]
+            event = {
+                "geracao": generation,
+                "individuo": individual,
+                "populacao": config.population_size,
+                "cromossomo": key,
+                "caracteristicas": tuple(chosen),
+                "dobras": config.cv_folds,
+            }
+            if on_evaluation is not None:
+                on_evaluation({**event, "etapa": "inicio", "avaliados": len(cache)})
             f1_scores = cross_val_score(
                 build_classifier(chosen),
                 x_development,
@@ -144,6 +157,11 @@ def select_features(
             )
             f1 = float(np.mean(f1_scores))
             cache[key] = (f1 - config.penalty * len(chosen) / size, f1)
+            if on_evaluation is not None:
+                on_evaluation({
+                    **event, "etapa": "fim", "avaliados": len(cache),
+                    "f1_cv": f1, "aptidao": cache[key][0],
+                })
         return cache[key]
 
     population = [np.ones(size, dtype=np.int8)]
@@ -156,7 +174,10 @@ def select_features(
     best_values = (float("-inf"), float("-inf"))
 
     for generation in range(1, config.generations + 1):
-        values = [evaluate(chromosome) for chromosome in population]
+        values = [
+            evaluate(chromosome, generation, index)
+            for index, chromosome in enumerate(population, start=1)
+        ]
         order = sorted(range(len(population)), key=lambda i: values[i], reverse=True)
         winner = order[0]
         if values[winner] > best_values:

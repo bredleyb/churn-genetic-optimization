@@ -24,6 +24,7 @@ from src.ui_data import (
     align_services,
     experiment_summary,
     format_generation_line,
+    format_evaluation_line,
     label_for,
     load_profile,
     model_input,
@@ -115,6 +116,34 @@ st.markdown(
   .churn-compare-grid {grid-template-columns: 1fr;}
   .churn-metrics {font-size: 12px;}
   .churn-metrics th, .churn-metrics td {padding: 9px 4px;}
+}
+
+/* Monitor do algoritmo: classes próprias, sem dependências do DOM do Streamlit. */
+.churn-console {border:1px solid #334155; border-radius:10px; background:#111827;
+  color:#CBD5E1; margin:12px 0 14px; overflow:hidden;}
+.churn-console-head {display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid #334155; padding:11px 15px; font:600 12px/1.4 ui-monospace,monospace;}
+.churn-console-head small {font:400 11px/1.4 ui-monospace,monospace; color:#94A3B8;}
+.churn-console-lines {padding:12px 15px; max-height:215px; min-height:84px;
+  overflow-y:auto; overflow-wrap:anywhere; font:12px/1.65 ui-monospace,monospace;}
+.churn-log-line {display:block; white-space:pre-wrap;}
+.churn-log-line.is-step {color:#5EEAD4;}
+.churn-log-line.is-result {color:#FFFFFF;}
+.churn-chromosome {border:1px solid #E2E8F0; border-radius:9px; padding:13px 15px;
+  margin:12px 0; background:#FFFFFF;}
+.churn-chromosome-head {display:flex; justify-content:space-between; gap:8px;
+  align-items:baseline; margin:0 0 11px; font-size:12px; color:#516071;}
+.churn-bits {display:grid; grid-template-columns:repeat(19,minmax(0,22px)); gap:3px; max-width:472px;}
+.churn-bit {display:flex; height:29px; border-radius:4px; align-items:center;
+  justify-content:center; font:600 11px/1 ui-monospace,monospace;
+  background:#E2E8F0; color:#516071;}
+.churn-bit.is-on {background:#0F766E; color:#FFFFFF;}
+.churn-legend {font:11px/1.4 inherit; color:#516071; margin-top:10px;}
+@media (max-width:430px) {
+  .churn-console-lines {padding:10px 11px; font-size:11px; max-height:175px;}
+  .churn-chromosome {padding:12px 10px;}
+  .churn-bits {grid-template-columns:repeat(19,minmax(0,1fr)); gap:2px;}
+  .churn-bit {height:25px; font-size:10px;}
 }
 </style>
 """,
@@ -281,79 +310,172 @@ def _history_chart(history: list[dict], *, slot=None) -> None:
     )
 
 
+def _render_console(lines: list[str], *, slot=None) -> None:
+    """Exibe apenas eventos recebidos da execução, com saída monoespaçada."""
+    visible = lines[-12:]
+    rows = []
+    for line in visible:
+        if " | F1" in line or line.startswith("[FIM]"):
+            kind = "is-result"
+        elif "avaliando" in line or line.startswith("[GERAÇÃO]"):
+            kind = "is-step"
+        else:
+            kind = ""
+        rows.append(f'<span class="churn-log-line {kind}">{escape(line)}</span>')
+    markup = (
+        '<section class="churn-console" aria-label="Eventos da busca genética">'
+        '<div class="churn-console-head"><span>Monitor de execução</span>'
+        '<small>Eventos reais</small></div>'
+        '<div class="churn-console-lines" role="log" aria-live="polite">'
+        + "".join(rows) + '</div></section>'
+    )
+    (slot or st).markdown(markup, unsafe_allow_html=True)
+
+
+def _render_chromosome(chromosome: tuple[int, ...], title: str, *, slot=None) -> None:
+    """Mostra os 19 genes referentes às características originais."""
+    bits = "".join(
+        f'<span class="churn-bit {"is-on" if bit else ""}" '
+        f'title="{escape(LABELS[feature])} — {"incluída" if bit else "excluída"}"'
+        f'>{int(bit)}</span>'
+        for feature, bit in zip(FEATURE_COLUMNS, chromosome)
+    )
+    markup = (
+        '<section class="churn-chromosome" aria-label="Cromossomo de 19 características">'
+        f'<div class="churn-chromosome-head"><strong>{escape(title)}</strong>'
+        f'<span>{sum(chromosome)} de {len(FEATURE_COLUMNS)} características</span></div>'
+        f'<div class="churn-bits">{bits}</div>'
+        '<div class="churn-legend">1 = incluída &nbsp;·&nbsp; 0 = excluída</div>'
+        '</section>'
+    )
+    (slot or st).markdown(markup, unsafe_allow_html=True)
+
+
 def _render_search_result(run: dict) -> None:
-    """Mantém a execução concluída disponível nas atualizações da página."""
+    """Exibe a execução real concluída, antes do gráfico de evolução."""
     result = run["result"]
     elapsed = f"{result.elapsed_seconds:.1f}".replace(".", ",")
     st.caption(
-        f"Busca concluída: {len(result.selected_features)} características; "
-        f"{result.evaluated_subsets} subconjuntos distintos avaliados; {elapsed} s."
+        f"Última execução nesta sessão · {result.evaluated_subsets} subconjuntos distintos · "
+        f"{elapsed} s"
     )
+    _render_console(run["events"])
+    _render_chromosome(result.chromosome, "Melhor cromossomo encontrado")
     _history_chart(run["history"])
-    selected = ", ".join(LABELS[name] for name in result.selected_features)
-    st.caption(f"Características selecionadas: {selected}.")
-    with st.expander("Registro das gerações"):
-        st.code("\n".join(format_generation_line(item) for item in run["history"]),
-                language=None, height=235, wrap_lines=True)
+    chosen = ", ".join(LABELS[name] for name in result.selected_features)
+    st.caption(f"Características selecionadas: {chosen}.")
+    if st.toggle("Mostrar registro completo da execução", key="full_search_log"):
+        st.code("\n".join(run["events"]), language=None, height=230, wrap_lines=True)
+
+
+def _render_saved_history() -> None:
+    """Histórico do treinamento principal já salvo; não executa nova busca."""
+    path = RESULTS / "comparacao_modelos.json"
+    if not path.is_file():
+        st.caption("O histórico estará disponível após executar o experimento principal.")
+        return
+    try:
+        report = cached_report(*_file_version(path))
+        history = report["busca_genetica"]["historico"]
+        selected = report["modelos"]["genetico"]["caracteristicas"]
+        if not isinstance(history, list) or not history:
+            raise ValueError("Histórico vazio")
+        st.caption("Histórico registrado no experimento principal — sem processamento em andamento.")
+        _history_chart(history)
+        st.caption(
+            f"{len(history)} gerações · {len(selected)} características selecionadas · "
+            f"{report['busca_genetica']['subconjuntos_avaliados']} subconjuntos distintos"
+        )
+    except (ValueError, KeyError, TypeError, OSError, json.JSONDecodeError):
+        st.warning("O histórico experimental não pôde ser carregado.")
 
 
 def _run_search() -> None:
-    """Executa a busca verdadeira e atualiza a interface a cada geração."""
-    config = GeneticConfig()  # Mesmos parâmetros do experimento principal.
+    """Monitora avaliações reais sem treinar novamente os modelos salvos."""
+    config = GeneticConfig()
     history: list[dict] = []
+    events = ["[INÍCIO] Preparando execução da seleção genética"]
     with st.status("Preparando os dados...", expanded=True) as status:
-        bar = st.progress(0, text=f"0 de {config.generations} gerações")
+        progress = st.progress(0, text=f"0 de {config.generations} gerações")
+        console_slot = st.empty()
+        chromosome_slot = st.empty()
         chart_slot = st.empty()
-        terminal_slot = st.empty()
+        _render_console(events, slot=console_slot)
+
+        def on_evaluation(record: dict[str, object]) -> None:
+            # 'inicio' ocorre imediatamente antes da CV, 'fim' depois do cálculo.
+            chromosome = tuple(record["cromossomo"])
+            if record["etapa"] == "inicio":
+                _render_chromosome(
+                    chromosome,
+                    f"Geração {record['geracao']} · indivíduo {record['individuo']}",
+                    slot=chromosome_slot,
+                )
+            events.append(format_evaluation_line(record))
+            _render_console(events, slot=console_slot)
 
         def on_generation(record: dict) -> None:
             history.append(dict(record))
-            generation = int(record["geracao"])
-            bar.progress(generation / config.generations,
-                         text=f"{generation} de {config.generations} gerações")
-            status.update(label=f"Busca genética — geração {generation}/{config.generations}")
+            number = int(record["geracao"])
+            progress.progress(number / config.generations,
+                              text=f"{number} de {config.generations} gerações")
+            status.update(label=f"Busca genética — geração {number}/{config.generations}")
+            events.append("[GERAÇÃO] " + format_generation_line(record))
+            _render_console(events, slot=console_slot)
             _history_chart(history, slot=chart_slot)
-            terminal_slot.code(
-                "\n".join(format_generation_line(item) for item in history[-8:]),
-                language=None, height=195, wrap_lines=True,
-            )
 
         try:
             dataset = load_dataset(DATASET)
-            x_dev, _, y_dev, _ = split_dataset(dataset, random_state=config.random_state)
-            status.update(label="Avaliando a população inicial...")
-            result = select_features(x_dev, y_dev, config, on_generation=on_generation)
-            failure = None
+            x_dev, x_test, y_dev, _ = split_dataset(
+                dataset, random_state=config.random_state
+            )
+            events.extend([
+                f"[DADOS] {len(dataset)} registros carregados; {len(x_dev)} para desenvolvimento",
+                f"[TESTE] {len(x_test)} registros reservados, fora da seleção",
+                f"[CONFIG] {config.population_size} indivíduos · {config.generations} gerações · "
+                f"CV com {config.cv_folds} partições",
+            ])
+            _render_console(events, slot=console_slot)
+            status.update(label="Avaliando subconjuntos de características...")
+            result = select_features(
+                x_dev, y_dev, config,
+                on_generation=on_generation, on_evaluation=on_evaluation,
+            )
+            events.append(
+                f"[FIM] {result.evaluated_subsets} subconjuntos distintos · "
+                f"{len(result.selected_features)} características selecionadas"
+            )
+            _render_console(events, slot=console_slot)
+            status.update(label="Busca genética concluída", state="complete", expanded=False)
         except (OSError, ValueError) as exc:
-            failure = exc
+            status.update(label="Erro na busca genética", state="error", expanded=True)
+            st.error(f"Não foi possível executar a busca: {exc}")
+            return
 
-    if failure is not None:
-        status.update(label="Erro na busca genética", state="error", expanded=True)
-        st.error(f"Não foi possível executar a busca: {failure}")
-        return
-    status.update(label="Busca genética concluída", state="complete", expanded=False)
-    st.session_state["genetic_run"] = {"history": history, "result": result}
+    st.session_state["genetic_run"] = {
+        "history": history, "events": events, "result": result,
+    }
     _render_search_result(st.session_state["genetic_run"])
 
 
 def _render_search_monitor() -> None:
-    """Mantém a execução experimental independente da previsão do cliente."""
-    st.markdown("<h2 class='churn-heading'>Execução do algoritmo genético</h2>",
-                unsafe_allow_html=True)
-    st.caption("15 gerações · 24 indivíduos · validação cruzada em 3 partições.")
-    if not DATASET.is_file():
-        st.info("Para executar a busca, coloque o CSV original em "
-                "`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`.")
-        return
-    clicked = st.button("Executar busca genética", type="secondary")
-    if clicked:
-        st.session_state.pop("genetic_run", None)
-        _run_search()
-    elif st.session_state.get("genetic_run"):
-        _render_search_result(st.session_state["genetic_run"])
-    else:
-        st.caption("A execução será exibida aqui, geração por geração. "
-                   "Os modelos utilizados nas previsões permanecem inalterados.")
+    """Detalhes técnicos recolhidos, com histórico e reexecução opcionais."""
+    with st.expander("Evolução do algoritmo genético", expanded=False):
+        st.caption("15 gerações · 24 indivíduos · validação cruzada em 3 partições.")
+        if not DATASET.is_file():
+            st.info("Para executar novamente, coloque o CSV original em "
+                    "`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`.")
+        clicked = st.button(
+            "Executar novamente a busca", type="secondary",
+            disabled=not DATASET.is_file(),
+        )
+        if clicked:
+            st.session_state.pop("genetic_run", None)
+            _run_search()
+        elif st.session_state.get("genetic_run"):
+            _render_search_result(st.session_state["genetic_run"])
+        else:
+            _render_saved_history()
 
 
 def main() -> None:
