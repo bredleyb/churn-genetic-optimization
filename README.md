@@ -177,40 +177,39 @@ garantias individuais de cancelamento. Os modelos `.joblib` são gerados localme
 e devem ser carregados apenas quando provenientes do próprio treinamento do projeto.
 
 
-### Dashboard de demonstração
+### Dashboard monocromático para apresentação
 
-A interface em Streamlit utiliza **tema escuro** e uma estrutura compacta para
-funcionar dentro da altura do navegador. Em desktop e notebook, o painel
-**Cliente** fica à esquerda e **Execução e previsão** à direita. Em telas
-estreitas, os dois painéis ficam empilhados e continuam visíveis; a rolagem,
-quando necessária, ocorre **dentro de cada painel**, sem deslocar a página.
+A aplicação organiza a previsão do cliente e os resultados experimentais em um
+**dashboard preto/cinza/branco**, com fontes dimensionadas para projeção em sala,
+contornos neutros e verde/vermelho reservados aos estados semânticos
+**Permanência/Cancelamento**. O visual segue a especificação
+`ESPECIFICACAO_VISUAL_DASHBOARD_N3.md`, mantida na documentação de trabalho.
 
-O painel Cliente contém o seletor de exemplo, os quatro campos principais,
-abas para editar as demais 15 características e o botão **Calcular previsão**.
-Esse é o único botão que inicia o processamento. Cada clique executa novamente
-o experimento completo: carregamento e divisão estratificada do CSV, validação
-cruzada da regressão logística, seleção genética (24 indivíduos, 15 gerações,
-semente 42), treinamento, teste reservado e previsão do cliente informado.
+- **Cliente:** quatro campos principais, perfil de exemplo, seletor de
+  características adicionais e botão de cálculo acessível na base do painel;
+- **Comparação:** probabilidades individuais da regressão logística de
+  referência (19 características) e da versão com seleção genética;
+- **Gráfico:** evolução do melhor F1-score em validação cruzada, linha branca,
+  escala vertical iniciada em zero e 15 gerações;
+- **Características e teste:** cromossomo de 19 bits, F1 dos dois classificadores
+  no conjunto de teste reservado, variação ΔF1 e taxa de redução;
+- **Monitor:** eventos autênticos do algoritmo, gerações e log integral para
+  download. A tela mostra os eventos mais recentes primeiro.
 
-O painel de execução acompanha o algoritmo em tempo real, com:
+O botão **Calcular previsão** executa novamente todo o experimento: divisão
+estratificada, validação cruzada da referência, algoritmo genético com 24
+indivíduos e 15 gerações, treinamento, avaliação no teste reservado e previsão.
+Os cálculos usam a configuração original e não sobrescrevem os modelos
+persistidos na pasta `results/`. Após alterar os dados do cliente, o estado
+indica **Dados alterados** e oculta as probabilidades anteriores até novo cálculo.
 
-- **Indicadores superiores:** probabilidades de cancelamento dos dois modelos,
-  quantidade de características selecionadas e estado do processamento;
-- **Console:** eventos reais de avaliação e conclusão das gerações, com rolagem
-  interna. O registro completo pode ser salvo pelo botão **Baixar log completo**;
-- **Cromossomo:** 19 bits correspondentes às características originais, exibindo
-  o subconjunto efetivamente avaliado;
-- **Gráfico:** evolução do melhor F1-score de validação a cada geração;
-- **Resumo técnico:** F1 no teste reservado, subconjuntos avaliados, tempo,
-  percentual de redução de características e variação do F1.
+A página não deve ter rolagem própria. Os painéis usam a altura útil da janela
+e permitem rolagem interna onde necessário. A partir de 621 px, comparação,
+gráfico, características e monitor ficam presentes na grade. Em celulares,
+a comparação permanece visível e abas **Análise / Execução** dão acesso aos
+detalhes. Caso prioritário de apresentação: **1280 × 720 px**.
 
-Ao alterar os dados após a execução, as probabilidades são marcadas como
-desatualizadas até um novo clique; o histórico da busca continua consultável.
-A execução web ocorre em memória e não altera os modelos ou relatórios gerados
-pela CLI. A metodologia e os parâmetros do experimento permanecem inalterados.
-
-Para abrir a interface, com o CSV em
-`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`, execute:
+Para executar (com o CSV original em `data/raw/`):
 
 ```powershell
 python -m streamlit run streamlit_app.py
@@ -218,20 +217,15 @@ python -m streamlit run streamlit_app.py
 
 ## Testes visuais automatizados
 
-O **Playwright Test** abre o Streamlit em uma porta isolada (`8517`) e percorre
-o fluxo completo em **1440, 1024, 768 e 390 px**, com altura de 900 px.
-Ele verifica abertura, monitoramento real, conclusão e edição do cliente.
+O Playwright Test abre o Streamlit em uma porta isolada (`8517`) e percorre
+o fluxo completo em **1440×900, 1366×768, 1280×720, 1024×768,
+768×900 e 390×900**. Cada resolução é verificada nos estados inicial,
+processamento, concluído e cliente editado. A auditoria inclui a geometria
+dos painéis, ausência de rolagem da página, botão principal acessível,
+a comparação individual, o gráfico, seleção de 19 bits e execução real.
+No celular, verifica as abas **Análise** e **Execução**.
 
-Os critérios de aprovação agora incluem:
-
-- nenhuma rolagem vertical ou horizontal da **página**;
-- ambos os painéis principais dentro dos limites do viewport;
-- regiões internas com altura controlada e rolagem própria;
-- tema escuro, quatro indicadores e cromossomo com 19 bits;
-- atualização do console durante a busca genética e duas probabilidades reais;
-- invalidação das previsões após editar o cliente.
-
-Para instalar e executar:
+Para instalar o navegador e executar:
 
 ```powershell
 npm install
@@ -240,28 +234,29 @@ npm run test:visual:update
 npm run test:visual
 ```
 
-A primeira execução com `test:visual:update` gera novas referências do
-dashboard escuro; confira-as antes de usá-las como base para comparações.
-O estado de processamento é registrado como screenshot de diagnóstico, porque
-seu conteúdo é variável. Os demais estados utilizam comparação visual.
+O primeiro comando `test:visual:update` recria as referências do layout
+monocromático com prefixo `mono-`. **Revise essas imagens antes de utilizá-las
+como referência permanente**, pois a atualização também aceita mudanças
+visuais indesejadas.
 
-**Após cada execução, inclusive quando houver falhas, um ZIP é criado em:**
+Cada rodada — inclusive com falhas — produz automaticamente:
 
 ```text
 results/testes-visuais-para-revisao.zip
 ```
 
-Envie esse ZIP para análise. Ele inclui referências, capturas, diferenças,
-relatório HTML, resultados estruturados e logs. Os dados CSV e modelos
-`.joblib` não são adicionados ao arquivo. Para compactar novamente os
-resultados existentes, sem repetir o experimento:
+Envie esse ZIP para auditoria. Ele reúne capturas, referências monocromáticas,
+diferenças, relatório HTML, eventos, geometria e traces em caso de erro.
+Referências antigas com prefixos de layouts anteriores ficam fora do pacote;
+CSV bruto e modelos `.joblib` também são excluídos. Para reempacotar resultados
+sem executar novamente o algoritmo:
 
 ```powershell
 npm run test:visual:package
 ```
 
-Para visualizar o relatório local use `npm run test:visual:report`.
-Os testes Python continuam disponíveis por `python -m pytest -q`.
+Relatório no navegador: `npm run test:visual:report`.
+Testes Python: `python -m pytest -q`.
 
 ## Artigo
 

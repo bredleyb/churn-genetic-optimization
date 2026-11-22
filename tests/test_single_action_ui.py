@@ -18,8 +18,6 @@ class DummySlot:
     def progress(self, *_args, **_kwargs):
         pass
 
-    def line_chart(self, *_args, **_kwargs):
-        pass
 
     def download_button(self, *_args, **_kwargs):
         pass
@@ -51,6 +49,9 @@ class DummyUI(ModuleType):
 
     def columns(self, spec, **kwargs):
         return (nullcontext(), nullcontext())
+
+    def tabs(self, names, **kwargs):
+        return tuple(nullcontext() for _ in names)
 
     def selectbox(self, name, options, *, key, **kwargs):
         self.session_state.setdefault(key, options[0])
@@ -98,13 +99,13 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
-    assert ui.buttons == ["Restaurar exemplo", "Calcular previsão"]
+    assert ui.buttons == ["Restaurar", "Calcular previsão"]
     assert len(executed) == int(clicked)
     if clicked:
         assert len(executed[0]) == 19
 
 
-def test_css_is_dark_and_scoped_to_viewport(monkeypatch):
+def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     ui = DummyUI(False)
     monkeypatch.setitem(sys.modules, "streamlit", ui)
     spec = importlib.util.spec_from_file_location("n3_dashboard_css_test", ROOT / "streamlit_app.py")
@@ -112,22 +113,70 @@ def test_css_is_dark_and_scoped_to_viewport(monkeypatch):
     spec.loader.exec_module(app)
     style = ui.styled_markup[0]
     assert "100dvh" in style
-    assert "overflow: hidden" in style
-    assert "dashboard-client-fields" in style
-    assert "dashboard-workspace" in style
-    assert "#0B111B" in style
-    # Em celulares, a linha externa do st.columns também deve ter altura
-    # limitada; restringir somente os cartões internos não é suficiente.
-    assert ':has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)' in style
-    assert 'grid-template-rows: minmax(0, 43fr) minmax(0, 57fr)' in style
-    assert 'position: fixed !important' in style
-    assert 'bottom: 8px !important' in style
-    # A hierarquia real obtida pelo trace contém dois wrappers automáticos
-    # entre a coluna e o painel. O CSS precisa limitar ambos.
+    assert "overflow:hidden" in style
+    assert "--n3-bg:#000000" in style
+    assert "--n3-positive:#5FE29A" in style
+    assert "--n3-negative:#FF6464" in style
+    assert "grid-template-rows:minmax(0,36fr) minmax(0,64fr)" in style
+    assert "position:fixed!important" in style
     assert '> [data-testid="stColumn"] > [data-testid="stVerticalBlock"]' in style
-    assert '> [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]' in style
-    assert 'grid-template-rows: auto minmax(0, 1fr) auto' in style
-    assert '.st-key-dashboard-client-fields {\n    height: 100% !important;' in style
+    assert ".st-key-dashboard-mobile-detail" in style
+    assert ".st-key-dashboard-desktop-detail" in style
+    assert "#30B6A7" not in style
+
+
+def test_results_use_semantic_classification_only(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_dashboard_result_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    class Capture:
+        def __init__(self): self.content = ""
+        def markdown(self, content, **kwargs): self.content = content
+    slot = Capture()
+    run = {"summary": {"genetic_count": 9}, "predictions": {
+        "baseline": {"classe": 1,"probabilidade_cancelamento": 0.8204},
+        "genetico": {"classe": 0,"probabilidade_cancelamento": 0.0037},
+    }}
+    app._render_prediction_comparison(run, "complete", slot=slot)
+    assert "82,04%" in slot.content
+    assert "0,37%" in slot.content
+    assert 'is-negative">Cancelamento' in slot.content
+    assert 'is-positive">Permanência' in slot.content
+    assert "churn-kpi" not in slot.content
+
+
+def test_chart_starts_y_axis_at_zero_and_uses_white_line(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_dashboard_chart_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    class Capture:
+        def __init__(self): self.content = ""
+        def markdown(self, content, **kwargs): self.content = content
+    slot = Capture()
+    app._history_chart([{"geracao":i,"melhor_f1_cv":.60+i/1000} for i in range(1,16)], slot=slot)
+    assert "0,0" in slot.content
+    assert "0,8" in slot.content
+    assert "F1-score" in slot.content
+    assert "<polyline" in slot.content
+    assert "churn-chart-line" in slot.content
+
+
+def test_console_shows_recent_events_first(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_dashboard_log_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    class Capture:
+        def __init__(self): self.content = ""
+        def markdown(self, content, **kwargs): self.content = content
+    slot = Capture()
+    app._render_console(["[INÍCIO] Teste", "[GERAÇÃO] 14", "[FIM] concluído"], slot=slot, complete=True)
+    assert slot.content.index("[FIM]") < slot.content.index("[GERAÇÃO]")
 
 
 def test_result_is_invalidated_after_customer_changes(monkeypatch):

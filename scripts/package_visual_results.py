@@ -69,10 +69,13 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
         for file, relative in _files_in(path):
             if relative is not None:
                 # A pasta tests/visual contém specs, mas aqui só interessam baselines.
-                if source == "tests/visual" and not any(
-                    part.endswith("-snapshots") for part in relative.parts
-                ):
-                    continue
+                if source == "tests/visual":
+                    # Apenas referências da interface atual; bases antigas permanecem
+                    # no computador, mas não poluem o ZIP de revisão monocromático.
+                    if (not any(part.endswith("-snapshots") for part in relative.parts)
+                            or not relative.name.startswith("mono-")
+                            or relative.suffix.lower() != ".png"):
+                        continue
                 name = f"{destination}/{relative.as_posix()}"
             else:
                 name = destination
@@ -85,7 +88,8 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
         "modo": mode,
         "status": "aprovado" if exit_code == 0 else ("falhou" if exit_code is not None else "nao_informado"),
         "codigo_saida_testes": exit_code,
-        "larguras_previstas_px": [1440, 1024, 768, 390],
+        "larguras_previstas_px": [1440, 1366, 1280, 1024, 768, 390],
+        "resolucoes_previstas": ["1440x900", "1366x768", "1280x720", "1024x768", "768x900", "390x900"],
         "estados_previstos": ["inicial", "processamento", "concluido", "editado"],
         "resumo_playwright": _summary(root / "results" / "playwright-results.json"),
         "arquivos": [name for _, name in candidates],
