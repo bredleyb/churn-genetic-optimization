@@ -177,30 +177,42 @@ garantias individuais de cancelamento. Os modelos `.joblib` são gerados localme
 e devem ser carregados apenas quando provenientes do próprio treinamento do projeto.
 
 
-### Acompanhar a busca genética na interface
+### Execução completa na interface
 
-A seção recolhida **Evolução do algoritmo genético** apresenta o histórico de
-15 gerações já registrado no relatório do experimento principal. O botão
-**Executar novamente a busca**, dentro dessa seção, realiza uma nova seleção com
-os mesmos parâmetros (24 indivíduos, 15 gerações e validação cruzada em três
-partições). O acompanhamento mostra, antes do gráfico:
+A interface divide a página em duas colunas em telas largas: **Cliente**, à esquerda,
+e **Execução e previsão**, à direita. Em telas menores, as colunas são empilhadas.
 
-- Um **monitor de eventos reais**, com início e conclusão da avaliação de cada
-  subconjunto novo, F1-score e aptidão calculados;
-- O **cromossomo de 19 bits** atualmente avaliado, em que 1 inclui e 0 exclui
-  uma característica original;
-- O progresso por geração e, abaixo, o **gráfico da evolução do F1**.
+O botão principal **Calcular previsão** inicia toda a sequência experimental com
+os dados originais: preparação e divisão estratificada, validação cruzada da
+regressão logística de referência, busca genética com 24 indivíduos e 15 gerações,
+treinamento dos dois classificadores, avaliação no conjunto de teste reservado
+e previsão do cliente informado. **Cada clique executa novamente esse processo**;
+por isso, o resultado pode demorar mais do que uma inferência isolada.
 
-A execução utiliza os dados de desenvolvimento; os dados de teste não participam
-da seleção. Subconjuntos recuperados do cache não são exibidos como novas
-avaliações. Os resultados e o registro completo permanecem disponíveis na
-sessão após o processamento. Reexecutar a busca **não sobrescreve** os modelos
-`.joblib` nem os relatórios do experimento principal.
+O painel direito acompanha o processamento em tempo real, sempre visível:
 
-O botão principal **Atualizar previsão** continua utilizando os modelos já
-treinados, sem iniciar uma nova busca genética. A interface pode ser executada
-com `python -m streamlit run streamlit_app.py` após instalar as dependências e
-gerar os modelos no diretório `results/`.
+- **Console:** registros das etapas e das avaliações verdadeiras de subconjuntos;
+  os últimos eventos aparecem durante a execução e o registro completo fica
+  disponível no mesmo console ao terminar.
+- **Cromossomo:** 19 bits atualizados para cada subconjunto distinto avaliado,
+  com 1 representando inclusão e 0 exclusão de uma característica original.
+- **Gráfico:** F1-score em validação cruzada atualizado ao completar cada geração.
+- **Resultado:** ao final, as duas previsões individuais e as métricas de teste
+  provenientes desta própria execução são mostradas abaixo do gráfico.
+
+Não existe um segundo botão de treinamento nem um painel separado para a busca.
+A alteração dos campos exige um novo clique para atualizar o resultado. A seleção
+ocorre exclusivamente nos dados de desenvolvimento, sem acesso ao teste reservado;
+os mesmos parâmetros e a semente 42 do experimento principal são preservados.
+
+A execução web é realizada em memória e **não sobrescreve** os arquivos
+`results/*.joblib` ou o relatório original. A CLI continua disponível para
+reprodução e geração desses arquivos. Para abrir a interface, com o CSV
+original em `data/raw/`, execute:
+
+```powershell
+python -m streamlit run streamlit_app.py
+```
 
 ## Artigo
 

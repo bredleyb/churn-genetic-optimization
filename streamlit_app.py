@@ -3,17 +3,17 @@
 Execute a partir da raiz: python -m streamlit run streamlit_app.py
 """
 
-import json
-
 import pandas as pd
 from html import escape
 from pathlib import Path
+from time import perf_counter
 
 import streamlit as st
-from joblib import load
 
 from src.data import FEATURE_COLUMNS, load_dataset, split_dataset
+from src.evaluation import evaluate_test
 from src.genetic import GeneticConfig, select_features
+from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
 from src.ui_data import (
     BILLING_FEATURES,
@@ -22,7 +22,6 @@ from src.ui_data import (
     PROFILE_FEATURES,
     PROFILE_FILES,
     align_services,
-    experiment_summary,
     format_generation_line,
     format_evaluation_line,
     label_for,
@@ -32,11 +31,10 @@ from src.ui_data import (
 )
 
 ROOT = Path(__file__).resolve().parent
-RESULTS = ROOT / "results"
 DATASET = ROOT / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
-MODEL_NAMES = {
-    "baseline": ("Regressão logística", "baseline.joblib"),
-    "genetico": ("Seleção genética", "genetic.joblib"),
+MODEL_LABELS = {
+    "baseline": "Regressão logística",
+    "genetico": "Seleção genética",
 }
 METRIC_LABELS = {
     "f1": "F1-score",
@@ -151,29 +149,12 @@ st.markdown(
 )
 
 
-@st.cache_resource(show_spinner=False)
-def cached_model(file_path: str, modified_ns: int, file_size: int):
-    """Recarrega o modelo quando o arquivo local é substituído."""
-    return load(file_path)
-
-
-@st.cache_data(show_spinner=False)
-def cached_report(file_path: str, modified_ns: int, file_size: int):
-    return json.loads(Path(file_path).read_text(encoding="utf-8"))
-
-
-def _file_version(path: Path) -> tuple[str, int, int]:
-    info = path.stat()
-    return str(path), info.st_mtime_ns, info.st_size
-
-
 def _apply_profile(profile_name: str) -> None:
     example = load_profile(ROOT, profile_name)
     for feature in FEATURE_COLUMNS:
         st.session_state[f"field_{feature}"] = example[feature]
     st.session_state["field_total_missing"] = example["total_missing"]
-    st.session_state["last_prediction"] = None
-    st.session_state["preview_requested"] = True
+    st.session_state["workflow_run"] = None
 
 
 def _choose_profile() -> None:
@@ -209,24 +190,6 @@ def _select_field(feature: str, *, disabled: bool = False, help_text: str | None
         disabled=disabled,
         help=help_text,
     )
-
-
-def _calculate_prediction() -> None:
-    """Atualiza a previsão usando o mesmo caminho de validação da CLI."""
-    try:
-        customer = model_input(_form_data())
-        predictions = {}
-        for name, (_, filename) in MODEL_NAMES.items():
-            path = RESULTS / filename
-            model = cached_model(*_file_version(path))
-            predictions[name] = predict_customer(model, customer)
-        st.session_state["last_prediction"] = {
-            "customer": customer,
-            "predictions": predictions,
-        }
-    except (ValueError, OSError, ImportError, KeyError) as exc:
-        st.session_state["last_prediction"] = None
-        st.error(f"Não foi possível calcular a previsão: {exc}")
 
 
 def _render_result(title: str, entry: dict, *, feature_count: int | None) -> None:
@@ -310,9 +273,10 @@ def _history_chart(history: list[dict], *, slot=None) -> None:
     )
 
 
-def _render_console(lines: list[str], *, slot=None) -> None:
+def _render_console(lines: list[str], *, slot=None, complete: bool = False) -> None:
     """Exibe apenas eventos recebidos da execução, com saída monoespaçada."""
-    visible = lines[-12:]
+    # Mostra os eventos mais recentes enquanto executa; o registro inteiro fica disponível ao terminar.
+    visible = lines if complete else lines[-8:]
     rows = []
     for line in visible:
         if " | F1" in line or line.startswith("[FIM]"):
@@ -351,139 +315,158 @@ def _render_chromosome(chromosome: tuple[int, ...], title: str, *, slot=None) ->
     (slot or st).markdown(markup, unsafe_allow_html=True)
 
 
-def _render_search_result(run: dict) -> None:
-    """Exibe a execução real concluída, antes do gráfico de evolução."""
-    result = run["result"]
-    elapsed = f"{result.elapsed_seconds:.1f}".replace(".", ",")
-    st.caption(
-        f"Última execução nesta sessão · {result.evaluated_subsets} subconjuntos distintos · "
-        f"{elapsed} s"
-    )
-    _render_console(run["events"])
-    _render_chromosome(result.chromosome, "Melhor cromossomo encontrado")
+def _render_finished_run(run: dict) -> None:
+    """Mantém na coluna direita o processamento e a previsão da última execução."""
+    _render_console(run["events"], complete=True)
+    _render_chromosome(run["chromosome"], "Melhor cromossomo encontrado")
+    st.markdown("**F1-score durante a seleção genética**")
     _history_chart(run["history"])
-    chosen = ", ".join(LABELS[name] for name in result.selected_features)
-    st.caption(f"Características selecionadas: {chosen}.")
-    if st.toggle("Mostrar registro completo da execução", key="full_search_log"):
-        st.code("\n".join(run["events"]), language=None, height=230, wrap_lines=True)
-
-
-def _render_saved_history() -> None:
-    """Histórico do treinamento principal já salvo; não executa nova busca."""
-    path = RESULTS / "comparacao_modelos.json"
-    if not path.is_file():
-        st.caption("O histórico estará disponível após executar o experimento principal.")
-        return
+    elapsed = f"{run['elapsed_seconds']:.1f}".replace(".", ",")
+    st.caption(
+        f"Execução concluída · {run['evaluated_subsets']} subconjuntos avaliados · "
+        f"{len(run['history'])} gerações · {elapsed} s"
+    )
+    current = None
     try:
-        report = cached_report(*_file_version(path))
-        history = report["busca_genetica"]["historico"]
-        selected = report["modelos"]["genetico"]["caracteristicas"]
-        if not isinstance(history, list) or not history:
-            raise ValueError("Histórico vazio")
-        st.caption("Histórico registrado no experimento principal — sem processamento em andamento.")
-        _history_chart(history)
-        st.caption(
-            f"{len(history)} gerações · {len(selected)} características selecionadas · "
-            f"{report['busca_genetica']['subconjuntos_avaliados']} subconjuntos distintos"
-        )
-    except (ValueError, KeyError, TypeError, OSError, json.JSONDecodeError):
-        st.warning("O histórico experimental não pôde ser carregado.")
+        current = model_input(_form_data())
+    except ValueError:
+        pass
+    if current != run["customer"]:
+        st.info("Os dados do cliente foram alterados. Clique em Calcular previsão "
+                "para executar novamente com os valores atuais.")
+        return
+    st.markdown("<h2 class='churn-heading'>Previsão</h2>", unsafe_allow_html=True)
+    st.caption("Probabilidade estimada de cancelamento para o cliente informado.")
+    for name, title in MODEL_LABELS.items():
+        feature_count = run["summary"]["baseline_count" if name == "baseline" else "genetic_count"]
+        _render_result(title, run["predictions"][name], feature_count=feature_count)
+    _render_metrics(run["summary"])
 
 
-def _run_search() -> None:
-    """Monitora avaliações reais sem treinar novamente os modelos salvos."""
+def _execute_full_workflow(customer: dict) -> None:
+    """Treina, seleciona, avalia e prevê em um único clique, com eventos reais."""
     config = GeneticConfig()
+    start = perf_counter()
+    events: list[str] = []
     history: list[dict] = []
-    events = ["[INÍCIO] Preparando execução da seleção genética"]
-    with st.status("Preparando os dados...", expanded=True) as status:
-        progress = st.progress(0, text=f"0 de {config.generations} gerações")
-        console_slot = st.empty()
-        chromosome_slot = st.empty()
-        chart_slot = st.empty()
+    stage_slot = st.empty()
+    progress_slot = st.empty()
+    console_slot = st.empty()
+    chromosome_slot = st.empty()
+    st.markdown("**F1-score durante a seleção genética**")
+    chart_slot = st.empty()
+
+    def log(message: str) -> None:
+        events.append(message)
         _render_console(events, slot=console_slot)
 
-        def on_evaluation(record: dict[str, object]) -> None:
-            # 'inicio' ocorre imediatamente antes da CV, 'fim' depois do cálculo.
-            chromosome = tuple(record["cromossomo"])
-            if record["etapa"] == "inicio":
-                _render_chromosome(
-                    chromosome,
-                    f"Geração {record['geracao']} · indivíduo {record['individuo']}",
-                    slot=chromosome_slot,
-                )
-            events.append(format_evaluation_line(record))
-            _render_console(events, slot=console_slot)
+    def phase(label: str, message: str) -> None:
+        stage_slot.caption(label)
+        log(message)
 
-        def on_generation(record: dict) -> None:
-            history.append(dict(record))
-            number = int(record["geracao"])
-            progress.progress(number / config.generations,
-                              text=f"{number} de {config.generations} gerações")
-            status.update(label=f"Busca genética — geração {number}/{config.generations}")
-            events.append("[GERAÇÃO] " + format_generation_line(record))
-            _render_console(events, slot=console_slot)
-            _history_chart(history, slot=chart_slot)
-
-        try:
-            dataset = load_dataset(DATASET)
-            x_dev, x_test, y_dev, _ = split_dataset(
-                dataset, random_state=config.random_state
+    def on_evaluation(record: dict[str, object]) -> None:
+        if record["etapa"] == "inicio":
+            chromosome = tuple(int(bit) for bit in record["cromossomo"])
+            _render_chromosome(
+                chromosome,
+                f"Geração {record['geracao']} · indivíduo {record['individuo']}",
+                slot=chromosome_slot,
             )
-            events.extend([
-                f"[DADOS] {len(dataset)} registros carregados; {len(x_dev)} para desenvolvimento",
-                f"[TESTE] {len(x_test)} registros reservados, fora da seleção",
-                f"[CONFIG] {config.population_size} indivíduos · {config.generations} gerações · "
-                f"CV com {config.cv_folds} partições",
-            ])
-            _render_console(events, slot=console_slot)
-            status.update(label="Avaliando subconjuntos de características...")
-            result = select_features(
-                x_dev, y_dev, config,
-                on_generation=on_generation, on_evaluation=on_evaluation,
-            )
-            events.append(
-                f"[FIM] {result.evaluated_subsets} subconjuntos distintos · "
-                f"{len(result.selected_features)} características selecionadas"
-            )
-            _render_console(events, slot=console_slot)
-            status.update(label="Busca genética concluída", state="complete", expanded=False)
-        except (OSError, ValueError) as exc:
-            status.update(label="Erro na busca genética", state="error", expanded=True)
-            st.error(f"Não foi possível executar a busca: {exc}")
-            return
+        log(format_evaluation_line(record))
 
-    st.session_state["genetic_run"] = {
-        "history": history, "events": events, "result": result,
-    }
-    _render_search_result(st.session_state["genetic_run"])
+    def on_generation(record: dict[str, int | float]) -> None:
+        history.append(dict(record))
+        number = int(record["geracao"])
+        stage_slot.caption(f"Seleção genética · geração {number} de {config.generations}")
+        progress_slot.progress(number / config.generations,
+                               text=f"Geração {number}/{config.generations}")
+        log("[GERAÇÃO] " + format_generation_line(record))
+        _history_chart(history, slot=chart_slot)
 
-
-def _render_search_monitor() -> None:
-    """Detalhes técnicos recolhidos, com histórico e reexecução opcionais."""
-    with st.expander("Evolução do algoritmo genético", expanded=False):
-        st.caption("15 gerações · 24 indivíduos · validação cruzada em 3 partições.")
-        if not DATASET.is_file():
-            st.info("Para executar novamente, coloque o CSV original em "
-                    "`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`.")
-        clicked = st.button(
-            "Executar novamente a busca", type="secondary",
-            disabled=not DATASET.is_file(),
+    progress_slot.progress(0.0, text=f"Geração 0/{config.generations}")
+    try:
+        phase("Preparando o experimento...", "[DADOS] Lendo o conjunto Telco Customer Churn")
+        dataset = load_dataset(DATASET)
+        x_dev, x_test, y_dev, y_test = split_dataset(
+            dataset, random_state=config.random_state
         )
-        if clicked:
-            st.session_state.pop("genetic_run", None)
-            _run_search()
-        elif st.session_state.get("genetic_run"):
-            _render_search_result(st.session_state["genetic_run"])
-        else:
-            _render_saved_history()
+        log(f"[DIVISÃO] {len(dataset)} clientes · {len(x_dev)} desenvolvimento · "
+            f"{len(x_test)} teste reservado")
+        phase("Validando o classificador de referência...",
+              f"[CV] Regressão logística · {config.cv_folds} partições")
+        baseline_cv = evaluate_cv(x_dev, y_dev, n_splits=config.cv_folds,
+                                  random_state=config.random_state)
+        log(f"[CV] F1 médio de referência: {baseline_cv['f1']['media']:.4f}")
+        phase("Avaliando subconjuntos com algoritmo genético...",
+              f"[AG] {config.population_size} indivíduos · "
+              f"{config.generations} gerações · {len(FEATURE_COLUMNS)} genes")
+        genetic_result = select_features(
+            x_dev, y_dev, config,
+            on_generation=on_generation,
+            on_evaluation=on_evaluation,
+        )
+        phase("Treinando os dois classificadores...",
+              "[TREINO] Ajustando os modelos com os dados de desenvolvimento")
+        baseline = build_classifier()
+        selected = build_classifier(genetic_result.selected_features)
+        baseline.fit(x_dev, y_dev)
+        selected.fit(x_dev, y_dev)
+        phase("Avaliando no conjunto de teste reservado...",
+              f"[TESTE] Calculando métricas nos mesmos {len(x_test)} casos reservados")
+        base_metrics = evaluate_test(baseline, x_test, y_test)
+        genetic_metrics = evaluate_test(selected, x_test, y_test)
+        phase("Calculando previsão do cliente...",
+              "[PREVISÃO] Aplicando os dois modelos treinados ao cliente informado")
+        predictions = {
+            "baseline": predict_customer(baseline, customer),
+            "genetico": predict_customer(selected, customer),
+        }
+        log(f"[FIM] Referência F1={base_metrics['f1']:.4f} · "
+            f"Genético F1={genetic_metrics['f1']:.4f} · "
+            f"{genetic_result.evaluated_subsets} subconjuntos distintos")
+    except (OSError, ValueError, RuntimeError, ImportError) as exc:
+        st.session_state["workflow_run"] = None
+        stage_slot.error("Execução interrompida")
+        st.error(f"Não foi possível concluir o processamento: {exc}")
+        return
+
+    progress_slot.progress(1.0, text=f"{config.generations} gerações concluídas")
+    stage_slot.success("Execução concluída")
+    summary = {
+        "baseline": base_metrics,
+        "genetico": genetic_metrics,
+        "baseline_count": len(FEATURE_COLUMNS),
+        "genetic_count": len(genetic_result.selected_features),
+        "test_count": len(x_test),
+        "reduction_pct": 100 * (len(FEATURE_COLUMNS) - len(genetic_result.selected_features))
+                         / len(FEATURE_COLUMNS),
+    }
+    result = {
+        "customer": customer,
+        "predictions": predictions,
+        "summary": summary,
+        "history": history,
+        "chromosome": genetic_result.chromosome,
+        "events": events,
+        "evaluated_subsets": genetic_result.evaluated_subsets,
+        "elapsed_seconds": perf_counter() - start,
+    }
+    st.session_state["workflow_run"] = result
+    st.caption(f"{genetic_result.evaluated_subsets} subconjuntos distintos avaliados.")
+    st.markdown("<h2 class='churn-heading'>Previsão</h2>", unsafe_allow_html=True)
+    st.caption("Probabilidade estimada de cancelamento para o cliente informado.")
+    for name, title in MODEL_LABELS.items():
+        count = summary["baseline_count" if name == "baseline" else "genetic_count"]
+        _render_result(title, predictions[name], feature_count=count)
+    _render_metrics(summary)
 
 
 def main() -> None:
     with st.container(key="churn-shell", width=1240):
         st.markdown(
             "<header class='churn-header'><h1 class='churn-title'>Previsão de cancelamento</h1>"
-            "<p class='churn-subtitle'>Compare as previsões de dois modelos a partir "
-            "dos dados de um cliente.</p></header>",
+            "<p class='churn-subtitle'>Configure o cliente e acompanhe o treinamento, "
+            "a seleção genética e a previsão em tempo real.</p></header>",
             unsafe_allow_html=True,
         )
 
@@ -492,7 +475,6 @@ def main() -> None:
             _apply_profile(st.session_state["profile_choice"])
             st.session_state["form_initialized"] = True
 
-        model_ready = all((RESULTS / filename).is_file() for _, filename in MODEL_NAMES.values())
         layout = st.grid(2, min_column_width=440, gap=20, wrap=True)
         panel_form = layout.cell()
         panel_result = layout.cell()
@@ -547,59 +529,30 @@ def main() -> None:
                     )
                     st.caption("Valores monetários na unidade utilizada pelo conjunto de dados.")
 
-                clicked = st.button("Atualizar previsão", type="primary",
-                                    use_container_width=True, disabled=not model_ready)
-                if not model_ready:
-                    st.info("Modelos não encontrados. Execute `python -m scripts.compare_models` no terminal.")
-                elif clicked or st.session_state.get("preview_requested", False):
-                    st.session_state["preview_requested"] = False
-                    _calculate_prediction()
+                clicked = st.button("Calcular previsão", type="primary",
+                                    use_container_width=True, disabled=not DATASET.is_file())
+                st.caption("O cálculo executa novamente o treinamento e a busca genética.")
+                if not DATASET.is_file():
+                    st.info("CSV não encontrado em `data/raw/`. Coloque o dataset original "
+                            "nessa pasta para executar a previsão.")
 
         with panel_result:
-            st.markdown(
-                "<h2 class='churn-heading'>Previsão</h2>"
-                "<p class='churn-help'>Probabilidade estimada de cancelamento</p>",
-                unsafe_allow_html=True,
-            )
-            last = st.session_state.get("last_prediction")
-            try:
-                current = model_input(_form_data())
-            except ValueError:
-                current = None
-            if last is not None and current != last["customer"]:
-                st.caption("Dados alterados — atualize a previsão.")
-            elif last is not None:
-                summary_for_counts = None
-                path = RESULTS / "comparacao_modelos.json"
-                if path.is_file():
-                    try:
-                        summary_for_counts = experiment_summary(cached_report(*_file_version(path)))
-                    except (ValueError, json.JSONDecodeError, OSError):
-                        pass
-                for name, (label, _) in MODEL_NAMES.items():
-                    count = None
-                    if summary_for_counts:
-                        count = summary_for_counts["baseline_count" if name == "baseline" else "genetic_count"]
-                    _render_result(label, last["predictions"][name], feature_count=count)
-            elif model_ready:
-                st.caption("Atualize a previsão para visualizar os resultados.")
-            else:
-                st.caption("Os resultados aparecerão após o treinamento dos modelos.")
-
-            report_path = RESULTS / "comparacao_modelos.json"
-            if report_path.is_file():
+            st.markdown("<h2 class='churn-heading'>Execução e previsão</h2>",
+                        unsafe_allow_html=True)
+            if clicked:
+                st.session_state["workflow_run"] = None
                 try:
-                    _render_metrics(experiment_summary(cached_report(*_file_version(report_path))))
-                except (ValueError, OSError, json.JSONDecodeError):
-                    st.warning("Relatório experimental incompleto. "
-                               "Execute `python -m scripts.compare_models` novamente.")
+                    customer = model_input(_form_data())
+                except ValueError as exc:
+                    st.error(f"Dados do cliente inválidos: {exc}")
+                else:
+                    _execute_full_workflow(customer)
+            elif st.session_state.get("workflow_run") is not None:
+                _render_finished_run(st.session_state["workflow_run"])
             else:
-                st.markdown("<h2 class='churn-heading'>Comparação dos modelos</h2>",
-                            unsafe_allow_html=True)
-                st.caption("As métricas serão exibidas após o treinamento.")
-
-        st.divider()
-        _render_search_monitor()
+                st.caption("Clique em Calcular previsão para iniciar. "
+                           "O processamento será acompanhado nesta coluna.")
+                _render_console(["[PRONTO] Aguardando execução do experimento"])
 
 
 if __name__ == "__main__":
