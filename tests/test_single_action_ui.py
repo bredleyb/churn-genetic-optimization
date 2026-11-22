@@ -32,6 +32,7 @@ class DummyUI(ModuleType):
         self.panel_keys = []
         self.panel_settings = []
         self.styled_markup = []
+        self.selectbox_labels = []
 
     def set_page_config(self, **kwargs):
         pass
@@ -54,6 +55,7 @@ class DummyUI(ModuleType):
         return tuple(nullcontext() for _ in names)
 
     def selectbox(self, name, options, *, key, **kwargs):
+        self.selectbox_labels.append(name)
         self.session_state.setdefault(key, options[0])
         return self.session_state[key]
 
@@ -100,6 +102,10 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
     assert ui.buttons == ["Restaurar", "Calcular previsão"]
+    assert "Características" in ui.selectbox_labels
+    assert "Editar características" not in ui.selectbox_labels
+    assert not any("churn-topbar" in markup for markup in ui.styled_markup)
+    assert not any("Outras características" in markup for markup in ui.styled_markup)
     assert len(executed) == int(clicked)
     if clicked:
         assert len(executed[0]) == 19
@@ -115,6 +121,12 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "100dvh" in style
     assert "overflow:hidden" in style
     assert "--n3-bg:#000000" in style
+    assert "top:12px!important;right:18px!important;bottom:10px!important" in style
+    assert "top:9px!important;right:10px!important;bottom:8px!important" in style
+    assert "top:8px!important;right:8px!important;bottom:8px!important" in style
+    assert "churn-topbar" not in style
+    assert "churn-chart-descriptor" not in style
+    assert "stMarkdownContainer\"]:has(.churn-monitor-title)" in style
     assert "--n3-positive:#5FE29A" in style
     assert "--n3-negative:#FF6464" in style
     assert "grid-template-rows:minmax(0,36fr) minmax(0,64fr)" in style
@@ -168,6 +180,7 @@ def test_chart_starts_y_axis_at_zero_and_uses_white_line(monkeypatch):
     assert "F1-score" in slot.content
     assert "<polyline" in slot.content
     assert "churn-chart-line" in slot.content
+    assert "Validação cruzada · 15 gerações" not in slot.content
 
 
 def test_console_shows_recent_events_first(monkeypatch):

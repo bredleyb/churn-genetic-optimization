@@ -59,13 +59,10 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 [data-testid="stMainBlockContainer"] {box-sizing:border-box!important;padding:12px 18px 10px!important;max-width:none!important;height:100dvh!important;overflow:hidden!important;}
 .stApp {font-family:"Segoe UI Variable","Segoe UI",Arial,sans-serif!important;color:var(--n3-text)!important;}
 .st-key-dashboard-shell {height:calc(100dvh - 22px);width:100%;max-width:1680px;margin:auto;overflow:hidden;}
-.churn-topbar {height:42px;margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.churn-topbar h1 {font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.15;margin:0;color:var(--n3-text);}
-.churn-topbar .churn-top-meta {font-size:13px;line-height:1.3;color:var(--n3-muted);white-space:nowrap;}
 /* A linha externa e seus wrappers são controlados; o Streamlit cria alturas automáticas. */
 .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
   /* Âncoras da viewport: impedir altura herdada da grade em janelas menores. */
-  position:fixed!important;top:80px!important;right:18px!important;bottom:10px!important;left:18px!important;
+  position:fixed!important;top:12px!important;right:18px!important;bottom:10px!important;left:18px!important;
   box-sizing:border-box!important;display:grid!important;
   grid-template-columns:clamp(300px,27vw,380px) minmax(0,1fr)!important;
   gap:12px!important;width:auto!important;height:auto!important;
@@ -90,7 +87,6 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client-fields {height:100%!important;max-height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
 .st-key-dashboard-client-footer {height:auto!important;padding-top:8px;border-top:1px solid var(--n3-line);}
 .churn-panel-heading {font-size:19px;line-height:1.3;font-weight:600;letter-spacing:-.01em;margin:0!important;color:var(--n3-text);}
-.churn-subheading {font-size:14px;line-height:1.4;font-weight:600;color:var(--n3-secondary);margin:8px 0 0;}
 /* Campos: 42px e texto funcional de 16px; sem cantos em pílula. */
 .st-key-dashboard-client [data-testid="stWidgetLabel"] p,
 .st-key-dashboard-client label p {font-size:15px!important;line-height:1.35!important;color:var(--n3-secondary)!important;}
@@ -134,7 +130,6 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .churn-outcome.is-negative {color:var(--n3-negative);}
 /* Gráfico SVG: fonte fora do vetor para não encolher com a escala. */
 .churn-chart {height:100%;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid var(--n3-line);padding:2px 0 10px;}
-.churn-chart-descriptor {font-size:13px;color:var(--n3-muted);white-space:nowrap;}
 .churn-chart-plot {display:flex;gap:8px;flex:1;min-height:100px;}
 .churn-chart-axis-y {width:33px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-bottom:20px;font-size:13px;color:var(--n3-secondary);font-variant-numeric:tabular-nums;}
 .churn-chart-plot-main {flex:1;min-width:0;display:flex;flex-direction:column;}
@@ -156,7 +151,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .churn-metric dd {font-size:20px;color:var(--n3-text);font-weight:600;margin:3px 0 0;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .churn-technical-note {font-size:12px;line-height:1.4;color:var(--n3-muted);margin-top:7px;}
 /* Monitor: monoespaçada, conteúdo mais recente primeiro, largura estável. */
-.churn-monitor-title {font-size:16px;font-weight:600;color:var(--n3-text);line-height:1.4;}
+.churn-monitor-title {font-size:16px;font-weight:600;color:var(--n3-text);line-height:1.3;margin:0;}
 .churn-phase {font-size:13px;color:var(--n3-secondary);}
 .churn-console {background:var(--n3-control);border-top:1px solid var(--n3-line);margin-top:4px;}
 .churn-console-lines {max-height:66px;min-height:42px;overflow-y:auto;overflow-x:hidden;padding:5px 2px;scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;font:13px/1.4 Consolas,"Liberation Mono",monospace;color:var(--n3-secondary);overflow-wrap:anywhere;}
@@ -178,18 +173,14 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 @media(max-width:900px) {
   [data-testid="stMainBlockContainer"] {padding:9px 10px 8px!important;}
   .st-key-dashboard-shell {height:calc(100dvh - 17px);}
-  .churn-topbar {height:38px;margin-bottom:8px;}
-  .churn-topbar h1 {font-size:18px;}
-  .churn-topbar .churn-top-meta {font-size:12px;}
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
     grid-template-columns:270px minmax(0,1fr)!important;
-    top:71px!important;right:10px!important;bottom:8px!important;left:10px!important;gap:8px!important;
+    top:9px!important;right:10px!important;bottom:8px!important;left:10px!important;gap:8px!important;
   }
   .st-key-dashboard-client,.st-key-dashboard-workspace {padding:11px!important;}
   .st-key-dashboard-selection-section {grid-template-columns:1fr!important;overflow-y:auto!important;}
   .churn-model-name {font-size:15px;}
   .churn-prediction-value {font-size:27px;}
-  .churn-chart-descriptor {font-size:12px;}
   .churn-bits {gap:2px;}
 }
 @media(max-height:760px) and (min-width:621px) {
@@ -203,15 +194,13 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .churn-bit {height:23px;}
 }
 @media(max-width:620px) {
-  .churn-topbar {height:37px;margin-bottom:8px;}
-  .churn-topbar .churn-top-meta {display:none;}
   /* Preserva a correção diagnosticada com trace real: colunas e wrappers limitados. */
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    position:fixed!important;top:54px!important;right:8px!important;bottom:8px!important;left:8px!important;
+    position:fixed!important;top:8px!important;right:8px!important;bottom:8px!important;left:8px!important;
     display:grid!important;grid-template-columns:minmax(0,1fr)!important;
     grid-template-rows:minmax(0,36fr) minmax(0,64fr)!important;
     gap:8px!important;box-sizing:border-box!important;
-    width:auto!important;height:auto!important;max-height:calc(100dvh - 62px)!important;
+    width:auto!important;height:auto!important;max-height:calc(100dvh - 16px)!important;
     min-height:0!important;margin:0!important;overflow:hidden!important;align-content:stretch!important;
   }
   .st-key-dashboard-client,.st-key-dashboard-workspace {height:100%!important;max-height:100%!important;min-height:0!important;}
@@ -227,7 +216,6 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .churn-model+.churn-model {padding-left:10px;}
   .churn-prediction-value {font-size:26px;}
   .churn-outcome {font-size:13px;}
-  .churn-chart-descriptor {display:none;}
   .churn-chart-plot {min-height:65px;}
   .churn-chart-axis-y,.churn-chart-axis-x {font-size:12px;}
   .churn-chart-caption {font-size:12px;}
@@ -372,7 +360,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .st-key-dashboard-monitor-section {
     box-sizing:border-box!important;position:relative!important;
     display:flex!important;flex-direction:column!important;
-    gap:4px!important;min-height:0!important;overflow:hidden!important;
+    gap:6px!important;min-height:0!important;overflow:hidden!important;
   }
   /* Progresso já informa a geração; remover a fase repetida economiza altura. */
   .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-phase),
@@ -399,8 +387,12 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   /* O MarkdownContainer do Streamlit traz margem inferior de -16px.
      Centralizado em um wrapper flex de altura integral, isso desloca o
      console 8px para baixo, além do limite real do monitor. */
-  .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-console) {
+  .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-console),
+  .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-monitor-title) {
     margin-bottom:0!important;
+  }
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stProgress"]) {
+    margin-top:2px!important;
   }
   .st-key-dashboard-monitor-section .churn-console {
     box-sizing:border-box!important;height:100%!important;max-height:100%!important;
@@ -556,7 +548,7 @@ def _select_field(feature: str, *, disabled: bool = False, help_text: str | None
 
 
 def _render_client_details() -> None:
-    tab = st.selectbox("Editar características", ["Perfil", "Telefonia", "Internet", "Cobrança"],
+    tab = st.selectbox("Características", ["Perfil", "Telefonia", "Internet", "Cobrança"],
                        key="detail_tab")
     if tab == "Perfil":
         for feature in PROFILE_FEATURES:
@@ -676,8 +668,7 @@ def _history_chart(history: list[dict], *, slot) -> None:
     grid = ''.join(f'<line x1="0" y1="{i*60}" x2="1000" y2="{i*60}"/>' for i in range(5))
     markup = (
         '<section class="churn-chart" aria-label="Evolução do F1-score em validação cruzada">'
-        '<div class="churn-section-top"><h3>Evolução do F1-score</h3>'
-        '<span class="churn-chart-descriptor">Validação cruzada · 15 gerações</span></div>'
+        '<div class="churn-section-top"><h3>Evolução do F1-score</h3></div>'
         '<div class="churn-chart-plot">'
         '<div class="churn-chart-axis-y">' +
         "".join(f'<span>{(ceiling * tick / 4):.1f}</span>'.replace(".", ",") for tick in range(4, -1, -1)) +
@@ -876,7 +867,6 @@ def _render_client_panel() -> bool:
             st.number_input(LABELS["MonthlyCharges"], min_value=0.0, step=1.0,
                             format="%.2f", key="field_MonthlyCharges",
                             on_change=_remember_field, args=("MonthlyCharges",))
-        st.markdown('<div class="churn-subheading">Outras características</div>', unsafe_allow_html=True)
         _render_client_details()
     with st.container(key="dashboard-client-footer", border=False):
         clicked = st.button("Calcular previsão", type="primary", use_container_width=True,
@@ -957,11 +947,6 @@ def main() -> None:
         st.session_state["customer_values"] = profile
 
     with st.container(key="dashboard-shell", border=False):
-        st.markdown(
-            '<header class="churn-topbar"><h1>Previsão de cancelamento</h1>'
-            '<span class="churn-top-meta">Projeto N3 · Seleção genética de características</span></header>',
-            unsafe_allow_html=True,
-        )
         client_col, workspace_col = st.columns([0.30, 0.70], gap="small", wrap=True)
         with client_col:
             with st.container(key="dashboard-client", border=True):

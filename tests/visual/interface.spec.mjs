@@ -55,6 +55,7 @@ async function geometry(page, stage, testInfo) {
       monitor: bounds('.st-key-dashboard-desktop-detail .churn-console'),
       consoleMarkdown: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-console)'),
       monitorTitle: bounds('.st-key-dashboard-desktop-detail .churn-monitor-title'),
+      monitorProgress: bounds('.st-key-dashboard-desktop-detail [data-testid="stProgress"]'),
       logDownload: bounds('.st-key-dashboard-desktop-detail [data-testid="stDownloadButton"] button'),
       selection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-selection-section'),
       monitorSection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-monitor-section'),
@@ -68,6 +69,7 @@ async function geometry(page, stage, testInfo) {
   });
   expect(layout.row, `${stage}: grade principal ausente`).toBeTruthy();
   expect(layout.row.position, `${stage}: grade deve ficar ancorada à viewport`).toBe('fixed');
+  expect(layout.row.y, `${stage}: espaço vazio acima da grade`).toBeLessThanOrEqual(16);
   expect(layout.row.bottom, `${stage}: grade extrapola a altura da janela`)
     .toBeLessThanOrEqual(layout.height - 4);
   expect(layout.client, `${stage}: Cliente ausente`).toBeTruthy();
@@ -130,6 +132,9 @@ async function geometry(page, stage, testInfo) {
       .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
     expect(layout.monitorTitle.bottom, `${stage}: título do monitor sobrepõe console`)
       .toBeLessThanOrEqual(layout.monitor.y + 2);
+    expect(layout.monitorProgress, `${stage}: progresso do monitor ausente`).toBeTruthy();
+    expect(layout.monitorTitle.bottom + 2, `${stage}: título e progresso sobrepostos`)
+      .toBeLessThanOrEqual(layout.monitorProgress.y);
     expect(layout.monitorSection.scrollHeight, `${stage}: monitor excede sua seção`)
       .toBeLessThanOrEqual(layout.monitorSection.clientHeight + 2);
     expect(layout.technical.bottom, `${stage}: métricas saem da seleção`)
@@ -195,7 +200,9 @@ for (const { width, height } of viewports) {
     try {
       await test.step('Abertura e hierarquia do dashboard', async () => {
         await page.goto('/', { waitUntil: 'domcontentloaded' });
-        await expect(page.getByRole('heading', { name: 'Previsão de cancelamento' })).toBeVisible();
+        await expect(page.locator('.churn-topbar')).toHaveCount(0);
+        await expect(page.locator('.churn-chart-descriptor')).toHaveCount(0);
+        await expect(page.getByRole('combobox', { name: 'Características', exact: true })).toHaveCount(1);
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Análise e execução' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
@@ -278,7 +285,7 @@ test('1024x768 — telefonia mantém dados das abas anteriores', async ({ browse
   try {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
-    await page.getByRole('combobox', { name: 'Editar características' }).click();
+    await page.getByRole('combobox', { name: 'Características' }).click();
     await page.getByRole('option', { name: 'Telefonia', exact: true }).click();
     await page.getByRole('combobox', { name: 'Serviço de telefone' }).click();
     await page.getByRole('option', { name: 'Não', exact: true }).click();
