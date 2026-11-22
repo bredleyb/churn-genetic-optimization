@@ -157,6 +157,11 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "st-key-dashboard-tenure-control" in style
     assert "churn-tenure-label" in style
     assert "font-weight:400;margin:0 0 8px" in style
+    assert '[data-testid="stTextInputRootElement"]' in style
+    assert '[data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(n+2)' in style
+    assert 'background:var(--n3-control)!important;' in style
+    assert 'background:var(--n3-surface)!important;color:var(--n3-text)!important;' in style
+    assert 'box-shadow:none!important;outline:0!important;' in style
     assert "height:42px!important;min-height:42px!important;" in style
     assert "background:var(--n3-control)!important;" in style
     assert "border:1px solid var(--n3-outline)!important;border-radius:4px!important;" in style

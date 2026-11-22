@@ -564,7 +564,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   min-width:0!important;padding-top:8px!important;
 }
 
-/* Campo de tempo: mesma superfície e ritmo de rótulo do controle numérico nativo. */
+/* Campo de tempo: superfície única, área de ajuste escura como a seta dos seletores. */
 .st-key-dashboard-tenure-control {min-width:0!important;}
 .churn-tenure-label {
   color:var(--n3-secondary);font-size:15px;line-height:1.35;
@@ -580,34 +580,44 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-tenure-control [data-testid="stColumn"] {
   min-width:0!important;min-height:0!important;height:100%!important;
 }
+/* As duas colunas de ajuste compõem a mesma faixa escura. */
+.st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(n+2) {
+  background:var(--n3-surface)!important;
+}
 .st-key-dashboard-tenure-control [data-testid="stTextInput"],
 .st-key-dashboard-tenure-control [data-testid="stButton"] {
   height:100%!important;min-height:0!important;
 }
-.st-key-dashboard-tenure-control [data-testid="stTextInput"] div[data-baseweb="input"] {
-  min-width:0!important;height:100%!important;overflow:hidden!important;
-  background:transparent!important;border:0!important;border-radius:0!important;
-  box-shadow:none!important;
+/* Remover borda e sombra de TODAS as camadas do text_input, inclusive a raiz do Streamlit. */
+.st-key-dashboard-tenure-control [data-testid="stTextInputRootElement"],
+.st-key-dashboard-tenure-control [data-testid="stTextInput"] [data-baseweb="input"],
+.st-key-dashboard-tenure-control [data-testid="stTextInput"] [data-baseweb="base-input"] {
+  box-sizing:border-box!important;min-width:0!important;height:100%!important;
+  overflow:hidden!important;background:var(--n3-control)!important;
+  border:0!important;border-radius:0!important;
+  box-shadow:none!important;outline:0!important;
 }
 .st-key-dashboard-tenure-control [data-testid="stTextInput"] input {
   box-sizing:border-box!important;width:100%!important;min-width:0!important;
   height:40px!important;min-height:40px!important;padding:0 8px!important;
   font-size:15px!important;font-variant-numeric:tabular-nums!important;
-  background:transparent!important;border:0!important;border-radius:0!important;
-  box-shadow:none!important;
+  background:var(--n3-control)!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;outline:0!important;
 }
 .st-key-dashboard-tenure-control [data-testid="stButton"] button {
   box-sizing:border-box!important;width:100%!important;min-width:0!important;
   height:40px!important;min-height:40px!important;padding:0!important;
   display:flex!important;align-items:center!important;justify-content:center!important;
-  background:transparent!important;color:var(--n3-text)!important;
+  background:var(--n3-surface)!important;color:var(--n3-text)!important;
   border:0!important;border-radius:0!important;
+  box-shadow:none!important;
   font-size:18px!important;font-weight:500!important;
 }
 .st-key-dashboard-tenure-control [data-testid="stButton"] button:hover {
   background:var(--n3-elevated)!important;
 }
 /* O nome completo continua acessível, com ícones visuais centralizados. */
+
 .st-key-dashboard-tenure-control [data-testid="stButton"] button p {
   position:absolute!important;width:1px!important;height:1px!important;
   overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;

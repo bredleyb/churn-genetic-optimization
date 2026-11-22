@@ -306,6 +306,30 @@ for (const { width, height } of viewports) {
           .toBeLessThanOrEqual(3);
         expect(Math.abs(minusBox.x + minusBox.width - plusBox.x), 'Separação entre botões')
           .toBeLessThanOrEqual(3);
+        const tenureAppearance = await page.locator('.st-key-dashboard-tenure-control').evaluate(root => {
+          const input = root.querySelector('[data-testid="stTextInput"] input');
+          const buttons = [...root.querySelectorAll('[data-testid="stButton"] button')];
+          const layers = [...root.querySelectorAll(
+            '[data-testid="stTextInputRootElement"], [data-baseweb="input"], [data-baseweb="base-input"]'
+          )];
+          return {
+            inputBackground: getComputedStyle(input).backgroundColor,
+            buttonBackgrounds: buttons.map(button => getComputedStyle(button).backgroundColor),
+            innerBorders: layers.map(layer => getComputedStyle(layer).borderTopWidth),
+            innerShadows: layers.map(layer => getComputedStyle(layer).boxShadow),
+            layersFound: layers.length,
+          };
+        });
+        expect(tenureAppearance.inputBackground, 'Texto deve usar o fundo do campo')
+          .toBe('rgb(23, 24, 27)');
+        expect(tenureAppearance.buttonBackgrounds, 'Os dois botões devem ter uma faixa escura contínua')
+          .toEqual(['rgb(14, 16, 19)', 'rgb(14, 16, 19)']);
+        expect(tenureAppearance.layersFound, 'Camadas internas do input não encontradas')
+          .toBeGreaterThan(0);
+        expect(tenureAppearance.innerBorders, 'Input não pode criar contorno próprio')
+          .toEqual(Array(tenureAppearance.layersFound).fill('0px'));
+        expect(tenureAppearance.innerShadows, 'Input não pode criar sombra de contorno')
+          .toEqual(Array(tenureAppearance.layersFound).fill('none'));
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
