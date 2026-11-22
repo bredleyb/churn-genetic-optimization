@@ -345,6 +345,25 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .st-key-dashboard-selection-section .churn-section-top {
     gap:6px!important;margin-bottom:5px!important;
   }
+  /* O último passo da execução acrescenta um botão de download ao monitor.
+     No projetor, o botão compartilha a linha do título e a fase textual
+     redundante é omitida (a geração continua no indicador de progresso). */
+  .st-key-dashboard-monitor-section {
+    position:relative!important;overflow:hidden!important;
+  }
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-phase) {
+    display:none!important;
+  }
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stDownloadButton"]) {
+    position:absolute!important;top:0!important;right:0!important;
+    width:auto!important;max-width:50%!important;z-index:1!important;
+  }
+  .st-key-dashboard-monitor-section .churn-monitor-title {
+    padding-right:118px!important;
+  }
+  .st-key-dashboard-monitor-section [data-testid="stDownloadButton"] button {
+    min-height:26px!important;font-size:12px!important;padding:0 2px!important;
+  }
 }
 </style>
 """,

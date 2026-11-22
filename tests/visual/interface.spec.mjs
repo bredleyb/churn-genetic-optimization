@@ -47,6 +47,8 @@ async function geometry(page, stage, testInfo) {
       technical: bounds('.st-key-dashboard-desktop-detail .churn-technical'),
       chromosome: bounds('.st-key-dashboard-desktop-detail .churn-chromosome'),
       monitor: bounds('.st-key-dashboard-desktop-detail .churn-console'),
+      monitorTitle: bounds('.st-key-dashboard-desktop-detail .churn-monitor-title'),
+      logDownload: bounds('.st-key-dashboard-desktop-detail [data-testid="stDownloadButton"] button'),
       selection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-selection-section'),
       monitorSection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-monitor-section'),
       analysisSection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-analysis-section'),
@@ -108,6 +110,19 @@ async function geometry(page, stage, testInfo) {
       .toBeLessThanOrEqual(layout.selection.y + 2);
     expect(layout.monitor.bottom, `${stage}: console fica oculto ou cortado`)
       .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
+    if (stage === 'Concluído' || stage === 'Editado') {
+      expect(layout.logDownload, `${stage}: download do log ausente`).toBeTruthy();
+      expect(layout.logDownload.y, `${stage}: download do log acima do monitor`)
+        .toBeGreaterThanOrEqual(layout.monitorSection.y - 2);
+      expect(layout.logDownload.bottom, `${stage}: download do log cortado`)
+        .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
+      expect(layout.logDownload.right, `${stage}: download do log excede o monitor`)
+        .toBeLessThanOrEqual(layout.monitorSection.right + 2);
+      if (layout.width >= 1000 && layout.height <= 760) {
+        expect(layout.monitorSection.scrollHeight, `${stage}: conteúdo do monitor excede a altura disponível`)
+          .toBeLessThanOrEqual(layout.monitorSection.clientHeight + 2);
+      }
+    }
     if (layout.width >= 1000 && layout.height <= 760) {
       expect(Math.abs(layout.selection.y - layout.monitorSection.y),
         `${stage}: seleção e monitor devem compartilhar a faixa inferior`).toBeLessThanOrEqual(2);
