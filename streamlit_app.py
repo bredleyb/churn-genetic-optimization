@@ -310,7 +310,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
    seleção à esquerda e console à direita, ambos com altura própria. */
 @media (min-width:1000px) and (max-height:760px) {
   .st-key-dashboard-desktop-detail {
-    grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)!important;
+    grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr)!important;
     grid-template-rows:minmax(0,1fr) minmax(150px,23dvh)!important;
     gap:8px 12px!important;
   }
@@ -319,15 +319,31 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   }
   .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-selection-section) {
     grid-column:1!important;grid-row:2!important;
+    height:100%!important;max-height:100%!important;
+    min-height:0!important;overflow:hidden!important;
   }
   .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {
     grid-column:2!important;grid-row:2!important;
   }
+  /* Características e F1 compartilham a largura da faixa inferior.
+     O conteúdo não deve impor uma altura maior que a linha disponível. */
   .st-key-dashboard-selection-section {
-    height:100%!important;max-height:100%!important;
+    box-sizing:border-box!important;
+    width:100%!important;height:100%!important;max-height:100%!important;
     min-height:0!important;display:grid!important;
-    grid-template-columns:minmax(0,1fr)!important;
-    gap:6px!important;overflow-y:auto!important;overflow-x:hidden!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:12px!important;overflow:hidden!important;
+  }
+  .st-key-dashboard-selection-section > [data-testid="stElementContainer"] {
+    min-width:0!important;min-height:0!important;max-height:100%!important;
+    overflow:hidden!important;
+  }
+  .st-key-dashboard-selection-section .churn-bits {
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
+  }
+  .st-key-dashboard-selection-section .churn-section-top {
+    gap:6px!important;margin-bottom:5px!important;
   }
 }
 </style>

@@ -20,6 +20,8 @@ async function geometry(page, stage, testInfo) {
       return {
         x: box.x, y: box.y, right: box.right, bottom: box.bottom,
         width: box.width, height: box.height, overflowY: css.overflowY, position: css.position, display: css.display,
+        scrollHeight: element.scrollHeight, clientHeight: element.clientHeight,
+        scrollWidth: element.scrollWidth, clientWidth: element.clientWidth,
       };
     };
     const root = document.scrollingElement || document.documentElement;
@@ -43,6 +45,7 @@ async function geometry(page, stage, testInfo) {
       tabs: bounds('.st-key-dashboard-mobile-detail'),
       chart: bounds('.st-key-dashboard-desktop-detail .churn-chart'),
       technical: bounds('.st-key-dashboard-desktop-detail .churn-technical'),
+      chromosome: bounds('.st-key-dashboard-desktop-detail .churn-chromosome'),
       monitor: bounds('.st-key-dashboard-desktop-detail .churn-console'),
       selection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-selection-section'),
       monitorSection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-monitor-section'),
@@ -110,6 +113,17 @@ async function geometry(page, stage, testInfo) {
         `${stage}: seleção e monitor devem compartilhar a faixa inferior`).toBeLessThanOrEqual(2);
       expect(layout.chart.height, `${stage}: gráfico sem altura suficiente para projeção`)
         .toBeGreaterThanOrEqual(130);
+      expect(layout.chromosome, `${stage}: cromossomo ausente`).toBeTruthy();
+      expect(layout.chromosome.right, `${stage}: cromossomo sobrepõe métricas`)
+        .toBeLessThanOrEqual(layout.technical.x + 2);
+      for (const name of ['chromosome', 'technical']) {
+        expect(layout[name].bottom, `${stage}: ${name} sai da seção de seleção`)
+          .toBeLessThanOrEqual(layout.selection.bottom + 2);
+        expect(layout[name].right, `${stage}: ${name} sai horizontalmente da seleção`)
+          .toBeLessThanOrEqual(layout.selection.right + 2);
+      }
+      expect(layout.selection.scrollHeight, `${stage}: seleção técnica exige rolagem`)
+        .toBeLessThanOrEqual(layout.selection.clientHeight + 2);
     } else {
       expect(layout.selection.bottom, `${stage}: seleção sobrepõe o monitor`)
         .toBeLessThanOrEqual(layout.monitorSection.y + 2);
