@@ -2,8 +2,9 @@
   "name": "churn-genetic-optimization-visual-tests",
   "private": true,
   "scripts": {
-    "test:visual": "playwright test",
-    "test:visual:update": "playwright test --update-snapshots",
+    "test:visual": "node scripts/run_visual_tests.mjs",
+    "test:visual:update": "node scripts/run_visual_tests.mjs --update-snapshots",
+    "test:visual:package": "python scripts/package_visual_results.py",
     "test:visual:report": "playwright show-report results/playwright-report"
   },
   "devDependencies": {

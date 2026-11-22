@@ -236,21 +236,46 @@ npm run test:visual
 npm run test:visual:report
 ```
 
-O primeiro comando `test:visual:update` cria automaticamente os **screenshots
-de referência**, que devem ser conferidos e preservados para comparações futuras.
-O `test:visual` compara novas capturas com essas referências, informando falhas e
-produzindo imagens de diferença. As capturas temporárias, o relatório HTML e os
-rastros de erros ficam em `results/`, fora do Git. O screenshot de **execução em
-andamento** é anexado ao relatório, mas não é comparado pixel a pixel porque seu
-conteúdo depende do instante da captura. Os demais estados possuem comparação
-visual automática. Para conferir só uma largura use, por exemplo,
-`npm run test:visual -- --grep 390px`.
+O comando `test:visual:update` cria automaticamente os **screenshots de
+referência**, que devem ser conferidos antes das comparações futuras.
+O comando `test:visual` compara a interface com essas referências e informa
+falhas visuais ou funcionais.
+
+**Ao finalizar qualquer um desses dois comandos, o sistema gera automaticamente:**
+
+```text
+results/testes-visuais-para-revisao.zip
+```
+
+**Envie esse ZIP no ChatGPT para revisão.** Ele reúne screenshots, referências,
+diferenças de imagens, relatório HTML, resultados estruturados JSON, logs do
+terminal, traces e vídeos quando produzidos pelo Playwright. Um manifesto
+informa quais testes passaram e quais falharam. **O ZIP também é criado quando
+os testes falham**, para permitir diagnosticar os erros a partir de um único
+anexo. O comando do teste continua retornando erro ao terminal caso haja falhas.
+
+Para gerar novamente o ZIP a partir de resultados já disponíveis, sem repetir
+a busca genética, execute:
+
+```powershell
+npm run test:visual:package
+```
+
+O script compacta exclusivamente os artefatos do Playwright e os arquivos
+de configuração necessários à auditoria. **O CSV bruto, os modelos `.joblib`
+e os demais arquivos locais do experimento não entram no pacote.**
+Os screenshots de referência podem ser versionados após revisão; relatórios
+e o ZIP permanecem ignorados pelo Git.
+
+O screenshot de **execução em andamento** é anexado ao relatório, porém não
+é comparado pixel a pixel porque seu conteúdo depende do instante da captura.
+Os demais estados possuem comparação visual automática. Para conferir só uma
+largura use, por exemplo, `npm run test:visual -- --grep 390px`.
 
 As comparações dependem de navegador, sistema operacional e fontes. Gere as
-referências inicialmente no mesmo Windows que será usado para repetir os testes;
-recrie-as quando a mudança visual for deliberada. Os screenshots de referência
-podem ser versionados após revisão. Para testes Python, continue usando
-`python -m pytest -q`.
+referências inicialmente no mesmo Windows que será usado para repetir os
+testes; recrie-as quando a mudança visual for deliberada. Para testes Python,
+continue usando `python -m pytest -q`.
 
 ## Artigo
 
