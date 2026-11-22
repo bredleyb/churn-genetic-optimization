@@ -401,6 +401,14 @@ for (const { width, height } of viewports) {
 
       await test.step('Comparação, gráfico e métricas da execução completa', async () => {
         await expect(page.locator('.churn-workspace-heading[data-run-state="complete"]')).toBeVisible({ timeout: 180_000 });
+        const runMarkAlignment = await page.locator('.churn-workspace-heading').evaluate(header => {
+          const icon = header.querySelector('.churn-run-icon');
+          const a = header.getBoundingClientRect();
+          const b = icon?.getBoundingClientRect();
+          return b ? Math.abs(a.y + a.height / 2 - b.y - b.height / 2) : null;
+        });
+        expect(runMarkAlignment, 'Indicador final não está alinhado ao título').not.toBeNull();
+        expect(runMarkAlignment).toBeLessThanOrEqual(2);
         await expect(page.getByRole('status', { name: 'Previsão concluída' })).toBeVisible();
         const checkStyle = await page.locator('.churn-run-check').first().evaluate(el => ({
           radius: getComputedStyle(el).borderRadius,

@@ -158,7 +158,7 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "color:var(--n3-outline)!important" in style
     assert "text-align:center!important" in style
     assert "content:\"\";flex:1 1 0" in style
-    assert "right:0;top:50%;transform:translateY(-50%)" in style
+    assert "position:absolute;right:0;top:0" in style
     assert "padding:12px 16px 14px!important" in style
     assert "padding:8px 10px 10px!important" in style
     assert "churn-run-spinner" in style
