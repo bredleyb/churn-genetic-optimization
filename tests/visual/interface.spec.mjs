@@ -28,6 +28,10 @@ async function checkDashboardGeometry(page, stage, width, testInfo) {
       mobileRow: rect('[data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)'),
       clientColumn: rect('[data-testid="stColumn"]:has(.st-key-dashboard-client)'),
       workspaceColumn: rect('[data-testid="stColumn"]:has(.st-key-dashboard-workspace)'),
+      clientBlock: rect('[data-testid="stColumn"]:has(.st-key-dashboard-client) > [data-testid="stVerticalBlock"]'),
+      clientWrapper: rect('[data-testid="stColumn"]:has(.st-key-dashboard-client) > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]'),
+      workspaceBlock: rect('[data-testid="stColumn"]:has(.st-key-dashboard-workspace) > [data-testid="stVerticalBlock"]'),
+      workspaceWrapper: rect('[data-testid="stColumn"]:has(.st-key-dashboard-workspace) > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]'),
       mobileRowStyles: (() => {
         const el = document.querySelector('[data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)');
         if (!el) return null;
@@ -47,6 +51,18 @@ async function checkDashboardGeometry(page, stage, width, testInfo) {
     expect(layout.mobileRowStyles.display, `${stage}: linha móvel precisa usar grid`).toBe('grid');
     expect(layout.mobileRowStyles.position, `${stage}: linha móvel deve ficar vinculada ao viewport`).toBe('fixed');
     expect(layout.mobileRow.bottom, `${stage}: grade principal ultrapassa a tela`).toBeLessThanOrEqual(layout.height + 2);
+    // Trace real de 390px: stColumn > stVerticalBlock > stLayoutWrapper > painel.
+    // Os wrappers precisam caber na coluna; height:auto neles expandia o cartão até 1016px.
+    for (const [innerName, columnName] of [
+      ['clientBlock', 'clientColumn'], ['clientWrapper', 'clientColumn'],
+      ['workspaceBlock', 'workspaceColumn'], ['workspaceWrapper', 'workspaceColumn'],
+    ]) {
+      expect(layout[innerName], `${stage}: ${innerName} do Streamlit ausente`).toBeTruthy();
+      expect(layout[innerName].bottom, `${stage}: ${innerName} expande sua coluna`).toBeLessThanOrEqual(layout[columnName].bottom + 2);
+      expect(layout[innerName].height, `${stage}: ${innerName} é maior que a coluna`).toBeLessThanOrEqual(layout[columnName].height + 2);
+    }
+    expect(layout.client.height, `${stage}: cartão Cliente ultrapassa a coluna`).toBeLessThanOrEqual(layout.clientColumn.height + 2);
+    expect(layout.workspace.height, `${stage}: cartão Execução ultrapassa a coluna`).toBeLessThanOrEqual(layout.workspaceColumn.height + 2);
   }
   expect(layout.client, `${stage}: painel Cliente ausente`).toBeTruthy();
   expect(layout.workspace, `${stage}: painel Execução ausente`).toBeTruthy();
@@ -68,6 +84,7 @@ async function checkDashboardGeometry(page, stage, width, testInfo) {
     expect(layout[name].bottom, `${stage}: ${name} fora do painel Cliente`).toBeLessThanOrEqual(layout.client.bottom + 2);
   }
   expect(layout.clientFields.overflowY, `${stage}: campos sem rolagem interna`).toMatch(/auto|scroll/);
+  expect(layout.clientFields.bottom, `${stage}: os campos encobrem o botão Calcular previsão`).toBeLessThanOrEqual(layout.clientFooter.y + 2);
   if (width <= 620) {
     expect(layout.client.bottom, `${stage}: painéis móveis sobrepostos`).toBeLessThanOrEqual(layout.workspace.y + 2);
   }

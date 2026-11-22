@@ -166,7 +166,52 @@ html, body, #root {overflow: hidden !important; background: #0B111B !important;}
     max-height: 100% !important;
     min-height: 0 !important;
   }
-  .st-key-dashboard-client-fields {height:calc(43dvh - 162px)!important;}
+  /* Hierarquia real observada no trace do Playwright:
+     stColumn > stVerticalBlock > stLayoutWrapper > dashboard-client/workspace.
+     Os dois wrappers intermediários são auto-height no Streamlit; sem restrição,
+     o painel Cliente cresce além da linha de 354px mesmo com a grade em 832px. */
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"] {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  /* O cliente precisa de uma área flexível de campos e rodapé sempre visível. */
+  .st-key-dashboard-client {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    align-content: stretch !important;
+  }
+  .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+  .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+  .st-key-dashboard-client-fields {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+  .st-key-dashboard-client-footer {height:auto!important;}
   .churn-kpis {grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
   .churn-kpi {padding:7px 5px;}
   .churn-kpi-label {font-size:9px;}

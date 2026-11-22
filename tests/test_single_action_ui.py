@@ -122,6 +122,12 @@ def test_css_is_dark_and_scoped_to_viewport(monkeypatch):
     assert 'grid-template-rows: minmax(0, 43fr) minmax(0, 57fr)' in style
     assert 'position: fixed !important' in style
     assert 'bottom: 8px !important' in style
+    # A hierarquia real obtida pelo trace contém dois wrappers automáticos
+    # entre a coluna e o painel. O CSS precisa limitar ambos.
+    assert '> [data-testid="stColumn"] > [data-testid="stVerticalBlock"]' in style
+    assert '> [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]' in style
+    assert 'grid-template-rows: auto minmax(0, 1fr) auto' in style
+    assert '.st-key-dashboard-client-fields {\n    height: 100% !important;' in style
 
 
 def test_result_is_invalidated_after_customer_changes(monkeypatch):
