@@ -43,7 +43,6 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&display=swap");
 /* N3 — sistema monocromático para leitura em projetor.
    Contraste deliberado, sem cartões decorativos, sombras ou gradientes. */
 :root {

@@ -121,7 +121,8 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "100dvh" in style
     assert "overflow:hidden" in style
     assert "--n3-bg:#000000" in style
-    assert "family=Familjen+Grotesk" in style
+    assert '@import url("https://fonts.googleapis.com' not in style
+    assert "family=Familjen+Grotesk" in (ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8")
     assert '--n3-font-ui:"Familjen Grotesk","Segoe UI",Arial,sans-serif' in style
     assert ".stApp [data-testid=\"stWidgetLabel\"]" in style
     assert ".stApp .churn-console-lines" in style
@@ -314,3 +315,15 @@ def test_internet_service_callback_keeps_hidden_fields(monkeypatch):
     app._on_service_change("InternetService")
     assert all(app._form_data()[name] == "No" for name in app.INTERNET_FEATURES)
     assert app._current_customer() is not None
+
+
+def test_streamlit_theme_declares_familjen_font():
+    """A fonte é configurada também nos controles nativos do Streamlit."""
+    import tomllib
+
+    config_path = ROOT / ".streamlit" / "config.toml"
+    config = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    font = config["theme"]["font"]
+    assert font.startswith("'Familjen Grotesk':https://fonts.googleapis.com/css2?")
+    assert "family=Familjen+Grotesk" in font
+    assert font.endswith(", sans-serif")

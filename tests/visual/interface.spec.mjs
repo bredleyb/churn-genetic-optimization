@@ -200,13 +200,28 @@ for (const { width, height } of viewports) {
     try {
       await test.step('Abertura e hierarquia do dashboard', async () => {
         await page.goto('/', { waitUntil: 'domcontentloaded' });
-        // A fonte remota pode chegar depois da primeira renderização do Streamlit.
-        // Aguardar a resolução evita referências geradas com fontes diferentes.
-        await page.evaluate(() => document.fonts.ready);
-        const fontFamily = await page.locator('.stApp')
-          .evaluate(el => getComputedStyle(el).fontFamily);
-        expect(fontFamily, 'A interface deve declarar Familjen Grotesk')
+        // No início o Streamlit exibe um esqueleto com Source Sans.
+        // Aguardar a primeira renderização antes de ler o estilo calculado.
+        await expect(page.getByRole('heading', { name: 'Cliente', exact: true }))
+          .toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole('button', { name: 'Calcular previsão' }))
+          .toBeVisible();
+        // Esperar efetivamente a fonte customizada carregar. Apenas verificar
+        // fontFamily permitiria uma aprovação mesmo com fallback ativo.
+        await page.evaluate(async () => {
+          await document.fonts.load('400 16px "Familjen Grotesk"');
+          await document.fonts.ready;
+        });
+        const fontState = await page.locator('.stApp').evaluate(el => ({
+          family: getComputedStyle(el).fontFamily,
+          loaded: [...document.fonts].some(face =>
+            face.family.replace(/["']/g, '').trim() === 'Familjen Grotesk' &&
+            face.status === 'loaded'),
+        }));
+        expect(fontState.family, 'A interface deve declarar Familjen Grotesk')
           .toContain('Familjen Grotesk');
+        expect(fontState.loaded, 'O navegador deve carregar Familjen Grotesk, sem fallback')
+          .toBe(true);
         await expect(page.locator('.churn-topbar')).toHaveCount(0);
         await expect(page.locator('.churn-chart-descriptor')).toHaveCount(0);
         await expect(page.getByRole('combobox', { name: 'Características', exact: true })).toHaveCount(1);
