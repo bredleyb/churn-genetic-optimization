@@ -55,7 +55,8 @@ st.markdown(
   --n3-text:#F5F5F5; --n3-secondary:#D8D8D8; --n3-muted:#B7B7B7;
   --n3-positive:#5FE29A; --n3-negative:#FF6464;
   --n3-field-height:42px; --n3-field-radius:4px;
-  --n3-field-text-size:16px; --n3-field-text-line:20px;
+  --n3-field-fill:#0E1013; --n3-field-action-fill:#0E1013;
+  --n3-field-text-size:14px; --n3-field-text-line:20px;
   --n3-page-pad:12px; --n3-panel-pad:12px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
@@ -130,8 +131,10 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   box-sizing:border-box!important;height:var(--n3-field-height)!important;
   min-height:var(--n3-field-height)!important;max-height:var(--n3-field-height)!important;
   display:flex!important;align-items:center!important;
-  background:var(--n3-control)!important;border:1px solid var(--n3-outline)!important;
+  background:var(--n3-field-fill)!important;border:1px solid var(--n3-outline)!important;
   border-radius:var(--n3-field-radius)!important;
+  font-size:var(--n3-field-text-size)!important;
+  line-height:var(--n3-field-text-line)!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] input {
   box-sizing:border-box!important;min-width:0!important;
@@ -141,15 +144,32 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   color:var(--n3-text)!important;font-family:var(--n3-font-ui)!important;
   font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
 }
+/* O input do BaseWeb não pode conservar padding vertical próprio.
+   Todos os seletores compartilham centralização e faixa de ação com os números. */
 .st-key-dashboard-client [data-baseweb="select"] input {
   box-sizing:border-box!important;min-height:0!important;
+  height:calc(var(--n3-field-height) - 2px)!important;
+  padding-top:0!important;padding-bottom:0!important;
   font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
+  vertical-align:middle!important;
+}
+.st-key-dashboard-client [data-baseweb="select"] > div > div:last-child {
+  box-sizing:border-box!important;
+  height:calc(var(--n3-field-height) - 2px)!important;min-width:32px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  background:var(--n3-field-action-fill)!important;
+  border-radius:0 calc(var(--n3-field-radius) - 1px) calc(var(--n3-field-radius) - 1px) 0!important;
+  transition:background-color .12s ease!important;
+}
+.st-key-dashboard-client [data-baseweb="select"] > div > div:last-child:hover,
+.st-key-dashboard-client [data-baseweb="select"] > div > div:last-child:focus-within {
+  background:var(--n3-elevated)!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] button {
   box-sizing:border-box!important;min-width:32px!important;width:32px!important;
   height:calc(var(--n3-field-height) - 2px)!important;min-height:0!important;
   padding:0!important;display:flex!important;align-items:center!important;
-  justify-content:center!important;background:var(--n3-surface)!important;
+  justify-content:center!important;background:var(--n3-field-action-fill)!important;
   border:0!important;border-radius:0!important;color:var(--n3-text)!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] button:hover {
@@ -170,11 +190,21 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   height:var(--n3-field-height)!important;min-height:var(--n3-field-height)!important;
   display:flex!important;justify-content:center!important;align-items:center!important;
   padding:0!important;margin-left:auto!important;
-  color:var(--n3-secondary)!important;background:var(--n3-control)!important;
+  color:var(--n3-secondary)!important;background:var(--n3-field-fill)!important;
   border:1px solid var(--n3-outline)!important;border-radius:var(--n3-field-radius)!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button:hover {
   background:var(--n3-elevated)!important;color:var(--n3-text)!important;
+}
+.st-key-dashboard-restore-action [data-testid="stButton"] button > div {
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;height:100%!important;margin:0!important;padding:0!important;
+}
+.st-key-dashboard-restore-action [data-testid="stButton"] [data-testid="stIconMaterial"] {
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;width:20px!important;height:20px!important;
+  margin:0!important;padding:0!important;line-height:1!important;
+  font-size:20px!important;vertical-align:middle!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button p {
   position:absolute!important;width:1px!important;height:1px!important;

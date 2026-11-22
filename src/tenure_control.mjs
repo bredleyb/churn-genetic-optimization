@@ -28,8 +28,16 @@ export default function({ parentElement, data, setStateValue }) {
   const signal = controller.signal;
   let value = clampMonths(data?.value ?? 0);
   const digitsLength = () => String(value).length;
+  // Em componentes v2, o foco real está no ShadowRoot, e document.activeElement
+  // aponta para o host. Usar a raiz correta antes de reposicionar o cursor.
+  const isFocused = () => input.getRootNode().activeElement === input ||
+    document.activeElement === input;
   const placeCaret = () => {
-    if (document.activeElement === input) input.setSelectionRange(digitsLength(), digitsLength());
+    if (isFocused()) input.setSelectionRange(digitsLength(), digitsLength());
+  };
+  const settleCaret = () => {
+    placeCaret();
+    requestAnimationFrame(placeCaret);
   };
   const render = () => {
     input.value = displayMonths(value);
@@ -64,8 +72,15 @@ export default function({ parentElement, data, setStateValue }) {
     else placeCaret();
   };
   render();
-  input.addEventListener("focus", placeCaret, { signal });
-  input.addEventListener("pointerup", placeCaret, { signal });
+  input.addEventListener("focus", settleCaret, { signal });
+  input.addEventListener("pointerup", settleCaret, { signal });
+  input.addEventListener("click", settleCaret, { signal });
+  input.addEventListener("select", () => {
+    if (!isFocused()) return;
+    const n = digitsLength();
+    if ((input.selectionStart ?? n) > n || (input.selectionEnd ?? n) > n)
+      settleCaret();
+  }, { signal });
   input.addEventListener("keydown", event => {
     const key = event.key;
     if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === "a") {
