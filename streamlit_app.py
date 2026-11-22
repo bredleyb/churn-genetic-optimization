@@ -53,6 +53,8 @@ st.markdown(
   --n3-line:#383A3E; --n3-outline:#55585D;
   --n3-text:#F5F5F5; --n3-secondary:#D8D8D8; --n3-muted:#B7B7B7;
   --n3-positive:#5FE29A; --n3-negative:#FF6464;
+  --n3-field-height:42px; --n3-field-radius:4px;
+  --n3-field-text-size:16px; --n3-field-text-line:20px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
 .stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
@@ -101,15 +103,48 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client-fields {height:100%!important;max-height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
 .st-key-dashboard-client-footer {height:auto!important;padding-top:8px;border-top:1px solid var(--n3-line);}
 .churn-panel-heading {font-size:19px;line-height:1.3;font-weight:600;letter-spacing:-.01em;margin:0!important;color:var(--n3-text);}
-/* Campos: 42px e texto funcional de 16px; sem cantos em pílula. */
+/* Base visual compartilhada por seletores e entradas numéricas nativas. */
+.st-key-dashboard-client [data-testid="stWidgetLabel"] {
+  display:flex!important;align-items:center!important;
+  min-height:20px!important;margin-bottom:6px!important;
+}
 .st-key-dashboard-client [data-testid="stWidgetLabel"] p,
-.st-key-dashboard-client label p {font-size:15px!important;line-height:1.35!important;color:var(--n3-secondary)!important;}
+.st-key-dashboard-client label p {
+  font-size:15px!important;line-height:20px!important;
+  color:var(--n3-secondary)!important;margin:0!important;
+}
 .st-key-dashboard-client [data-testid="stVerticalBlock"] {gap:.65rem;}
 .st-key-dashboard-client-fields [data-testid="stVerticalBlock"] {gap:.62rem;}
-.st-key-dashboard-client div[data-baseweb="select"]>div,
-.st-key-dashboard-client input {min-height:42px!important;font-size:16px!important;color:var(--n3-text)!important;background:var(--n3-control)!important;border-radius:4px!important;}
-.st-key-dashboard-client [data-baseweb="select"]>div,
-.st-key-dashboard-client [data-testid="stNumberInput"]>div>div {background:var(--n3-control)!important;border-color:var(--n3-outline)!important;border-radius:4px!important;}
+.st-key-dashboard-client [data-baseweb="select"] > div,
+.st-key-dashboard-client [data-testid="stNumberInput"] [data-baseweb="input"] {
+  box-sizing:border-box!important;height:var(--n3-field-height)!important;
+  min-height:var(--n3-field-height)!important;max-height:var(--n3-field-height)!important;
+  display:flex!important;align-items:center!important;
+  background:var(--n3-control)!important;border:1px solid var(--n3-outline)!important;
+  border-radius:var(--n3-field-radius)!important;
+}
+.st-key-dashboard-client [data-testid="stNumberInput"] input {
+  box-sizing:border-box!important;min-width:0!important;
+  height:calc(var(--n3-field-height) - 2px)!important;min-height:0!important;
+  padding:0 10px!important;background:transparent!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+  color:var(--n3-text)!important;font-family:var(--n3-font-ui)!important;
+  font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
+}
+.st-key-dashboard-client [data-baseweb="select"] input {
+  box-sizing:border-box!important;min-height:0!important;
+  font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
+}
+.st-key-dashboard-client [data-testid="stNumberInput"] button {
+  box-sizing:border-box!important;min-width:32px!important;width:32px!important;
+  height:calc(var(--n3-field-height) - 2px)!important;min-height:0!important;
+  padding:0!important;display:flex!important;align-items:center!important;
+  justify-content:center!important;background:var(--n3-surface)!important;
+  border:0!important;border-radius:0!important;color:var(--n3-text)!important;
+}
+.st-key-dashboard-client [data-testid="stNumberInput"] button:hover {
+  background:var(--n3-elevated)!important;
+}
 .st-key-dashboard-client-footer [data-testid="stButton"] button[kind="primary"],
 .st-key-dashboard-client-footer button {height:48px!important;min-height:48px!important;background:var(--n3-text)!important;color:#000!important;border:1px solid var(--n3-text)!important;border-radius:4px!important;font-size:16px!important;font-weight:600!important;}
 .st-key-dashboard-client-footer button:hover {background:#D8D8D8!important;border-color:#D8D8D8!important;}
@@ -564,70 +599,8 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   min-width:0!important;padding-top:8px!important;
 }
 
-/* Campo de tempo: superfície única, área de ajuste escura como a seta dos seletores. */
+/* O campo de meses utiliza st.number_input como Cobrança e Total cobrado. */
 .st-key-dashboard-tenure-control {min-width:0!important;}
-.churn-tenure-label {
-  color:var(--n3-secondary);font-size:15px;line-height:1.35;
-  font-weight:400;margin:0 0 8px;
-}
-.st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"] {
-  box-sizing:border-box!important;gap:0!important;align-items:stretch!important;
-  height:42px!important;min-height:42px!important;
-  background:var(--n3-control)!important;
-  border:1px solid var(--n3-outline)!important;border-radius:4px!important;
-  overflow:hidden!important;
-}
-.st-key-dashboard-tenure-control [data-testid="stColumn"] {
-  min-width:0!important;min-height:0!important;height:100%!important;
-}
-/* As duas colunas de ajuste compõem a mesma faixa escura. */
-.st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(n+2) {
-  background:var(--n3-surface)!important;
-}
-.st-key-dashboard-tenure-control [data-testid="stTextInput"],
-.st-key-dashboard-tenure-control [data-testid="stButton"] {
-  height:100%!important;min-height:0!important;
-}
-/* Remover borda e sombra de TODAS as camadas do text_input, inclusive a raiz do Streamlit. */
-.st-key-dashboard-tenure-control [data-testid="stTextInputRootElement"],
-.st-key-dashboard-tenure-control [data-testid="stTextInput"] [data-baseweb="input"],
-.st-key-dashboard-tenure-control [data-testid="stTextInput"] [data-baseweb="base-input"] {
-  box-sizing:border-box!important;min-width:0!important;height:100%!important;
-  overflow:hidden!important;background:var(--n3-control)!important;
-  border:0!important;border-radius:0!important;
-  box-shadow:none!important;outline:0!important;
-}
-.st-key-dashboard-tenure-control [data-testid="stTextInput"] input {
-  box-sizing:border-box!important;width:100%!important;min-width:0!important;
-  height:40px!important;min-height:40px!important;padding:0 8px!important;
-  font-size:15px!important;font-variant-numeric:tabular-nums!important;
-  background:var(--n3-control)!important;border:0!important;border-radius:0!important;
-  box-shadow:none!important;outline:0!important;
-}
-.st-key-dashboard-tenure-control [data-testid="stButton"] button {
-  box-sizing:border-box!important;width:100%!important;min-width:0!important;
-  height:40px!important;min-height:40px!important;padding:0!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  background:var(--n3-surface)!important;color:var(--n3-text)!important;
-  border:0!important;border-radius:0!important;
-  box-shadow:none!important;
-  font-size:18px!important;font-weight:500!important;
-}
-.st-key-dashboard-tenure-control [data-testid="stButton"] button:hover {
-  background:var(--n3-elevated)!important;
-}
-/* O nome completo continua acessível, com ícones visuais centralizados. */
-
-.st-key-dashboard-tenure-control [data-testid="stButton"] button p {
-  position:absolute!important;width:1px!important;height:1px!important;
-  overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;
-}
-.st-key-dashboard-tenure-control [data-testid="stButton"] button [data-testid="stIconMaterial"] {
-  font-size:18px!important;
-}
-.st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"]:focus-within {
-  outline:2px solid var(--n3-text)!important;outline-offset:2px!important;
-}
 @media(max-width:620px) {
   .st-key-dashboard-detail-tabs [role="tab"] {
     font-size:13px!important;padding:7px 8px!important;
@@ -663,54 +636,12 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 )
 
 
-def _format_tenure(value: int) -> str:
-    """Representação textual do tempo, preservando o valor inteiro do modelo."""
-    value = int(value)
-    return f"{value} {'mês' if value == 1 else 'meses'}"
-
-
-def _parse_tenure(text: str) -> int:
-    """Aceita números inteiros com unidade opcional."""
-    import re
-
-    match = re.fullmatch(r"\s*(\d+)\s*(?:mês|meses)?\s*", text, flags=re.IGNORECASE)
-    if not match:
-        raise ValueError("Informe um número inteiro de meses.")
-    value = int(match.group(1))
-    if value > 999:
-        raise ValueError("Informe até 999 meses.")
-    return value
-
-
-def _set_tenure(value: int) -> None:
-    st.session_state["field_tenure"] = value
-    st.session_state["tenure_display"] = _format_tenure(value)
-    st.session_state["tenure_error"] = ""
-    _remember_field("tenure")
-
-
-def _on_tenure_change() -> None:
-    try:
-        value = _parse_tenure(st.session_state["tenure_display"])
-    except ValueError as exc:
-        st.session_state["tenure_error"] = str(exc)
-    else:
-        _set_tenure(value)
-
-
-def _step_tenure(delta: int) -> None:
-    current = int(st.session_state["field_tenure"])
-    _set_tenure(max(0, min(999, current + delta)))
-
-
 def _apply_profile(profile_name: str) -> None:
     example = load_profile(ROOT, profile_name)
     st.session_state["customer_values"] = example.copy()
     for feature in FEATURE_COLUMNS:
         st.session_state[f"field_{feature}"] = example[feature]
     st.session_state["field_total_missing"] = example["total_missing"]
-    st.session_state["tenure_display"] = _format_tenure(example["tenure"])
-    st.session_state["tenure_error"] = ""
     st.session_state["workflow_run"] = None
 
 
@@ -1128,26 +1059,11 @@ def _render_client_panel() -> bool:
             a, b = st.columns([0.62, 0.38], gap="small", wrap=False)
             with a:
                 with st.container(key="dashboard-tenure-control", border=False):
-                    st.markdown('<div class="churn-tenure-label">Tempo como cliente</div>',
-                                unsafe_allow_html=True)
-                    value_col, minus_col, plus_col = st.columns(
-                        [0.64, 0.18, 0.18], gap=None, wrap=False,
+                    st.number_input(
+                        "Tempo como cliente (meses)",
+                        min_value=0, max_value=999, step=1, format="%d",
+                        key="field_tenure", on_change=_remember_field, args=("tenure",),
                     )
-                    with value_col:
-                        st.text_input(
-                            "Tempo como cliente", key="tenure_display",
-                            on_change=_on_tenure_change, label_visibility="collapsed",
-                        )
-                    with minus_col:
-                        st.button("Diminuir um mês", key="tenure_minus",
-                                  icon=":material/remove:", help="Diminuir um mês",
-                                  on_click=_step_tenure, args=(-1,), type="tertiary")
-                    with plus_col:
-                        st.button("Aumentar um mês", key="tenure_plus",
-                                  icon=":material/add:", help="Aumentar um mês",
-                                  on_click=_step_tenure, args=(1,), type="tertiary")
-                    if st.session_state.get("tenure_error"):
-                        st.caption(st.session_state["tenure_error"])
             with b:
                 _select_field("Contract")
             a, b = st.columns([0.55, 0.45], gap="small", wrap=False)
@@ -1161,7 +1077,7 @@ def _render_client_panel() -> bool:
         _render_client_details()
     with st.container(key="dashboard-client-footer", border=False):
         clicked = st.button("Calcular previsão", type="primary", use_container_width=True,
-                            disabled=not DATASET.is_file() or bool(st.session_state.get("tenure_error")))
+                            disabled=not DATASET.is_file())
         if not DATASET.is_file():
             st.caption("CSV não encontrado em data/raw/")
     return clicked
@@ -1237,12 +1153,6 @@ def main() -> None:
         for name in (*FEATURE_COLUMNS, "total_missing"):
             profile[name] = st.session_state.get(f"field_{name}", profile[name])
         st.session_state["customer_values"] = profile
-
-    if "tenure_display" not in st.session_state:
-        st.session_state["tenure_display"] = _format_tenure(
-            st.session_state["customer_values"]["tenure"],
-        )
-    st.session_state.setdefault("tenure_error", "")
 
     with st.container(key="dashboard-shell", border=False):
         client_col, workspace_col = st.columns([0.30, 0.70], gap="small", wrap=True)
