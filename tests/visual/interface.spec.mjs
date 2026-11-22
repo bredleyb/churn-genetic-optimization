@@ -33,6 +33,13 @@ async function geometry(page, stage, testInfo) {
       row: bounds('[data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)'),
       client: bounds('.st-key-dashboard-client'),
       workspace: bounds('.st-key-dashboard-workspace'),
+      clientTitle: bounds('.st-key-dashboard-client .churn-panel-heading'),
+      workspaceTitle: bounds('.st-key-dashboard-workspace .churn-workspace-heading .churn-panel-heading'),
+      tenureInput: bounds('.st-key-dashboard-tenure-control input[aria-label="Tempo como cliente"]'),
+      tenureControl: bounds('.st-key-dashboard-tenure-control'),
+      internetInput: bounds('.st-key-dashboard-quick-fields [aria-label="Serviço de internet"]'),
+      contractInput: bounds('.st-key-dashboard-quick-fields [aria-label="Tipo de contrato"]'),
+      monthlyInput: bounds('.st-key-dashboard-quick-fields [aria-label="Cobrança mensal"]'),
       fields: bounds('.st-key-dashboard-client-fields'),
       footer: bounds('.st-key-dashboard-client-footer'),
       button: bounds('.st-key-dashboard-client-footer button'),
@@ -73,7 +80,13 @@ async function geometry(page, stage, testInfo) {
   expect(layout.row.bottom, `${stage}: grade extrapola a altura da janela`)
     .toBeLessThanOrEqual(layout.height - 4);
   expect(layout.client, `${stage}: Cliente ausente`).toBeTruthy();
-  expect(layout.workspace, `${stage}: Análise ausente`).toBeTruthy();
+  expect(layout.workspace, `${stage}: Previsão ausente`).toBeTruthy();
+  expect(layout.clientTitle, `${stage}: título Cliente ausente`).toBeTruthy();
+  expect(layout.workspaceTitle, `${stage}: título Previsão ausente`).toBeTruthy();
+  expect(layout.clientTitle.y - layout.client.y, `${stage}: título Cliente muito distante do topo`)
+    .toBeLessThanOrEqual(27);
+  expect(layout.workspaceTitle.y - layout.workspace.y, `${stage}: título Previsão muito distante do topo`)
+    .toBeLessThanOrEqual(27);
   expect(layout.scrollHeight, `${stage}: página com rolagem vertical`).toBeLessThanOrEqual(layout.clientHeight + 2);
   expect(layout.scrollWidth, `${stage}: página com rolagem horizontal`).toBeLessThanOrEqual(layout.clientWidth + 2);
   for (const name of ['client', 'workspace']) {
@@ -91,6 +104,18 @@ async function geometry(page, stage, testInfo) {
     expect(layout[name].bottom, `${stage}: ${name} abaixo do Cliente`).toBeLessThanOrEqual(layout.client.bottom + 2);
   }
   expect(layout.fields.overflowY, `${stage}: campos devem ter rolagem própria`).toMatch(/auto|scroll/);
+  expect(layout.tenureInput, `${stage}: campo de meses ausente`).toBeTruthy();
+  expect(layout.tenureInput.width, `${stage}: campo de meses estreito demais`)
+    .toBeGreaterThanOrEqual(85);
+  if (layout.width === 768) {
+    for (const name of ['internetInput', 'contractInput', 'monthlyInput']) {
+      expect(layout[name], `${stage}: campo rápido ausente: ${name}`).toBeTruthy();
+      expect(layout[name].right, `${stage}: ${name} ultrapassa o formulário`)
+        .toBeLessThanOrEqual(layout.fields.right + 2);
+      expect(layout[name].width, `${stage}: ${name} continua comprimido`)
+        .toBeGreaterThanOrEqual(165);
+    }
+  }
   if (layout.width <= 620) {
     expect(layout.client.bottom, `${stage}: painéis móveis sobrepostos`).toBeLessThanOrEqual(layout.workspace.y + 2);
     for (const [wrapper, column] of [
@@ -151,6 +176,15 @@ async function geometry(page, stage, testInfo) {
         .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
       expect(layout.logDownload.right, `${stage}: download do log excede o monitor`)
         .toBeLessThanOrEqual(layout.monitorSection.right + 2);
+      const downloadButton = page.getByRole('button', { name: 'Baixar log', exact: true });
+      await expect(downloadButton).toBeVisible();
+      const downloadStyle = await downloadButton.evaluate(el => ({
+        whiteSpace: getComputedStyle(el).whiteSpace,
+        scrollHeight: el.scrollHeight, clientHeight: el.clientHeight,
+      }));
+      expect(downloadStyle.whiteSpace, `${stage}: texto do download quebra linha`).toBe('nowrap');
+      expect(downloadStyle.scrollHeight, `${stage}: botão de download cortado`)
+        .toBeLessThanOrEqual(downloadStyle.clientHeight + 2);
       if (layout.width >= 1000 && layout.height <= 760) {
         expect(layout.monitorSection.scrollHeight, `${stage}: conteúdo do monitor excede a altura disponível`)
           .toBeLessThanOrEqual(layout.monitorSection.clientHeight + 2);
@@ -228,17 +262,20 @@ for (const { width, height } of viewports) {
         await expect(page.locator('.churn-chart-descriptor')).toHaveCount(0);
         await expect(page.getByRole('combobox', { name: 'Características', exact: true })).toHaveCount(0);
         await expect(page.locator('.st-key-dashboard-detail-tabs [role="tab"]')).toHaveCount(4);
-        for (const name of ['Perfil', 'Conta', 'Serviços', 'Suporte e entretenimento']) {
+        for (const name of ['Perfil', 'Conta', 'Serviços', 'Extras']) {
           await expect(page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name, exact: true }))
             .toHaveCount(1);
         }
         await expect(page.locator('.churn-workspace-heading[data-run-state="idle"]')).toBeVisible();
         await expect(page.locator('.churn-run-icon')).toHaveCount(0);
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
-        await expect(page.getByRole('spinbutton', { name: 'Tempo como cliente' })).toHaveValue('3');
-        const monthSuffix = await page.getByRole('spinbutton', { name: 'Tempo como cliente' })
-          .evaluate(el => getComputedStyle(el.closest('[data-testid="stNumberInput"]'), '::after').content);
-        expect(monthSuffix).toContain('meses');
+        await expect(page.getByRole('textbox', { name: 'Tempo como cliente' })).toHaveValue('3 meses');
+        const tabsBar = page.locator('.st-key-dashboard-detail-tabs [role="tablist"]');
+        const lastTab = page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Extras' });
+        const [tabBounds, listBounds] = await Promise.all([lastTab.boundingBox(), tabsBar.boundingBox()]);
+        expect(tabBounds, 'A última aba deve existir').toBeTruthy();
+        expect(listBounds, 'A navegação de abas deve existir').toBeTruthy();
+        expect(tabBounds.right, 'A última aba fica truncada').toBeLessThanOrEqual(listBounds.right + 2);
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
@@ -277,6 +314,14 @@ for (const { width, height } of viewports) {
       await test.step('Comparação, gráfico e métricas da execução completa', async () => {
         await expect(page.locator('.churn-workspace-heading[data-run-state="complete"]')).toBeVisible({ timeout: 180_000 });
         await expect(page.getByRole('status', { name: 'Previsão concluída' })).toBeVisible();
+        const checkStyle = await page.locator('.churn-run-check').first().evaluate(el => ({
+          radius: getComputedStyle(el).borderRadius,
+          border: getComputedStyle(el).borderWidth,
+          check: getComputedStyle(el, '::before').borderRightWidth,
+        }));
+        expect(checkStyle.border).toBe('2px');
+        expect(checkStyle.check).toBe('2px');
+        expect(parseFloat(checkStyle.radius)).toBeGreaterThan(0);
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
         await expect(page.locator('.churn-prediction-value').first()).toContainText(/\d+,\d{2}%/);
         await expect(page.locator('.churn-prediction-value').last()).toContainText(/\d+,\d{2}%/);
@@ -295,9 +340,10 @@ for (const { width, height } of viewports) {
       });
 
       await test.step('Edição do cliente invalida a previsão, preservando o experimento', async () => {
-        const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
+        const months = page.getByRole('textbox', { name: 'Tempo como cliente' });
         await months.fill('4');
         await months.press('Tab');
+        await expect(months).toHaveValue('4 meses');
         await expect(page.locator('.churn-comparison .churn-state')).toHaveText('Dados alterados');
         await expect(page.locator('.churn-workspace-heading[data-run-state="stale"]')).toBeVisible();
         await expect(page.locator('.churn-run-check')).toHaveCount(0);
@@ -357,20 +403,71 @@ test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }
     await expect(tabs.getByRole('tab')).toHaveCount(4);
     await tabs.getByRole('tab', { name: 'Conta', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Método de pagamento' })).toBeVisible();
-    await tabs.getByRole('tab', { name: 'Suporte e entretenimento', exact: true }).click();
+    await tabs.getByRole('tab', { name: 'Extras', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Streaming de filmes' })).toBeVisible();
     await tabs.getByRole('tab', { name: 'Perfil', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Gênero' })).toBeVisible();
 
-    const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
-    await months.fill('12');
+    const months = page.getByRole('textbox', { name: 'Tempo como cliente' });
+    for (const [typed, expected] of [
+      ['1', '1 mês'], ['9', '9 meses'], ['10', '10 meses'],
+      ['24', '24 meses'], ['120', '120 meses'],
+    ]) {
+      await months.fill(typed);
+      await months.press('Tab');
+      await expect(months).toHaveValue(expected);
+      const sizes = await months.evaluate(el => {
+        const cs = getComputedStyle(el);
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        context.font = cs.font;
+        return {
+          rendered: context.measureText(el.value).width,
+          available: el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+        };
+      });
+      expect(sizes.rendered, `Texto cortado: ${expected}`)
+        .toBeLessThanOrEqual(sizes.available + 1);
+    }
+    await page.getByRole('button', { name: '+', exact: true }).click();
+    await expect(months).toHaveValue('121 meses');
+    await page.getByRole('button', { name: '−', exact: true }).click();
+    await expect(months).toHaveValue('120 meses');
+    await months.fill('abc');
     await months.press('Tab');
-    await expect(months).toHaveValue('12');
-    const pseudo = await months.evaluate(el =>
-      getComputedStyle(el.closest('[data-testid="stNumberInput"]'), '::after').content);
-    expect(pseudo).toContain('meses');
-    await months.press('ArrowUp');
-    await expect(months).toHaveValue('13');
+    await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeDisabled();
+    await expect(page.getByText('Informe um número inteiro de meses.')).toBeVisible();
+    await months.fill('24 meses');
+    await months.press('Tab');
+    await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
+  } finally {
+    await context.close();
+  }
+});
+
+
+test('Fonte permanece disponível sem serviços externos', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1,
+    locale: 'pt-BR', colorScheme: 'dark',
+  });
+  await context.route('https://fonts.googleapis.com/**', route => route.abort());
+  await context.route('https://fonts.gstatic.com/**', route => route.abort());
+  const page = await context.newPage();
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
+    const localFont = await page.request.get('/app/static/FamiljenGrotesk-Variable.ttf');
+    expect(localFont.ok(), 'A fonte local deve ser servida pelo Streamlit').toBe(true);
+    await page.evaluate(async () => {
+      await document.fonts.load('400 16px "Familjen Grotesk"');
+      await document.fonts.ready;
+    });
+    const loaded = await page.evaluate(() => [...document.fonts].some(face =>
+      face.family.replace(/["']/g, '').trim() === 'Familjen Grotesk' &&
+      face.status === 'loaded',
+    ));
+    expect(loaded, 'A fonte deve continuar carregando sem Google Fonts').toBe(true);
   } finally {
     await context.close();
   }

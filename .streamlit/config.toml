@@ -1,3 +1,11 @@
+[server]
+enableStaticServing = true
+
+[[theme.fontFaces]]
+family = "Familjen Grotesk"
+url = "app/static/FamiljenGrotesk-Variable.ttf"
+style = "normal"
+
 [theme]
 base = "dark"
 primaryColor = "#F5F5F5"
@@ -6,9 +14,7 @@ secondaryBackgroundColor = "#0E1013"
 textColor = "#F5F5F5"
 linkColor = "#D8D8D8"
 borderColor = "#55585D"
-# Carregamento nativo da fonte pelos widgets do Streamlit (>= 1.50).
-# A declaração mantém alternativas para indisponibilidade do Google Fonts.
-font = "'Familjen Grotesk':https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&display=swap, sans-serif"
+font = "'Familjen Grotesk', sans-serif"
 
 [browser]
 gatherUsageStats = false

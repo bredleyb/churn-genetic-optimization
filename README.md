@@ -182,11 +182,12 @@ e devem ser carregados apenas quando provenientes do próprio treinamento do pro
 A aplicação organiza a previsão do cliente e os resultados experimentais em um
 **dashboard preto/cinza/branco**, com fontes dimensionadas para projeção em sala,
 contornos neutros e verde/vermelho reservados aos estados semânticos
-**Permanência/Cancelamento**. A interface utiliza Familjen Grotesk nos
-controles e fonte monoespaçada no registro de execução.
+**Permanência/Cancelamento**. A interface utiliza Familjen Grotesk
+distribuída localmente (licença SIL Open Font License 1.1) nos controles
+e fonte monoespaçada no registro de execução.
 
 - **Cliente:** quatro campos principais, perfil de exemplo, abas Perfil, Conta,
-  Serviços e Suporte e entretenimento; botão de cálculo na base do painel;
+  Serviços e Extras; tempo de permanência editável em meses e botão de cálculo na base do painel;
 - **Comparação:** probabilidades individuais da regressão logística de
   referência (19 características) e da versão com seleção genética;
 - **Gráfico:** evolução do melhor F1-score em validação cruzada, linha branca,
@@ -194,7 +195,7 @@ controles e fonte monoespaçada no registro de execução.
 - **Características e teste:** cromossomo de 19 bits, F1 dos dois classificadores
   no conjunto de teste reservado, variação ΔF1 e taxa de redução;
 - **Monitor:** eventos autênticos do algoritmo, gerações e log integral para
-  download. A tela mostra os eventos mais recentes primeiro.
+  download no controle **Baixar log**. A tela mostra os eventos mais recentes primeiro.
 
 O botão **Calcular previsão** executa novamente todo o experimento: divisão
 estratificada, validação cruzada da referência, algoritmo genético com 24

@@ -53,7 +53,8 @@ class DummyUI(ModuleType):
         return nullcontext()
 
     def columns(self, spec, **kwargs):
-        return (nullcontext(), nullcontext())
+        count = spec if isinstance(spec, int) else len(spec)
+        return tuple(nullcontext() for _ in range(count))
 
     def tabs(self, names, **kwargs):
         self.tab_groups.append(list(names))
@@ -66,6 +67,9 @@ class DummyUI(ModuleType):
 
     def segmented_control(self, label, options, *, key, default, **kwargs):
         self.session_state.setdefault(key, default)
+        return self.session_state[key]
+
+    def text_input(self, label, *, key, **kwargs):
         return self.session_state[key]
 
     def number_input(self, label, *, key, **kwargs):
@@ -106,10 +110,10 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
-    assert ui.buttons == ["Restaurar", "Calcular previsão"]
+    assert ui.buttons == ["Restaurar", "−", "+", "Calcular previsão"]
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
-    assert ["Perfil", "Conta", "Serviços", "Suporte e entretenimento"] in ui.tab_groups
+    assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups
     assert not any("churn-topbar" in markup for markup in ui.styled_markup)
     assert not any("Outras características" in markup for markup in ui.styled_markup)
     assert len(executed) == int(clicked)
@@ -128,7 +132,7 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "overflow:hidden" in style
     assert "--n3-bg:#000000" in style
     assert '@import url("https://fonts.googleapis.com' not in style
-    assert "family=Familjen+Grotesk" in (ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8")
+    assert "app/static/FamiljenGrotesk-Variable.ttf" in (ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8")
     assert '--n3-font-ui:"Familjen Grotesk","Segoe UI",Arial,sans-serif' in style
     assert ".stApp [data-testid=\"stWidgetLabel\"]" in style
     assert ".stApp .churn-console-lines" in style
@@ -149,7 +153,10 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "churn-workspace-heading" in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
-    assert "content:\"meses\"" in style
+    assert 'content:"meses"' not in style
+    assert "st-key-dashboard-tenure-control" in style
+    assert "churn-tenure-label" in style
+    assert "border:2px solid var(--n3-text);border-radius:50%" in style
     assert ".st-key-dashboard-detail-tabs [role=\"tab\"]" in style
     assert "Painel técnico desktop: a área do console absorve o espaço restante" in style
     assert "Em desktop, a faixa inferior reúne as características e o monitor" in style
@@ -327,15 +334,18 @@ def test_internet_service_callback_keeps_hidden_fields(monkeypatch):
 
 
 def test_streamlit_theme_declares_familjen_font():
-    """A fonte é configurada também nos controles nativos do Streamlit."""
+    """Fonte oficial e licença ficam disponíveis mesmo sem conexão."""
     import tomllib
 
     config_path = ROOT / ".streamlit" / "config.toml"
     config = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    font = config["theme"]["font"]
-    assert font.startswith("'Familjen Grotesk':https://fonts.googleapis.com/css2?")
-    assert "family=Familjen+Grotesk" in font
-    assert font.endswith(", sans-serif")
+    assert config["server"]["enableStaticServing"] is True
+    face = config["theme"]["fontFaces"][0]
+    assert face["family"] == "Familjen Grotesk"
+    assert face["url"] == "app/static/FamiljenGrotesk-Variable.ttf"
+    assert config["theme"]["font"] == "'Familjen Grotesk', sans-serif"
+    assert (ROOT / "static" / "FamiljenGrotesk-Variable.ttf").stat().st_size > 10000
+    assert "SIL OPEN FONT LICENSE" in (ROOT / "static" / "OFL.txt").read_text(encoding="utf-8")
 
 
 def test_client_tabs_cover_each_extra_feature_once(monkeypatch):
@@ -352,7 +362,7 @@ def test_client_tabs_cover_each_extra_feature_once(monkeypatch):
     assert len(features) == len(set(features)) == 15
     assert set(features).isdisjoint(QUICK_FEATURES)
     assert set(features).union(QUICK_FEATURES) == set(FEATURE_COLUMNS)
-    assert app.DETAIL_TABS["Suporte e entretenimento"] == (
+    assert app.DETAIL_TABS["Extras"] == (
         "TechSupport", "StreamingTV", "StreamingMovies",
     )
 
@@ -408,3 +418,61 @@ def test_idle_comparison_has_no_redundant_heading_or_ready_status(monkeypatch):
     assert "churn-state" not in slot.content
     assert "Referência" in slot.content
     assert "Seleção genética" in slot.content
+
+
+@pytest.mark.parametrize("input_text,number,display", [
+    ("1", 1, "1 mês"),
+    ("9 meses", 9, "9 meses"),
+    ("10", 10, "10 meses"),
+    ("24 meses", 24, "24 meses"),
+    ("120", 120, "120 meses"),
+])
+def test_tenure_text_is_parsed_and_formatted(monkeypatch, input_text, number, display):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_tenure_input_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    ui.session_state["tenure_display"] = input_text
+    app._on_tenure_change()
+    assert ui.session_state["field_tenure"] == number
+    assert ui.session_state["tenure_display"] == display
+    assert ui.session_state["customer_values"]["tenure"] == number
+    assert ui.session_state["tenure_error"] == ""
+
+
+def test_tenure_stepper_adjusts_and_clears_invalid_text(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_tenure_step_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    ui.session_state["tenure_display"] = "invalido"
+    app._on_tenure_change()
+    assert ui.session_state["tenure_error"]
+    assert ui.session_state["customer_values"]["tenure"] == 3
+    app._step_tenure(1)
+    assert ui.session_state["tenure_display"] == "4 meses"
+    assert ui.session_state["field_tenure"] == 4
+    app._step_tenure(-1)
+    assert ui.session_state["tenure_display"] == "3 meses"
+    assert ui.session_state["tenure_error"] == ""
+    ui.session_state["field_tenure"] = 0
+    app._step_tenure(-1)
+    assert ui.session_state["field_tenure"] == 0
+
+
+def test_tenure_input_rejects_invalid_values(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_tenure_invalid_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    for value in ("", "-2", "3.5", "abc", "1000 meses"):
+        ui.session_state["tenure_display"] = value
+        app._on_tenure_change()
+        assert ui.session_state["tenure_error"]
+        assert ui.session_state["customer_values"]["tenure"] == 3
