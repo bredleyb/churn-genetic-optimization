@@ -200,6 +200,13 @@ for (const { width, height } of viewports) {
     try {
       await test.step('Abertura e hierarquia do dashboard', async () => {
         await page.goto('/', { waitUntil: 'domcontentloaded' });
+        // A fonte remota pode chegar depois da primeira renderização do Streamlit.
+        // Aguardar a resolução evita referências geradas com fontes diferentes.
+        await page.evaluate(() => document.fonts.ready);
+        const fontFamily = await page.locator('.stApp')
+          .evaluate(el => getComputedStyle(el).fontFamily);
+        expect(fontFamily, 'A interface deve declarar Familjen Grotesk')
+          .toContain('Familjen Grotesk');
         await expect(page.locator('.churn-topbar')).toHaveCount(0);
         await expect(page.locator('.churn-chart-descriptor')).toHaveCount(0);
         await expect(page.getByRole('combobox', { name: 'Características', exact: true })).toHaveCount(1);
@@ -290,8 +297,11 @@ test('1024x768 — telefonia mantém dados das abas anteriores', async ({ browse
     await page.getByRole('combobox', { name: 'Serviço de telefone' }).click();
     await page.getByRole('option', { name: 'Não', exact: true }).click();
     await expect(page.locator('[data-testid="stException"]')).toHaveCount(0);
-    await expect(page.getByRole('combobox', { name: 'Múltiplas linhas telefônicas' }))
-      .toContainText('Sem serviço telefônico');
+    // O Streamlit renderiza esse selectbox como input desativado: o valor
+    // está na propriedade value, não no conteúdo textual do elemento.
+    const multipleLines = page.getByRole('combobox', { name: 'Múltiplas linhas telefônicas' });
+    await expect(multipleLines).toHaveValue('Sem serviço telefônico');
+    await expect(multipleLines).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
   } finally {
     await context.close();

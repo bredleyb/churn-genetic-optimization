@@ -121,6 +121,10 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "100dvh" in style
     assert "overflow:hidden" in style
     assert "--n3-bg:#000000" in style
+    assert "family=Familjen+Grotesk" in style
+    assert '--n3-font-ui:"Familjen Grotesk","Segoe UI",Arial,sans-serif' in style
+    assert ".stApp [data-testid=\"stWidgetLabel\"]" in style
+    assert ".stApp .churn-console-lines" in style
     assert "top:12px!important;right:18px!important;bottom:10px!important" in style
     assert "top:9px!important;right:10px!important;bottom:8px!important" in style
     assert "top:8px!important;right:8px!important;bottom:8px!important" in style

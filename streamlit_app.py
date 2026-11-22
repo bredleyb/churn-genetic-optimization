@@ -43,10 +43,12 @@ st.set_page_config(
 st.markdown(
     """
 <style>
+@import url("https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&display=swap");
 /* N3 — sistema monocromático para leitura em projetor.
    Contraste deliberado, sem cartões decorativos, sombras ou gradientes. */
 :root {
   color-scheme: dark;
+  --n3-font-ui:"Familjen Grotesk","Segoe UI",Arial,sans-serif;
   --n3-bg:#000000; --n3-surface:#0E1013; --n3-control:#17181B;
   --n3-elevated:#202124; --n3-surface-alt:#282A2D;
   --n3-line:#383A3E; --n3-outline:#55585D;
@@ -57,7 +59,20 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
 [data-testid="stHeader"],[data-testid="stDecoration"],[data-testid="stToolbar"] {display:none!important;}
 [data-testid="stMainBlockContainer"] {box-sizing:border-box!important;padding:12px 18px 10px!important;max-width:none!important;height:100dvh!important;overflow:hidden!important;}
-.stApp {font-family:"Segoe UI Variable","Segoe UI",Arial,sans-serif!important;color:var(--n3-text)!important;}
+.stApp {font-family:var(--n3-font-ui)!important;color:var(--n3-text)!important;}
+/* Os widgets do Streamlit podem definir tipografia própria via Emotion. */
+.stApp :is(button,input,textarea,select,[role="combobox"],[role="tab"],[role="option"]),
+.stApp [data-testid="stWidgetLabel"],
+.stApp [data-testid="stWidgetLabel"] *,
+.stApp [data-testid="stMarkdownContainer"] {
+  font-family:var(--n3-font-ui)!important;
+}
+/* Logs e bits continuam monoespaçados para manter as colunas alinhadas. */
+.stApp .churn-console-lines,
+.stApp .churn-console-lines *,
+.stApp .churn-bit {
+  font-family:Consolas,"Liberation Mono",monospace!important;
+}
 .st-key-dashboard-shell {height:calc(100dvh - 22px);width:100%;max-width:1680px;margin:auto;overflow:hidden;}
 /* A linha externa e seus wrappers são controlados; o Streamlit cria alturas automáticas. */
 .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
