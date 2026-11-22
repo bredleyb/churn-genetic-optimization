@@ -17,6 +17,7 @@ from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
 from src.tenure_control import render_tenure_control
 from src.client_scroll_cues import mount_client_scroll_cues
+from src.example_profiles import MAX_EXAMPLES, append_example, initial_examples, is_original
 from src.ui_data import (
     BILLING_FEATURES,
     INTERNET_FEATURES,
@@ -34,6 +35,7 @@ from src.ui_data import (
 
 ROOT = Path(__file__).resolve().parent
 DATASET = ROOT / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
+QUICK_FIELD_COLUMNS = (0.55, 0.45)
 
 st.set_page_config(
     page_title="Previsão de cancelamento | Projeto N3",
@@ -237,9 +239,78 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client-footer button:focus-visible {outline:2px solid #fff!important;outline-offset:3px!important;}
 .st-key-dashboard-client-fields button[kind="tertiary"],
 .st-key-dashboard-client-fields button {font-size:14px!important;color:var(--n3-secondary)!important;}
-/* Restauro do perfil: ação compacta alinhada ao seletor, com nome acessível. */
+/* Seletor de exemplos: uma única fila de círculos dentro da área de Cliente.
+   Todos os estados seguem os tokens de superfícies e de bordas existentes. */
+.churn-profile-label {
+  display:block;min-height:20px;margin:0 0 6px;padding:0;
+  font-size:15px;line-height:20px;color:var(--n3-secondary);
+  transform:translateY(var(--n3-field-text-shift));
+}
+.st-key-dashboard-profile-picker {min-width:0!important;width:100%!important;}
+.st-key-dashboard-profile-picker [data-testid="stMarkdownContainer"]:has(.churn-profile-label) {
+  margin:0!important;padding:0!important;
+}
+.st-key-dashboard-profile-choices,
 .st-key-dashboard-restore-action {
-  min-width:0!important;margin-top:26px!important;
+  box-sizing:border-box!important;min-width:0!important;width:100%!important;
+  min-height:42px!important;height:42px!important;
+  display:flex!important;align-items:center!important;
+}
+.st-key-dashboard-profile-choices > [data-testid="stVerticalBlock"] {
+  min-width:0!important;width:100%!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {
+  display:flex!important;gap:4px!important;align-items:center!important;
+  justify-content:flex-start!important;flex-wrap:nowrap!important;
+  width:100%!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stColumn"] {
+  flex:0 0 32px!important;min-width:32px!important;max-width:32px!important;
+  width:32px!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stButton"] button {
+  box-sizing:border-box!important;width:32px!important;min-width:32px!important;
+  height:32px!important;min-height:32px!important;max-height:32px!important;
+  padding:0!important;border:1px solid var(--n3-outline)!important;
+  border-radius:50%!important;
+  background:var(--n3-field-fill)!important;color:var(--n3-secondary)!important;
+  font-size:14px!important;font-weight:600!important;line-height:1!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  font-variant-numeric:tabular-nums!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stButton"] button:hover {
+  background:var(--n3-elevated)!important;color:var(--n3-text)!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stButton"] button[kind="primary"] {
+  border-color:var(--n3-text)!important;color:var(--n3-text)!important;
+  background:var(--n3-elevated)!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stButton"] button:focus-visible {
+  outline:2px solid var(--n3-text)!important;outline-offset:2px!important;
+}
+@media(max-width:1150px) {
+  .st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {gap:3px!important;}
+  .st-key-dashboard-profile-choices [data-testid="stColumn"] {
+    flex-basis:28px!important;min-width:28px!important;max-width:28px!important;width:28px!important;
+  }
+  .st-key-dashboard-profile-choices [data-testid="stButton"] button {
+    width:28px!important;min-width:28px!important;height:28px!important;
+    min-height:28px!important;max-height:28px!important;
+  }
+}
+@media(max-width:900px) {
+  .st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {gap:2px!important;}
+  .st-key-dashboard-profile-choices [data-testid="stColumn"] {
+    flex-basis:26px!important;min-width:26px!important;max-width:26px!important;width:26px!important;
+  }
+  .st-key-dashboard-profile-choices [data-testid="stButton"] button {
+    width:26px!important;min-width:26px!important;height:26px!important;
+    min-height:26px!important;max-height:26px!important;
+  }
+}
+/* Restauro: posição fixa à direita; o estado original desativa e escurece a ação. */
+.st-key-dashboard-restore-action {
+  margin-top:0!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button {
   box-sizing:border-box!important;width:42px!important;min-width:42px!important;
@@ -250,8 +321,12 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   color:var(--n3-secondary)!important;background:var(--n3-field-fill)!important;
   border:1px solid var(--n3-outline)!important;border-radius:var(--n3-field-radius)!important;
 }
-.st-key-dashboard-restore-action [data-testid="stButton"] button:hover {
+.st-key-dashboard-restore-action [data-testid="stButton"] button:hover:not(:disabled) {
   background:var(--n3-elevated)!important;color:var(--n3-text)!important;
+}
+.st-key-dashboard-restore-action [data-testid="stButton"] button:disabled {
+  background:var(--n3-bg)!important;color:var(--n3-outline)!important;
+  border-color:var(--n3-line)!important;opacity:.65!important;cursor:default!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button > div {
   position:static!important;margin:0!important;padding:0!important;
@@ -726,7 +801,17 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 
 /* O campo de meses utiliza um componente v2 com valor e unidade protegida. */
-.st-key-dashboard-tenure-control {min-width:0!important;}
+/* Os quatro campos rápidos preenchem as mesmas duas colunas de largura.
+   O componente v2 tem sua própria raiz, mas ocupa 100% do mesmo trilho. */
+.st-key-dashboard-quick-fields [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+  min-width:0!important;
+}
+.st-key-dashboard-tenure-control {
+  box-sizing:border-box!important;min-width:0!important;width:100%!important;
+}
+.st-key-dashboard-tenure-control [data-testid="stCustomComponentV2"] {
+  box-sizing:border-box!important;min-width:0!important;width:100%!important;
+}
 @media(max-width:620px) {
   .st-key-dashboard-detail-tabs [role="tab"] {
     font-size:13px!important;padding:7px 8px!important;
@@ -762,23 +847,71 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 )
 
 
-def _apply_profile(profile_name: str) -> None:
-    example = load_profile(ROOT, profile_name)
-    st.session_state["customer_values"] = example.copy()
+def _ensure_examples() -> None:
+    """Inicializa a coleção e migra o perfil de sessões Streamlit anteriores."""
+    if "example_profiles" in st.session_state:
+        return
+    examples = initial_examples(ROOT)
+    active = st.session_state.get("profile_choice")
+    if active in examples and "customer_values" in st.session_state:
+        examples[active]["values"] = st.session_state["customer_values"].copy()
+    st.session_state["example_profiles"] = examples
+
+
+def _save_active_example() -> None:
+    """Conserva o rascunho completo antes de trocar o exemplo."""
+    name = st.session_state.get("profile_choice")
+    if (name in st.session_state.get("example_profiles", {})
+            and "customer_values" in st.session_state):
+        st.session_state["example_profiles"][name]["values"] = _form_data()
+
+
+def _apply_profile(profile_name: str, *, preserve_previous: bool = True) -> None:
+    _ensure_examples()
+    examples = st.session_state["example_profiles"]
+    if profile_name not in examples:
+        raise ValueError(f"Exemplo desconhecido: {profile_name}")
+    if preserve_previous:
+        _save_active_example()
+    values = examples[profile_name]["values"].copy()
+    st.session_state["profile_choice"] = profile_name
+    st.session_state["customer_values"] = values.copy()
     for feature in FEATURE_COLUMNS:
-        st.session_state[f"field_{feature}"] = example[feature]
-    st.session_state["field_total_missing"] = example["total_missing"]
-    # Um novo perfil inicia uma instância limpa do editor de meses.
+        st.session_state[f"field_{feature}"] = values[feature]
+    st.session_state["field_total_missing"] = values["total_missing"]
+    # A chave do componente textual de Tempo precisa mudar ao carregar valores.
     st.session_state["tenure_revision"] = st.session_state.get("tenure_revision", 0) + 1
     st.session_state["workflow_run"] = None
 
 
-def _choose_profile() -> None:
-    _apply_profile(st.session_state["profile_choice"])
+def _select_example(name: str) -> None:
+    if name != st.session_state["profile_choice"]:
+        _apply_profile(name)
+
+
+def _create_example() -> None:
+    _ensure_examples()
+    values = _form_data()
+    _save_active_example()
+    name = append_example(st.session_state["example_profiles"], values)
+    _apply_profile(name)
 
 
 def _reset_profile() -> None:
-    _apply_profile(st.session_state["profile_choice"])
+    _ensure_examples()
+    name = st.session_state["profile_choice"]
+    entry = st.session_state["example_profiles"][name]
+    entry["values"] = entry["original"].copy()
+    _apply_profile(name, preserve_previous=False)
+
+
+def _is_profile_pristine() -> bool:
+    _ensure_examples()
+    return is_original(
+        st.session_state["example_profiles"],
+        st.session_state["profile_choice"],
+        _form_data(),
+    )
 
 
 def _ensure_widget_field(feature: str) -> None:
@@ -793,6 +926,7 @@ def _remember_field(feature: str) -> None:
     saved = st.session_state["customer_values"].copy()
     saved[feature] = st.session_state[f"field_{feature}"]
     st.session_state["customer_values"] = saved
+    _save_active_example()
 
 
 def _on_tenure_component_change() -> None:
@@ -815,6 +949,7 @@ def _on_service_change(feature: str) -> None:
     dependents = ("MultipleLines",) if feature == "PhoneService" else INTERNET_FEATURES
     for name in dependents:
         st.session_state[f"field_{name}"] = revised[name]
+    _save_active_example()
 
 
 def _form_data() -> dict:
@@ -1188,24 +1323,48 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 
 
 def _render_client_panel() -> bool:
-    # Evitar o link de âncora automático que o Streamlit insere em h2.
     st.markdown('<div class="churn-panel-heading" role="heading" aria-level="2">Cliente</div>',
                 unsafe_allow_html=True)
     with st.container(key="dashboard-client-fields", border=False):
-        a, b = st.columns([0.82, 0.18], gap="small", wrap=False)
-        with a:
-            st.selectbox("Perfil de exemplo", list(PROFILE_FILES), key="profile_choice",
-                         on_change=_choose_profile)
-        with b:
-            with st.container(key="dashboard-restore-action", border=False):
-                st.button(
-                    "Restaurar perfil", icon=":material/refresh:",
-                    help="Restaurar os dados do perfil selecionado.",
-                    key="restore_profile", type="tertiary",
-                    on_click=_reset_profile, use_container_width=True,
-                )
+        # Ações superiores: botões circulares representam exemplos independentes.
+        with st.container(key="dashboard-profile-picker", border=False):
+            st.markdown('<div class="churn-profile-label">Perfil de exemplo</div>',
+                        unsafe_allow_html=True)
+            a, b = st.columns([0.75, 0.25], gap="small", wrap=False)
+            with a:
+                with st.container(key="dashboard-profile-choices", border=False):
+                    names = tuple(st.session_state["example_profiles"])
+                    slots = st.columns(
+                        len(names) + int(len(names) < MAX_EXAMPLES), gap=None, wrap=False,
+                    )
+                    for index, name in enumerate(names):
+                        with slots[index]:
+                            st.button(
+                                str(index + 1), key=f"select_example_{index + 1}",
+                                help=f"Selecionar {name}",
+                                type="primary" if name == st.session_state["profile_choice"]
+                                else "secondary",
+                                on_click=_select_example, args=(name,),
+                                use_container_width=True,
+                            )
+                    if len(names) < MAX_EXAMPLES:
+                        with slots[-1]:
+                            st.button(
+                                "+", key="create_example", help="Criar exemplo a partir do cliente atual",
+                                type="secondary", on_click=_create_example,
+                                use_container_width=True,
+                            )
+            with b:
+                with st.container(key="dashboard-restore-action", border=False):
+                    st.button(
+                        "Restaurar perfil", icon=":material/refresh:",
+                        help="Restaurar os dados do exemplo selecionado.",
+                        key="restore_profile", type="tertiary",
+                        disabled=_is_profile_pristine(),
+                        on_click=_reset_profile, use_container_width=True,
+                    )
         with st.container(key="dashboard-quick-fields", border=False):
-            a, b = st.columns([0.62, 0.38], gap="small", wrap=False)
+            a, b = st.columns(QUICK_FIELD_COLUMNS, gap="small", wrap=False)
             with a:
                 with st.container(key="dashboard-tenure-control", border=False):
                     months = render_tenure_control(
@@ -1218,7 +1377,7 @@ def _render_client_panel() -> bool:
                         _remember_field("tenure")
             with b:
                 _select_field("Contract")
-            a, b = st.columns([0.55, 0.45], gap="small", wrap=False)
+            a, b = st.columns(QUICK_FIELD_COLUMNS, gap="small", wrap=False)
             with a:
                 _select_field("InternetService")
             with b:
@@ -1295,16 +1454,16 @@ def _workspace_slots() -> dict:
 
 
 def main() -> None:
+    _ensure_examples()
     if "form_initialized" not in st.session_state:
-        st.session_state["profile_choice"] = next(iter(PROFILE_FILES))
-        _apply_profile(st.session_state["profile_choice"])
+        name = st.session_state.get("profile_choice", next(iter(PROFILE_FILES)))
+        if name not in st.session_state["example_profiles"]:
+            name = next(iter(PROFILE_FILES))
+        _apply_profile(name, preserve_previous=False)
         st.session_state["form_initialized"] = True
     elif "customer_values" not in st.session_state:
-        # Sessões abertas antes da mudança continuam válidas após atualizar o código.
-        profile = load_profile(ROOT, st.session_state["profile_choice"])
-        for name in (*FEATURE_COLUMNS, "total_missing"):
-            profile[name] = st.session_state.get(f"field_{name}", profile[name])
-        st.session_state["customer_values"] = profile
+        # Recupera o exemplo ativo, inclusive depois de remount de sessão.
+        _apply_profile(st.session_state["profile_choice"], preserve_previous=False)
 
     st.session_state.setdefault("tenure_revision", 1)
 

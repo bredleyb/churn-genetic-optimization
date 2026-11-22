@@ -186,8 +186,11 @@ contornos neutros e verde/vermelho reservados aos estados semânticos
 distribuída localmente (licença SIL Open Font License 1.1) nos controles
 e fonte monoespaçada no registro de execução.
 
-- **Cliente:** quatro campos principais, perfil de exemplo com restauro por ícone,
-  abas Perfil, Conta, Serviços e Extras e botão de cálculo fixo na base do painel.
+- **Cliente:** quatro campos principais em duas linhas com a mesma grade,
+  exemplos selecionados por botões circulares (1 e 2 originais, até 5 na sessão,
+  com `+` para duplicar os valores atuais), restauro independente e escurecido
+  quando o exemplo não sofreu alterações, abas Perfil, Conta, Serviços e Extras
+  e botão de cálculo fixo na base do painel.
   O tempo de permanência utiliza um componente Streamlit v2 local: o próprio
   campo mostra `X mês`/`X meses`, protege a unidade durante a edição e envia
   somente o número inteiro ao modelo (0 a 999 meses). A rolagem do formulário

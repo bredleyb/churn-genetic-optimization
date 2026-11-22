@@ -20,7 +20,7 @@ _COMPONENT_HTML = """
 """
 
 _COMPONENT_CSS = """
-:host {display:block;min-width:0;box-sizing:border-box;}
+:host {display:block;width:100%;min-width:0;box-sizing:border-box;}
 .n3-tenure {display:flex;flex-direction:column;gap:6px;min-width:0;
   font-family:var(--n3-font-ui,"Familjen Grotesk",sans-serif);}
 .n3-tenure label {display:block;min-height:20px;color:var(--n3-secondary,#d8d8d8);
