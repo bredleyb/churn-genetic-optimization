@@ -176,7 +176,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-elevated)!important;
 }
 .st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] svg {
-  color:inherit!important;stroke:currentColor!important;
+  color:inherit!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] button {
   box-sizing:border-box!important;min-width:32px!important;width:32px!important;
