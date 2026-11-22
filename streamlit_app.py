@@ -1,13 +1,13 @@
-"""Interface local para comparar previsões de cancelamento de clientes.
+"""Dashboard local da previsão de churn e da execução genética reproduzível.
 
-Execute a partir da raiz: python -m streamlit run streamlit_app.py
+Execute: python -m streamlit run streamlit_app.py
 """
 
-import pandas as pd
 from html import escape
 from pathlib import Path
 from time import perf_counter
 
+import pandas as pd
 import streamlit as st
 
 from src.data import FEATURE_COLUMNS, load_dataset, split_dataset
@@ -22,8 +22,8 @@ from src.ui_data import (
     PROFILE_FEATURES,
     PROFILE_FILES,
     align_services,
-    format_generation_line,
     format_evaluation_line,
+    format_generation_line,
     label_for,
     load_profile,
     model_input,
@@ -32,17 +32,6 @@ from src.ui_data import (
 
 ROOT = Path(__file__).resolve().parent
 DATASET = ROOT / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
-MODEL_LABELS = {
-    "baseline": "Regressão logística",
-    "genetico": "Seleção genética",
-}
-METRIC_LABELS = {
-    "f1": "F1-score",
-    "precision": "Precisão",
-    "recall": "Revocação",
-    "accuracy": "Acurácia",
-    "roc_auc": "ROC-AUC",
-}
 
 st.set_page_config(
     page_title="Previsão de cancelamento | Projeto N3",
@@ -51,97 +40,53 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Estilos limitados aos elementos HTML próprios e a um contêiner com chave pública.
 st.markdown(
     """
 <style>
-.st-key-churn-shell {margin-inline: auto;}
-.churn-header {margin: 0 0 20px;}
-.churn-title {font-family: inherit; font-size: clamp(27px, 2.7vw, 34px);
-  line-height: 1.17; font-weight: 680; letter-spacing: -.033em; color: #0F172A;
-  margin: 0 0 8px;}
-.churn-subtitle {font-family: inherit; font-size: 14px; line-height: 1.5;
-  color: #516071; margin: 0; max-width: 680px;}
-.churn-heading {font-family: inherit; font-size: 18px; line-height: 1.35;
-  font-weight: 650; color: #0F172A; margin: 0 0 10px;}
-.churn-help {font-family: inherit; font-size: 13px; line-height: 1.45;
-  color: #516071; margin: -4px 0 12px;}
-.churn-result {border: 1px solid #E2E8F0; background: #FFFFFF; border-radius: 10px;
-  padding: 18px 20px 16px; margin: 10px 0;}
-.churn-result-top {display: flex; gap: 12px; align-items: flex-start;
-  justify-content: space-between;}
-.churn-model {font-family: inherit; font-size: 14px; font-weight: 650;
-  line-height: 1.4; color: #0F172A;}
-.churn-detail {font-family: inherit; font-size: 12px; line-height: 1.4;
-  color: #516071; margin-top: 3px;}
-.churn-value {font-family: inherit; font-size: clamp(25px, 2.6vw, 34px);
-  font-weight: 700; line-height: 1.1; letter-spacing: -.035em;
-  font-variant-numeric: tabular-nums; white-space: nowrap;}
-.churn-meter {width: 100%; height: 7px; border-radius: 20px;
-  background: #E2E8F0; overflow: hidden; margin: 16px 0 10px;}
-.churn-meter > span {display: block; height: 100%; border-radius: 20px;}
-.churn-status {font-family: inherit; font-size: 12px; font-weight: 650; line-height: 1.4;}
-.churn-comparison {margin: 26px 0 0;}
-.churn-compare-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-  gap: 12px; margin: 12px 0;}
-.churn-compare-item {background: #F1F5F9; border-radius: 9px; padding: 15px 17px;}
-.churn-compare-label {font-family: inherit; font-size: 12px; line-height: 1.4;
-  color: #516071; margin-bottom: 6px;}
-.churn-compare-value {font-family: inherit; font-size: 25px; line-height: 1.2;
-  font-weight: 680; letter-spacing: -.025em; font-variant-numeric: tabular-nums;
-  color: #0F172A;}
-.churn-compare-detail {font-family: inherit; font-size: 12px;
-  line-height: 1.45; color: #516071; margin-top: 6px;}
-.churn-note {font-family: inherit; font-size: 12px; line-height: 1.5;
-  color: #516071; margin: 8px 0 16px;}
-.churn-metrics {width: 100%; border-collapse: collapse; font-family: inherit;
-  font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums;}
-.churn-metrics th {font-size: 12px; font-weight: 650; text-align: right;
-  color: #516071; padding: 10px 7px; border-bottom: 1px solid #E2E8F0;}
-.churn-metrics td {text-align: right; padding: 10px 7px;
-  color: #0F172A; border-bottom: 1px solid #E2E8F0;}
-.churn-metrics th:first-child, .churn-metrics td:first-child {text-align: left;}
-.churn-metrics tr:last-child td {border-bottom: none;}
-@media (max-width: 768px) {
-  .churn-header {margin-bottom: 14px;}
-  .churn-result {padding: 15px;}
-  .churn-comparison {margin-top: 18px;}
+/* Estrutura do dashboard, antes da identidade visual escura. */
+html, body, #root {overflow:hidden!important;}
+[data-testid="stHeader"] {display:none!important;}
+[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;}
+[data-testid="stMainBlockContainer"] {max-width:none!important;height:100dvh!important;padding:10px 18px 0!important;overflow:hidden!important;}
+.st-key-dashboard-shell {height:calc(100dvh - 20px);max-width:1640px;margin:auto;overflow:hidden;}
+.churn-topbar {height:52px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.churn-topbar h1 {font-size:20px;line-height:1.2;font-weight:650;margin:0;}
+.churn-top-meta {font-size:12px;}
+.st-key-dashboard-client, .st-key-dashboard-workspace {height:calc(100dvh - 88px)!important;min-height:0!important;overflow:hidden!important;}
+.st-key-dashboard-client-fields {height:calc(100dvh - 248px)!important;min-height:0!important;overflow-y:auto!important;}
+.st-key-dashboard-client-footer {padding-top:10px;}
+.churn-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.churn-kpi {border:1px solid #94A3B8;padding:10px;border-radius:8px;min-width:0;}
+.churn-kpi-label,.churn-kpi-foot {font-size:11px;}
+.churn-kpi-value {font-size:20px;font-weight:700;}
+.churn-console {border:1px solid #334155;min-width:0;}
+.churn-console-head {font-size:11px;padding:8px;display:flex;justify-content:space-between;}
+.churn-console-lines {height:192px;overflow-y:auto;overflow-wrap:anywhere;padding:9px;font:11px/1.5 monospace;}
+.churn-log-line {display:block;white-space:pre-wrap;}
+.churn-chromosome {border:1px solid #94A3B8;padding:10px;margin-top:5px;}
+.churn-chromosome-head {display:flex;justify-content:space-between;font-size:11px;}
+.churn-bits {display:grid;grid-template-columns:repeat(19,minmax(0,1fr));gap:2px;}
+.churn-bit {height:22px;min-width:0;text-align:center;background:#CBD5E1;}
+.churn-bit.is-on {background:#0F766E;color:white;}
+.churn-mini-heading {font-size:11px;margin-bottom:5px;}
+.churn-chart-fallback {height:175px;display:grid;place-items:center;}
+.churn-tech {display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.churn-tech-item {padding:10px;border:1px solid #94A3B8;}
+.churn-tech-item span {display:block;font-size:11px;}
+.churn-tech-item strong {font-size:17px;}
+@media(max-width:900px) {
+ [data-testid="stMainBlockContainer"] {padding:7px 10px 0!important;}
+ .churn-topbar {height:44px;margin-bottom:6px;}
+ .st-key-dashboard-client,.st-key-dashboard-workspace {height:calc(100dvh - 68px)!important;}
+ .st-key-dashboard-client-fields {height:calc(100dvh - 228px)!important;}
+ .churn-kpis {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .churn-bits {grid-template-columns:repeat(10,minmax(0,1fr));}
 }
-@media (max-width: 430px) {
-  .churn-result-top {gap: 9px;}
-  .churn-value {font-size: 25px;}
-  .churn-model {font-size: 13px;}
-  .churn-compare-grid {grid-template-columns: 1fr;}
-  .churn-metrics {font-size: 12px;}
-  .churn-metrics th, .churn-metrics td {padding: 9px 4px;}
-}
-
-/* Monitor do algoritmo: classes próprias, sem dependências do DOM do Streamlit. */
-.churn-console {border:1px solid #334155; border-radius:10px; background:#111827;
-  color:#CBD5E1; margin:12px 0 14px; overflow:hidden;}
-.churn-console-head {display:flex; justify-content:space-between; align-items:center;
-  border-bottom:1px solid #334155; padding:11px 15px; font:600 12px/1.4 ui-monospace,monospace;}
-.churn-console-head small {font:400 11px/1.4 ui-monospace,monospace; color:#94A3B8;}
-.churn-console-lines {padding:12px 15px; max-height:215px; min-height:84px;
-  overflow-y:auto; overflow-wrap:anywhere; font:12px/1.65 ui-monospace,monospace;}
-.churn-log-line {display:block; white-space:pre-wrap;}
-.churn-log-line.is-step {color:#5EEAD4;}
-.churn-log-line.is-result {color:#FFFFFF;}
-.churn-chromosome {border:1px solid #E2E8F0; border-radius:9px; padding:13px 15px;
-  margin:12px 0; background:#FFFFFF;}
-.churn-chromosome-head {display:flex; justify-content:space-between; gap:8px;
-  align-items:baseline; margin:0 0 11px; font-size:12px; color:#516071;}
-.churn-bits {display:grid; grid-template-columns:repeat(19,minmax(0,22px)); gap:3px; max-width:472px;}
-.churn-bit {display:flex; height:29px; border-radius:4px; align-items:center;
-  justify-content:center; font:600 11px/1 ui-monospace,monospace;
-  background:#E2E8F0; color:#516071;}
-.churn-bit.is-on {background:#0F766E; color:#FFFFFF;}
-.churn-legend {font:11px/1.4 inherit; color:#516071; margin-top:10px;}
-@media (max-width:430px) {
-  .churn-console-lines {padding:10px 11px; font-size:11px; max-height:175px;}
-  .churn-chromosome {padding:12px 10px;}
-  .churn-bits {grid-template-columns:repeat(19,minmax(0,1fr)); gap:2px;}
-  .churn-bit {height:25px; font-size:10px;}
+@media(max-width:620px) {
+ .st-key-dashboard-client {height:calc(43dvh - 27px)!important;}
+ .st-key-dashboard-client-fields {height:calc(43dvh - 142px)!important;}
+ .st-key-dashboard-workspace {height:calc(57dvh - 62px)!important;overflow-y:auto!important;}
+ .churn-kpis {grid-template-columns:repeat(4,minmax(0,1fr));}
 }
 </style>
 """,
@@ -181,187 +126,208 @@ def _form_data() -> dict:
 def _select_field(feature: str, *, disabled: bool = False, help_text: str | None = None) -> None:
     callback = _on_service_change if feature in ("InternetService", "PhoneService") else None
     st.selectbox(
-        LABELS[feature],
-        options_for(feature),
-        format_func=label_for,
-        key=f"field_{feature}",
-        on_change=callback,
-        args=(feature,),
-        disabled=disabled,
-        help=help_text,
+        LABELS[feature], options_for(feature), format_func=label_for,
+        key=f"field_{feature}", on_change=callback, args=(feature,),
+        disabled=disabled, help=help_text,
     )
 
 
-def _render_result(title: str, entry: dict, *, feature_count: int | None) -> None:
-    probability = max(0.0, min(100.0, float(entry["probabilidade_cancelamento"]) * 100))
-    cancellation = entry["classe"] == 1
-    color = "#B42318" if cancellation else "#0F766E"
-    status = "Cancelamento previsto" if cancellation else "Permanência prevista"
-    detail = f"{feature_count} características" if feature_count is not None else "Modelo treinado"
-    formatted = f"{probability:.2f}".replace(".", ",")
-    st.markdown(
-        f"""<section class="churn-result" aria-label="{escape(title)}">
-<div class="churn-result-top"><div><div class="churn-model">{escape(title)}</div>
-<div class="churn-detail">{escape(detail)}</div></div>
-<div class="churn-value" style="color:{color}">{formatted}%</div></div>
-<div class="churn-meter" role="progressbar" aria-label="Probabilidade estimada de cancelamento"
-  aria-valuemin="0" aria-valuemax="100" aria-valuenow="{probability:.2f}">
-<span style="width:{probability:.2f}%;background:{color}"></span></div>
-<div class="churn-status" style="color:{color}">{status}</div></section>""",
-        unsafe_allow_html=True,
+def _render_client_details() -> None:
+    tab = st.segmented_control(
+        "Características adicionais",
+        ["Perfil", "Telefonia", "Internet", "Cobrança"],
+        default="Perfil", key="detail_tab", required=True,
+        label_visibility="collapsed", width="stretch",
     )
-
-
-def _render_metrics(summary: dict) -> None:
-    base = summary["baseline"]
-    genetic = summary["genetico"]
-    baseline_f1 = f"{base['f1']:.4f}".replace(".", ",")
-    genetic_f1 = f"{genetic['f1']:.4f}".replace(".", ",")
-    reduction = f"{summary['reduction_pct']:.2f}".replace(".", ",")
-    difference = abs(base["f1"] - genetic["f1"])
-    difference_label = f"{difference:.4f}".replace(".", ",")
-    direction = "redução" if genetic["f1"] < base["f1"] else "aumento"
-    if genetic["f1"] == base["f1"]:
-        change = "F1-score equivalente no conjunto de teste."
-    else:
-        change = f"{direction} de {difference_label} no F1-score."
-
-    st.markdown(
-        "<section class='churn-comparison' aria-label='Comparação dos modelos'>"
-        "<h2 class='churn-heading'>Comparação dos modelos</h2>"
-        "<div class='churn-compare-grid'>"
-        f"<div class='churn-compare-item'><div class='churn-compare-label'>Referência</div>"
-        f"<div class='churn-compare-value'>{baseline_f1}</div>"
-        f"<div class='churn-compare-detail'>F1-score · {summary['baseline_count']} características</div></div>"
-        f"<div class='churn-compare-item'><div class='churn-compare-label'>Seleção genética</div>"
-        f"<div class='churn-compare-value'>{genetic_f1}</div>"
-        f"<div class='churn-compare-detail'>F1-score · {summary['genetic_count']} características</div></div>"
-        "</div>"
-        f"<p class='churn-note'>{reduction}% menos características; {change}</p>"
-        "</section>",
-        unsafe_allow_html=True,
-    )
-
-    with st.expander("Ver todas as métricas"):
-        rows = "".join(
-            "<tr><td>" + name + "</td>"
-            f"<td>{base[key]:.4f}</td><td>{genetic[key]:.4f}</td></tr>"
-            for key, name in METRIC_LABELS.items()
-        ).replace(".", ",")
-        st.markdown(
-            "<table class='churn-metrics'><thead><tr><th scope='col'>Métrica</th>"
-            "<th scope='col'>Referência</th><th scope='col'>Genético</th></tr></thead>"
-            f"<tbody>{rows}</tbody></table>",
-            unsafe_allow_html=True,
+    if tab == "Perfil":
+        a, b = st.columns(2, gap="small", wrap=True)
+        with a:
+            _select_field(PROFILE_FEATURES[0])
+            _select_field(PROFILE_FEATURES[1])
+        with b:
+            _select_field(PROFILE_FEATURES[2])
+            _select_field(PROFILE_FEATURES[3])
+    elif tab == "Telefonia":
+        _select_field("PhoneService")
+        _select_field(
+            "MultipleLines", disabled=st.session_state["field_PhoneService"] == "No",
+            help_text="Indisponível quando o cliente não possui telefone.",
         )
-        test_count = f"{summary['test_count']:,}".replace(",", ".")
-        st.caption(f"Conjunto de teste reservado: {test_count} clientes. "
-                   "As probabilidades individuais utilizam limiar de classificação de 50%.")
+    elif tab == "Internet":
+        inactive = st.session_state["field_InternetService"] == "No"
+        a, b = st.columns(2, gap="small", wrap=True)
+        for i, feature in enumerate(INTERNET_FEATURES):
+            with (a if i % 2 == 0 else b):
+                _select_field(feature, disabled=inactive,
+                              help_text="Indisponível sem serviço de internet.")
+    else:
+        _select_field(BILLING_FEATURES[0])
+        _select_field(BILLING_FEATURES[1])
+        st.checkbox("Total cobrado indisponível", key="field_total_missing")
+        st.number_input(
+            LABELS["TotalCharges"], min_value=0.0, step=1.0,
+            format="%.2f", key="field_TotalCharges",
+            disabled=st.session_state["field_total_missing"],
+        )
 
 
-
-def _history_chart(history: list[dict], *, slot=None) -> None:
-    """Exibe F1 do indivíduo com melhor aptidão, por geração real."""
-    chart_data = pd.DataFrame({
-        "Geração": [int(item["geracao"]) for item in history],
-        "F1 em validação cruzada": [float(item["melhor_f1_cv"]) for item in history],
-    })
-    target = slot if slot is not None else st
-    target.line_chart(
-        chart_data, x="Geração", y="F1 em validação cruzada",
-        color="#0F766E", height=230,
-    )
+def _current_customer() -> dict | None:
+    try:
+        return model_input(_form_data())
+    except ValueError:
+        return None
 
 
-def _render_console(lines: list[str], *, slot=None, complete: bool = False) -> None:
-    """Exibe apenas eventos recebidos da execução, com saída monoespaçada."""
-    # Mostra os eventos mais recentes enquanto executa; o registro inteiro fica disponível ao terminar.
-    visible = lines if complete else lines[-8:]
+def _is_stale(run: dict) -> bool:
+    return _current_customer() != run["customer"]
+
+
+def _format_probability(entry: dict) -> tuple[str, str, str]:
+    probability = max(0, min(100, float(entry["probabilidade_cancelamento"]) * 100))
+    label = "Cancelamento" if entry["classe"] == 1 else "Permanência"
+    style = "is-high" if entry["classe"] == 1 else "is-low"
+    return f"{probability:.2f}".replace(".", ",") + "%", label, style
+
+
+def _render_kpis(run: dict | None, status: str, *, slot) -> None:
+    if run is not None and status == "complete":
+        bval, bfoot, bstyle = _format_probability(run["predictions"]["baseline"])
+        gval, gfoot, gstyle = _format_probability(run["predictions"]["genetico"])
+        count = str(run["summary"]["genetic_count"]) + "/19"
+    else:
+        bval = gval = "—"
+        bfoot = gfoot = "Aguardando previsão"
+        bstyle = gstyle = ""
+        count = "—/19"
+    states = {
+        "idle": ("Pronto", "Inicie pelo painel Cliente"),
+        "running": ("Em execução", "Busca genética em andamento"),
+        "complete": ("Concluído", "Modelos avaliados"),
+        "stale": ("Alterado", "Previsão desatualizada"),
+        "error": ("Erro", "Verifique o registro"),
+    }
+    state_label, state_detail = states[status]
+    def card(label: str, value: str, foot: str, style: str = "") -> str:
+        return (f'<div class="churn-kpi"><div class="churn-kpi-label">{escape(label)}</div>'
+                f'<div class="churn-kpi-value {style}">{escape(value)}</div>'
+                f'<div class="churn-kpi-foot">{escape(foot)}</div></div>')
+    html = ('<section class="churn-kpis" aria-label="Indicadores principais">'
+            + card("Referência", bval, bfoot, bstyle)
+            + card("Seleção genética", gval, gfoot, gstyle)
+            + card("Características", count, "Atributos selecionados")
+            + card("Processamento", state_label, state_detail)
+            + '</section>')
+    slot.markdown(html, unsafe_allow_html=True)
+
+
+def _render_console(events: list[str], *, slot, complete: bool = False) -> None:
+    # Registro integral permanece em memória; o monitor mostra as últimas linhas.
+    visible = events[-22:] if complete else events[-9:]
     rows = []
     for line in visible:
-        if " | F1" in line or line.startswith("[FIM]"):
-            kind = "is-result"
-        elif "avaliando" in line or line.startswith("[GERAÇÃO]"):
-            kind = "is-step"
-        else:
-            kind = ""
+        kind = ("is-result" if " | F1" in line or line.startswith("[FIM]")
+                else "is-step" if "avaliando" in line or line.startswith("[GERAÇÃO]")
+                else "")
         rows.append(f'<span class="churn-log-line {kind}">{escape(line)}</span>')
-    markup = (
-        '<section class="churn-console" aria-label="Eventos da busca genética">'
-        '<div class="churn-console-head"><span>Monitor de execução</span>'
-        '<small>Eventos reais</small></div>'
-        '<div class="churn-console-lines" role="log" aria-live="polite">'
-        + "".join(rows) + '</div></section>'
-    )
-    (slot or st).markdown(markup, unsafe_allow_html=True)
+    markup = ('<section class="churn-console" aria-label="Eventos da busca genética">'
+              '<div class="churn-console-head"><span>Monitor de execução</span>'
+              '<small>EVENTOS REAIS</small></div>'
+              '<div class="churn-console-lines" role="log" aria-live="polite">'
+              + "".join(rows) + '</div></section>')
+    slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _render_chromosome(chromosome: tuple[int, ...], title: str, *, slot=None) -> None:
-    """Mostra os 19 genes referentes às características originais."""
+def _render_chromosome(chromosome: tuple[int, ...], title: str, *, slot) -> None:
     bits = "".join(
         f'<span class="churn-bit {"is-on" if bit else ""}" '
-        f'title="{escape(LABELS[feature])} — {"incluída" if bit else "excluída"}"'
-        f'>{int(bit)}</span>'
-        for feature, bit in zip(FEATURE_COLUMNS, chromosome)
+        f'title="{escape(LABELS[name])} — {"incluída" if bit else "excluída"}">'
+        f'{int(bit)}</span>'
+        for name, bit in zip(FEATURE_COLUMNS, chromosome)
     )
-    markup = (
-        '<section class="churn-chromosome" aria-label="Cromossomo de 19 características">'
-        f'<div class="churn-chromosome-head"><strong>{escape(title)}</strong>'
-        f'<span>{sum(chromosome)} de {len(FEATURE_COLUMNS)} características</span></div>'
-        f'<div class="churn-bits">{bits}</div>'
-        '<div class="churn-legend">1 = incluída &nbsp;·&nbsp; 0 = excluída</div>'
-        '</section>'
-    )
-    (slot or st).markdown(markup, unsafe_allow_html=True)
+    markup = ('<section class="churn-chromosome" aria-label="Cromossomo de 19 características">'
+              f'<div class="churn-chromosome-head"><strong>{escape(title)}</strong>'
+              f'<span>{sum(chromosome)}/19</span></div>'
+              f'<div class="churn-bits">{bits}</div>'
+              '<div class="churn-legend">1 incluída · 0 excluída</div></section>')
+    slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _render_finished_run(run: dict) -> None:
-    """Mantém na coluna direita o processamento e a previsão da última execução."""
-    _render_console(run["events"], complete=True)
-    _render_chromosome(run["chromosome"], "Melhor cromossomo encontrado")
-    st.markdown("**F1-score durante a seleção genética**")
-    _history_chart(run["history"])
-    elapsed = f"{run['elapsed_seconds']:.1f}".replace(".", ",")
-    st.caption(
-        f"Execução concluída · {run['evaluated_subsets']} subconjuntos avaliados · "
-        f"{len(run['history'])} gerações · {elapsed} s"
-    )
-    current = None
-    try:
-        current = model_input(_form_data())
-    except ValueError:
-        pass
-    if current != run["customer"]:
-        st.info("Os dados do cliente foram alterados. Clique em Calcular previsão "
-                "para executar novamente com os valores atuais.")
+def _history_chart(history: list[dict], *, slot) -> None:
+    if not history:
+        slot.markdown('<div class="churn-chart-fallback">Aguardando a primeira geração</div>',
+                      unsafe_allow_html=True)
         return
-    st.markdown("<h2 class='churn-heading'>Previsão</h2>", unsafe_allow_html=True)
-    st.caption("Probabilidade estimada de cancelamento para o cliente informado.")
-    for name, title in MODEL_LABELS.items():
-        feature_count = run["summary"]["baseline_count" if name == "baseline" else "genetic_count"]
-        _render_result(title, run["predictions"][name], feature_count=feature_count)
-    _render_metrics(run["summary"])
+    chart_data = pd.DataFrame({
+        "Geração": [int(item["geracao"]) for item in history],
+        "F1 (CV)": [float(item["melhor_f1_cv"]) for item in history],
+    })
+    slot.line_chart(chart_data, x="Geração", y="F1 (CV)",
+                    color="#30B6A7", height=175)
 
 
-def _execute_full_workflow(customer: dict) -> None:
-    """Treina, seleciona, avalia e prevê em um único clique, com eventos reais."""
+def _render_technical(run: dict | None, *, slot, stale: bool = False) -> None:
+    if run is None:
+        metrics = (("F1 referência", "—"), ("F1 genético", "—"),
+                   ("Subconjuntos", "—"), ("Tempo", "—"))
+    else:
+        s = run["summary"]
+        metrics = (("F1 referência", f'{s["baseline"]["f1"]:.4f}'.replace(".", ",")),
+                   ("F1 genético", f'{s["genetico"]["f1"]:.4f}'.replace(".", ",")),
+                   ("Subconjuntos", str(run["evaluated_subsets"])),
+                   ("Tempo", f'{run["elapsed_seconds"]:.1f}'.replace(".", ",") + " s"))
+    cells = "".join(
+        f'<div class="churn-tech-item"><span>{escape(name)}</span><strong>{escape(value)}</strong></div>'
+        for name, value in metrics
+    )
+    foot = '<div class="churn-tech-foot">F1 calculado no teste reservado · 20% dos dados</div>'
+    warning = ('<div class="churn-stale">Os dados do cliente foram alterados. '
+               'Clique em Calcular previsão para atualizar.</div>') if stale else ""
+    slot.markdown(f'<section aria-label="Resumo técnico"><div class="churn-tech">{cells}'
+                  f'</div>{foot}{warning}</section>', unsafe_allow_html=True)
+
+
+def _render_idle(slots: dict) -> None:
+    _render_kpis(None, "idle", slot=slots["kpis"])
+    slots["phase"].markdown('<div class="churn-ready">Aguardando cálculo do cliente</div>', unsafe_allow_html=True)
+    slots["progress"].progress(0.0, text="Geração 0/15")
+    _render_console(["[PRONTO] Aguardando execução do experimento"], slot=slots["console"])
+    _render_chromosome(tuple(0 for _ in FEATURE_COLUMNS), "Aguardando avaliação", slot=slots["chromosome"])
+    _history_chart([], slot=slots["chart"])
+    _render_technical(None, slot=slots["technical"])
+
+
+def _render_finished_run(run: dict, slots: dict) -> None:
+    stale = _is_stale(run)
+    _render_kpis(run, "stale" if stale else "complete", slot=slots["kpis"])
+    slots["phase"].markdown('<div class="churn-phase">Execução concluída · '
+                            f'{len(run["history"])} gerações</div>', unsafe_allow_html=True)
+    slots["progress"].progress(1.0, text="Geração 15/15")
+    _render_console(run["events"], slot=slots["console"], complete=True)
+    _render_chromosome(run["chromosome"], "Melhor cromossomo", slot=slots["chromosome"])
+    _history_chart(run["history"], slot=slots["chart"])
+    _render_technical(run, slot=slots["technical"], stale=stale)
+
+
+def _execute_full_workflow(customer: dict, slots: dict) -> None:
+    """Execução completa ao clicar em Calcular previsão; não altera arquivos salvos."""
     config = GeneticConfig()
-    start = perf_counter()
+    started = perf_counter()
     events: list[str] = []
     history: list[dict] = []
-    stage_slot = st.empty()
-    progress_slot = st.empty()
-    console_slot = st.empty()
-    chromosome_slot = st.empty()
-    st.markdown("**F1-score durante a seleção genética**")
-    chart_slot = st.empty()
+    _render_kpis(None, "running", slot=slots["kpis"])
+    slots["progress"].progress(0.0, text=f"Geração 0/{config.generations}")
+    _render_chromosome(tuple(0 for _ in FEATURE_COLUMNS), "Aguardando avaliação",
+                       slot=slots["chromosome"])
+    _history_chart([], slot=slots["chart"])
+    _render_technical(None, slot=slots["technical"])
 
     def log(message: str) -> None:
         events.append(message)
-        _render_console(events, slot=console_slot)
+        _render_console(events, slot=slots["console"])
 
     def phase(label: str, message: str) -> None:
-        stage_slot.caption(label)
+        slots["phase"].markdown(f'<div class="churn-phase">{escape(label)}</div>',
+                                unsafe_allow_html=True)
         log(message)
 
     def on_evaluation(record: dict[str, object]) -> None:
@@ -370,52 +336,53 @@ def _execute_full_workflow(customer: dict) -> None:
             _render_chromosome(
                 chromosome,
                 f"Geração {record['geracao']} · indivíduo {record['individuo']}",
-                slot=chromosome_slot,
+                slot=slots["chromosome"],
             )
         log(format_evaluation_line(record))
 
     def on_generation(record: dict[str, int | float]) -> None:
         history.append(dict(record))
         number = int(record["geracao"])
-        stage_slot.caption(f"Seleção genética · geração {number} de {config.generations}")
-        progress_slot.progress(number / config.generations,
-                               text=f"Geração {number}/{config.generations}")
+        slots["phase"].markdown(
+            f'<div class="churn-phase">Seleção genética · geração {number} de '
+            f'{config.generations}</div>', unsafe_allow_html=True,
+        )
+        slots["progress"].progress(number / config.generations,
+                                   text=f"Geração {number}/{config.generations}")
         log("[GERAÇÃO] " + format_generation_line(record))
-        _history_chart(history, slot=chart_slot)
+        _history_chart(history, slot=slots["chart"])
 
-    progress_slot.progress(0.0, text=f"Geração 0/{config.generations}")
     try:
-        phase("Preparando o experimento...", "[DADOS] Lendo o conjunto Telco Customer Churn")
+        phase("Preparando os dados", "[DADOS] Lendo o conjunto Telco Customer Churn")
         dataset = load_dataset(DATASET)
         x_dev, x_test, y_dev, y_test = split_dataset(
-            dataset, random_state=config.random_state
+            dataset, random_state=config.random_state,
         )
         log(f"[DIVISÃO] {len(dataset)} clientes · {len(x_dev)} desenvolvimento · "
             f"{len(x_test)} teste reservado")
-        phase("Validando o classificador de referência...",
+        phase("Validando a referência",
               f"[CV] Regressão logística · {config.cv_folds} partições")
         baseline_cv = evaluate_cv(x_dev, y_dev, n_splits=config.cv_folds,
                                   random_state=config.random_state)
         log(f"[CV] F1 médio de referência: {baseline_cv['f1']['media']:.4f}")
-        phase("Avaliando subconjuntos com algoritmo genético...",
+        phase("Buscando subconjuntos de características",
               f"[AG] {config.population_size} indivíduos · "
               f"{config.generations} gerações · {len(FEATURE_COLUMNS)} genes")
         genetic_result = select_features(
-            x_dev, y_dev, config,
-            on_generation=on_generation,
+            x_dev, y_dev, config, on_generation=on_generation,
             on_evaluation=on_evaluation,
         )
-        phase("Treinando os dois classificadores...",
+        phase("Treinando os classificadores",
               "[TREINO] Ajustando os modelos com os dados de desenvolvimento")
         baseline = build_classifier()
         selected = build_classifier(genetic_result.selected_features)
         baseline.fit(x_dev, y_dev)
         selected.fit(x_dev, y_dev)
-        phase("Avaliando no conjunto de teste reservado...",
+        phase("Avaliando no conjunto reservado",
               f"[TESTE] Calculando métricas nos mesmos {len(x_test)} casos reservados")
         base_metrics = evaluate_test(baseline, x_test, y_test)
         genetic_metrics = evaluate_test(selected, x_test, y_test)
-        phase("Calculando previsão do cliente...",
+        phase("Calculando a previsão",
               "[PREVISÃO] Aplicando os dois modelos treinados ao cliente informado")
         predictions = {
             "baseline": predict_customer(baseline, customer),
@@ -426,12 +393,11 @@ def _execute_full_workflow(customer: dict) -> None:
             f"{genetic_result.evaluated_subsets} subconjuntos distintos")
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         st.session_state["workflow_run"] = None
-        stage_slot.error("Execução interrompida")
-        st.error(f"Não foi possível concluir o processamento: {exc}")
+        _render_kpis(None, "error", slot=slots["kpis"])
+        slots["phase"].error("Execução interrompida")
+        slots["technical"].error(f"Não foi possível concluir: {exc}")
         return
 
-    progress_slot.progress(1.0, text=f"{config.generations} gerações concluídas")
-    stage_slot.success("Execução concluída")
     summary = {
         "baseline": base_metrics,
         "genetico": genetic_metrics,
@@ -441,7 +407,7 @@ def _execute_full_workflow(customer: dict) -> None:
         "reduction_pct": 100 * (len(FEATURE_COLUMNS) - len(genetic_result.selected_features))
                          / len(FEATURE_COLUMNS),
     }
-    result = {
+    run = {
         "customer": customer,
         "predictions": predictions,
         "summary": summary,
@@ -449,110 +415,97 @@ def _execute_full_workflow(customer: dict) -> None:
         "chromosome": genetic_result.chromosome,
         "events": events,
         "evaluated_subsets": genetic_result.evaluated_subsets,
-        "elapsed_seconds": perf_counter() - start,
+        "elapsed_seconds": perf_counter() - started,
     }
-    st.session_state["workflow_run"] = result
-    st.caption(f"{genetic_result.evaluated_subsets} subconjuntos distintos avaliados.")
-    st.markdown("<h2 class='churn-heading'>Previsão</h2>", unsafe_allow_html=True)
-    st.caption("Probabilidade estimada de cancelamento para o cliente informado.")
-    for name, title in MODEL_LABELS.items():
-        count = summary["baseline_count" if name == "baseline" else "genetic_count"]
-        _render_result(title, predictions[name], feature_count=count)
-    _render_metrics(summary)
+    st.session_state["workflow_run"] = run
+    _render_finished_run(run, slots)
+
+
+def _render_client_panel() -> bool:
+    st.markdown('<h2 class="churn-panel-heading">Cliente</h2>', unsafe_allow_html=True)
+    with st.container(key="dashboard-client-fields", height=610, border=False):
+        st.selectbox("Perfil de exemplo", list(PROFILE_FILES), key="profile_choice",
+                     on_change=_choose_profile)
+        st.button("Restaurar exemplo", on_click=_reset_profile, type="tertiary")
+        a, b = st.columns(2, gap="small", wrap=True)
+        with a:
+            st.number_input(LABELS["tenure"], min_value=0, step=1, key="field_tenure")
+            _select_field("InternetService")
+        with b:
+            _select_field("Contract")
+            st.number_input(LABELS["MonthlyCharges"], min_value=0.0, step=1.0,
+                            format="%.2f", key="field_MonthlyCharges")
+        st.markdown('<div class="churn-subheading">Características adicionais</div>',
+                    unsafe_allow_html=True)
+        _render_client_details()
+    with st.container(key="dashboard-client-footer", border=False):
+        clicked = st.button("Calcular previsão", type="primary", use_container_width=True,
+                            disabled=not DATASET.is_file())
+        if not DATASET.is_file():
+            st.caption("CSV não encontrado em data/raw/")
+    return clicked
+
+
+def _workspace_slots() -> dict:
+    st.markdown('<h2 class="churn-panel-heading">Execução e previsão</h2>',
+                unsafe_allow_html=True)
+    kpis = st.empty()
+    with st.container(key="dashboard-monitor-section", border=False):
+        console_col, meta_col = st.columns([1.15, 0.85], gap="small", wrap=True)
+        with console_col:
+            console = st.empty()
+        with meta_col:
+            phase = st.empty()
+            progress = st.empty()
+            chromosome = st.empty()
+    with st.container(key="dashboard-analysis-section", border=False):
+        chart_col, technical_col = st.columns([1.1, 0.9], gap="small", wrap=True)
+        with chart_col:
+            st.markdown('<div class="churn-mini-heading">Evolução do F1-score</div>',
+                        unsafe_allow_html=True)
+            chart = st.empty()
+        with technical_col:
+            st.markdown('<div class="churn-mini-heading">Resumo técnico</div>',
+                        unsafe_allow_html=True)
+            technical = st.empty()
+            log = st.empty()
+    return {"kpis": kpis, "phase": phase, "progress": progress,
+            "console": console, "chromosome": chromosome,
+            "chart": chart, "technical": technical, "log": log}
 
 
 def main() -> None:
-    with st.container(key="churn-shell", width=1240):
+    if "form_initialized" not in st.session_state:
+        st.session_state["profile_choice"] = next(iter(PROFILE_FILES))
+        _apply_profile(st.session_state["profile_choice"])
+        st.session_state["form_initialized"] = True
+
+    with st.container(key="dashboard-shell", border=False):
         st.markdown(
-            "<header class='churn-header'><h1 class='churn-title'>Previsão de cancelamento</h1>"
-            "<p class='churn-subtitle'>Configure o cliente e acompanhe o treinamento, "
-            "a seleção genética e a previsão em tempo real.</p></header>",
+            '<header class="churn-topbar"><h1>Previsão de cancelamento</h1>'
+            '<span class="churn-top-meta">19 características · 15 gerações</span></header>',
             unsafe_allow_html=True,
         )
-
-        if "form_initialized" not in st.session_state:
-            st.session_state["profile_choice"] = next(iter(PROFILE_FILES))
-            _apply_profile(st.session_state["profile_choice"])
-            st.session_state["form_initialized"] = True
-
-        layout = st.grid(2, min_column_width=440, gap=20, wrap=True)
-        panel_form = layout.cell()
-        panel_result = layout.cell()
-
-        with panel_form:
-            with st.container(border=True):
-                st.markdown("<h2 class='churn-heading'>Cliente</h2>", unsafe_allow_html=True)
-                st.selectbox(
-                    "Perfil de exemplo", list(PROFILE_FILES), key="profile_choice",
-                    on_change=_choose_profile,
-                )
-                st.button("Restaurar exemplo", on_click=_reset_profile, type="tertiary")
-
-                quick_a, quick_b = st.columns(2, gap="small", wrap=True)
-                with quick_a:
-                    st.number_input(LABELS["tenure"], min_value=0, step=1, key="field_tenure")
-                    _select_field("InternetService")
-                with quick_b:
-                    _select_field("Contract")
-                    st.number_input(LABELS["MonthlyCharges"], min_value=0.0,
-                                    step=1.0, format="%.2f", key="field_MonthlyCharges")
-
-                with st.expander("Perfil"):
-                    a, b = st.columns(2, gap="small", wrap=True)
-                    with a:
-                        _select_field(PROFILE_FEATURES[0])
-                        _select_field(PROFILE_FEATURES[1])
-                    with b:
-                        _select_field(PROFILE_FEATURES[2])
-                        _select_field(PROFILE_FEATURES[3])
-
-                with st.expander("Telefonia"):
-                    _select_field("PhoneService")
-                    _select_field("MultipleLines", disabled=st.session_state["field_PhoneService"] == "No",
-                                  help_text="Indisponível quando o cliente não possui telefone.")
-
-                with st.expander("Serviços de internet"):
-                    inactive = st.session_state["field_InternetService"] == "No"
-                    ia, ib = st.columns(2, gap="small", wrap=True)
-                    for i, feature in enumerate(INTERNET_FEATURES):
-                        with (ia if i % 2 == 0 else ib):
-                            _select_field(feature, disabled=inactive,
-                                          help_text="Indisponível sem serviço de internet.")
-
-                with st.expander("Cobrança e pagamento"):
-                    _select_field(BILLING_FEATURES[0])
-                    _select_field(BILLING_FEATURES[1])
-                    st.checkbox("Total cobrado indisponível", key="field_total_missing")
-                    st.number_input(
-                        LABELS["TotalCharges"], min_value=0.0, step=1.0, format="%.2f",
-                        key="field_TotalCharges", disabled=st.session_state["field_total_missing"],
-                    )
-                    st.caption("Valores monetários na unidade utilizada pelo conjunto de dados.")
-
-                clicked = st.button("Calcular previsão", type="primary",
-                                    use_container_width=True, disabled=not DATASET.is_file())
-                st.caption("O cálculo executa novamente o treinamento e a busca genética.")
-                if not DATASET.is_file():
-                    st.info("CSV não encontrado em `data/raw/`. Coloque o dataset original "
-                            "nessa pasta para executar a previsão.")
-
-        with panel_result:
-            st.markdown("<h2 class='churn-heading'>Execução e previsão</h2>",
-                        unsafe_allow_html=True)
-            if clicked:
-                st.session_state["workflow_run"] = None
-                try:
-                    customer = model_input(_form_data())
-                except ValueError as exc:
-                    st.error(f"Dados do cliente inválidos: {exc}")
+        # As colunas são mantidas na horizontal em notebook e empilhadas no celular.
+        client_col, workspace_col = st.columns([0.39, 0.61], gap="small", wrap=True)
+        with client_col:
+            with st.container(key="dashboard-client", height=780, border=True):
+                clicked = _render_client_panel()
+        with workspace_col:
+            with st.container(key="dashboard-workspace", height=780, border=True):
+                slots = _workspace_slots()
+                if clicked:
+                    st.session_state["workflow_run"] = None
+                    customer = _current_customer()
+                    if customer is None:
+                        _render_idle(slots)
+                        slots["technical"].error("Dados do cliente inválidos. Revise os campos.")
+                    else:
+                        _execute_full_workflow(customer, slots)
+                elif st.session_state.get("workflow_run") is not None:
+                    _render_finished_run(st.session_state["workflow_run"], slots)
                 else:
-                    _execute_full_workflow(customer)
-            elif st.session_state.get("workflow_run") is not None:
-                _render_finished_run(st.session_state["workflow_run"])
-            else:
-                st.caption("Clique em Calcular previsão para iniciar. "
-                           "O processamento será acompanhado nesta coluna.")
-                _render_console(["[PRONTO] Aguardando execução do experimento"])
+                    _render_idle(slots)
 
 
 if __name__ == "__main__":
