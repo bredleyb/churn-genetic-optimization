@@ -6,7 +6,7 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: './tests/visual',
-  testMatch: '*.spec.mjs',
+  testMatch: '**/*.spec.mjs',
   fullyParallel: false,
   workers: 1, // Cada previsão executa o experimento inteiro; evitar buscas concorrentes.
   timeout: 240_000,
