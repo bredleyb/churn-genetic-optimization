@@ -364,6 +364,107 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
     min-height:26px!important;font-size:12px!important;padding:0 2px!important;
   }
 }
+
+
+/* Painel técnico desktop: a área do console absorve o espaço restante.
+   O histórico longo rola dentro do console e não empurra outros painéis. */
+@media (min-width:621px) {
+  .st-key-dashboard-monitor-section {
+    box-sizing:border-box!important;position:relative!important;
+    display:flex!important;flex-direction:column!important;
+    gap:4px!important;min-height:0!important;overflow:hidden!important;
+  }
+  /* Progresso já informa a geração; remover a fase repetida economiza altura. */
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-phase),
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stEmpty"]) {
+    display:none!important;
+  }
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stDownloadButton"]) {
+    position:absolute!important;top:0!important;right:0!important;
+    width:auto!important;max-width:50%!important;z-index:2!important;
+  }
+  .st-key-dashboard-monitor-section .churn-monitor-title {
+    padding-right:120px!important;
+  }
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) {
+    flex:1 1 0px!important;min-height:0!important;max-height:100%!important;
+    overflow:hidden!important;
+  }
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) [data-testid="stMarkdown"],
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) [data-testid="stMarkdown"] > div,
+  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) [data-testid="stMarkdownContainer"] {
+    box-sizing:border-box!important;height:100%!important;max-height:100%!important;
+    min-height:0!important;overflow:hidden!important;
+  }
+  .st-key-dashboard-monitor-section .churn-console {
+    box-sizing:border-box!important;height:100%!important;max-height:100%!important;
+    min-height:0!important;margin:0!important;overflow:hidden!important;
+  }
+  .st-key-dashboard-monitor-section .churn-console-lines {
+    box-sizing:border-box!important;height:100%!important;max-height:100%!important;
+    min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
+  }
+}
+
+/* Em desktop, a faixa inferior reúne as características e o monitor.
+   Aumenta a área útil do gráfico e impede as duas seções de se sobreporem. */
+@media (min-width:1000px) and (min-height:761px) {
+  .st-key-dashboard-desktop-detail {
+    grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr)!important;
+    grid-template-rows:minmax(0,1fr) minmax(186px,23dvh)!important;
+    gap:8px 12px!important;
+  }
+  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section) {
+    grid-column:1 / -1!important;grid-row:1!important;height:100%!important;
+  }
+  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-selection-section) {
+    grid-column:1!important;grid-row:2!important;height:100%!important;
+    max-height:100%!important;min-height:0!important;overflow:hidden!important;
+  }
+  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {
+    grid-column:2!important;grid-row:2!important;height:100%!important;
+    min-height:0!important;overflow:hidden!important;
+  }
+  .st-key-dashboard-selection-section {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-template-rows:minmax(0,1fr)!important;gap:12px!important;
+    height:100%!important;min-height:0!important;overflow:hidden!important;
+  }
+  .st-key-dashboard-selection-section .churn-bits {
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
+  }
+}
+
+/* Em 1024 px, distribuir características e métricas na vertical dentro da
+   faixa inferior; os campos técnicos ficam largos o suficiente para leitura. */
+@media (min-width:1000px) and (max-width:1150px) and (min-height:761px) {
+  .st-key-dashboard-desktop-detail {
+    grid-template-rows:minmax(0,1fr) minmax(223px,29dvh)!important;
+  }
+  .st-key-dashboard-selection-section {
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;align-content:start!important;
+    gap:6px!important;
+  }
+  .st-key-dashboard-selection-section .churn-bits {
+    grid-template-columns:repeat(19,minmax(0,1fr))!important;
+  }
+}
+
+/* Tablet em paisagem: a seleção precisa acomodar também as métricas após
+   o cálculo. Manter console dentro de um trilho independente de 126px. */
+@media (min-width:621px) and (max-width:999px) and (min-height:800px) {
+  .st-key-dashboard-desktop-detail {
+    grid-template-rows:minmax(160px,1fr) minmax(255px,auto) minmax(125px,14dvh)!important;
+    gap:8px!important;
+  }
+  .st-key-dashboard-selection-section {
+    grid-template-columns:minmax(0,1fr)!important;
+    height:100%!important;max-height:100%!important;
+    min-height:0!important;overflow:hidden!important;
+  }
+}
+
 </style>
 """,
     unsafe_allow_html=True,

@@ -110,6 +110,14 @@ async function geometry(page, stage, testInfo) {
       .toBeLessThanOrEqual(layout.selection.y + 2);
     expect(layout.monitor.bottom, `${stage}: console fica oculto ou cortado`)
       .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
+    expect(layout.monitorTitle.bottom, `${stage}: título do monitor sobrepõe console`)
+      .toBeLessThanOrEqual(layout.monitor.y + 2);
+    expect(layout.monitorSection.scrollHeight, `${stage}: monitor excede sua seção`)
+      .toBeLessThanOrEqual(layout.monitorSection.clientHeight + 2);
+    expect(layout.technical.bottom, `${stage}: métricas saem da seleção`)
+      .toBeLessThanOrEqual(layout.selection.bottom + 2);
+    expect(layout.selection.scrollHeight, `${stage}: seleção oculta conteúdo técnico`)
+      .toBeLessThanOrEqual(layout.selection.clientHeight + 2);
     if (stage === 'Concluído' || stage === 'Editado') {
       expect(layout.logDownload, `${stage}: download do log ausente`).toBeTruthy();
       expect(layout.logDownload.y, `${stage}: download do log acima do monitor`)
@@ -123,22 +131,25 @@ async function geometry(page, stage, testInfo) {
           .toBeLessThanOrEqual(layout.monitorSection.clientHeight + 2);
       }
     }
-    if (layout.width >= 1000 && layout.height <= 760) {
+    if (layout.width >= 1000) {
       expect(Math.abs(layout.selection.y - layout.monitorSection.y),
         `${stage}: seleção e monitor devem compartilhar a faixa inferior`).toBeLessThanOrEqual(2);
       expect(layout.chart.height, `${stage}: gráfico sem altura suficiente para projeção`)
         .toBeGreaterThanOrEqual(130);
       expect(layout.chromosome, `${stage}: cromossomo ausente`).toBeTruthy();
-      expect(layout.chromosome.right, `${stage}: cromossomo sobrepõe métricas`)
-        .toBeLessThanOrEqual(layout.technical.x + 2);
+      if (layout.width >= 1200) {
+        expect(layout.chromosome.right, `${stage}: cromossomo sobrepõe métricas`)
+          .toBeLessThanOrEqual(layout.technical.x + 2);
+      } else {
+        expect(layout.chromosome.bottom, `${stage}: cromossomo sobrepõe métricas`)
+          .toBeLessThanOrEqual(layout.technical.y + 2);
+      }
       for (const name of ['chromosome', 'technical']) {
         expect(layout[name].bottom, `${stage}: ${name} sai da seção de seleção`)
           .toBeLessThanOrEqual(layout.selection.bottom + 2);
         expect(layout[name].right, `${stage}: ${name} sai horizontalmente da seleção`)
           .toBeLessThanOrEqual(layout.selection.right + 2);
       }
-      expect(layout.selection.scrollHeight, `${stage}: seleção técnica exige rolagem`)
-        .toBeLessThanOrEqual(layout.selection.clientHeight + 2);
     } else {
       expect(layout.selection.bottom, `${stage}: seleção sobrepõe o monitor`)
         .toBeLessThanOrEqual(layout.monitorSection.y + 2);

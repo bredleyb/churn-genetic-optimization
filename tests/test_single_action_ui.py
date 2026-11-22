@@ -123,6 +123,9 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert ".st-key-dashboard-mobile-detail" in style
     assert ".st-key-dashboard-desktop-detail" in style
     assert "#30B6A7" not in style
+    assert "Painel técnico desktop: a área do console absorve o espaço restante" in style
+    assert "Em desktop, a faixa inferior reúne as características e o monitor" in style
+    assert "grid-template-rows:minmax(0,1fr) minmax(223px,29dvh)" in style
 
 
 def test_results_use_semantic_classification_only(monkeypatch):
