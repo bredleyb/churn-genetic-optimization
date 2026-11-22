@@ -368,8 +368,10 @@ for (const { width, height } of viewports) {
         expect(restoreAppearance.iconOffset, 'Ícone de restauro desalinhado horizontalmente').toBeLessThanOrEqual(2);
         expect(restoreAppearance.iconVerticalOffset, 'Ícone de restauro desalinhado verticalmente').toBeLessThanOrEqual(2);
         await expect(restore.locator('[data-testid="stIconMaterial"]')).toHaveCount(1);
-        await restore.hover();
-        await expect.poll(() => restore.evaluate(el => getComputedStyle(el).backgroundColor))
+        // Restaurar desabilitado mantém a superfície escura; Playwright não
+        // deve exigir hover em botão com pointer-events bloqueado.
+        await expect(restore).toBeDisabled();
+        expect(await restore.evaluate(el => getComputedStyle(el).backgroundColor))
           .toBe('rgb(0, 0, 0)');
         // Streamlit 1.67 usa um botão real com aria-label="Open" para expansão.
         // Verificar a superfície pintada, não um pseudo-elemento antigo/invisível.
