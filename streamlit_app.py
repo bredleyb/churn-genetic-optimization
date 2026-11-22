@@ -238,9 +238,22 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 
 /* Duas apresentações do mesmo estado: grade completa no projetor, abas no celular. */
-.st-key-dashboard-workspace {grid-template-rows:auto auto minmax(0,1fr)!important;}
+.st-key-dashboard-workspace {
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto auto minmax(0,1fr)!important;
+}
+.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"] {
+  width:100%!important;min-width:0!important;
+}
+/* O Streamlit conserva o wrapper da versão móvel. Em desktop ele criava
+   uma quarta linha implícita, empurrando o monitor para fora do painel. */
+.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail) {
+  display:none!important;
+}
 .st-key-dashboard-desktop-detail {
-  display:grid!important;grid-template-rows:minmax(145px,1fr) auto minmax(115px,19dvh)!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  width:100%!important;max-width:100%!important;
+  grid-template-rows:minmax(145px,1fr) auto minmax(115px,19dvh)!important;
   gap:10px!important;height:100%!important;min-height:0!important;overflow:hidden!important;
 }
 .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"] {min-height:0!important;overflow:hidden!important;}
@@ -257,7 +270,9 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
  .st-key-dashboard-workspace {grid-template-rows:auto auto minmax(0,1fr)!important;}
  .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-desktop-detail) {display:none!important;}
  .st-key-dashboard-desktop-detail {display:none!important;}
- .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail) {height:100%!important;min-height:0!important;overflow:hidden!important;}
+ .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail) {
+   display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important;
+ }
  .st-key-dashboard-mobile-detail {display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important;}
  .st-key-dashboard-mobile-detail [data-testid="stTabs"] {height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;}
  .st-key-dashboard-mobile-detail [data-baseweb="tab-list"] {height:41px!important;min-height:41px!important;}

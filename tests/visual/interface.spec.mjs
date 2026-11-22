@@ -19,7 +19,7 @@ async function geometry(page, stage, testInfo) {
       const css = getComputedStyle(element);
       return {
         x: box.x, y: box.y, right: box.right, bottom: box.bottom,
-        width: box.width, height: box.height, overflowY: css.overflowY, position: css.position,
+        width: box.width, height: box.height, overflowY: css.overflowY, position: css.position, display: css.display,
       };
     };
     const root = document.scrollingElement || document.documentElement;
@@ -44,6 +44,8 @@ async function geometry(page, stage, testInfo) {
       chart: bounds('.st-key-dashboard-desktop-detail .churn-chart'),
       technical: bounds('.st-key-dashboard-desktop-detail .churn-technical'),
       monitor: bounds('.st-key-dashboard-desktop-detail .churn-console'),
+      mobileWrapper: bounds('.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail)'),
+      desktopDetail: bounds('.st-key-dashboard-desktop-detail'),
     };
   });
   await testInfo.attach(`geometria-${stage}-${layout.width}x${layout.height}.json`, {
@@ -84,6 +86,11 @@ async function geometry(page, stage, testInfo) {
     }
     expect(layout.tabs.height, `${stage}: abas móveis sem altura útil`).toBeGreaterThan(100);
   } else {
+    // A visualização móvel não pode ocupar a quarta linha da grade desktop.
+    expect(layout.mobileWrapper, `${stage}: wrapper móvel ausente`).toBeTruthy();
+    expect(layout.mobileWrapper.display, `${stage}: wrapper móvel ocupa a grade desktop`).toBe('none');
+    expect(layout.comparison.width, `${stage}: comparação usa pouco espaço horizontal`)
+      .toBeGreaterThan(layout.workspace.width * 0.80);
     for (const name of ['comparison', 'chart', 'technical', 'monitor']) {
       expect(layout[name], `${stage}: ${name} ausente`).toBeTruthy();
       expect(layout[name].bottom, `${stage}: ${name} extrapola área analítica`)
