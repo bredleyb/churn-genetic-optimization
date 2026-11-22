@@ -177,38 +177,40 @@ garantias individuais de cancelamento. Os modelos `.joblib` são gerados localme
 e devem ser carregados apenas quando provenientes do próprio treinamento do projeto.
 
 
-### Execução completa na interface
+### Dashboard de demonstração
 
-A interface divide a página em duas colunas em telas largas: **Cliente**, à esquerda,
-e **Execução e previsão**, à direita. Em telas menores, as colunas são empilhadas.
+A interface em Streamlit utiliza **tema escuro** e uma estrutura compacta para
+funcionar dentro da altura do navegador. Em desktop e notebook, o painel
+**Cliente** fica à esquerda e **Execução e previsão** à direita. Em telas
+estreitas, os dois painéis ficam empilhados e continuam visíveis; a rolagem,
+quando necessária, ocorre **dentro de cada painel**, sem deslocar a página.
 
-O botão principal **Calcular previsão** inicia toda a sequência experimental com
-os dados originais: preparação e divisão estratificada, validação cruzada da
-regressão logística de referência, busca genética com 24 indivíduos e 15 gerações,
-treinamento dos dois classificadores, avaliação no conjunto de teste reservado
-e previsão do cliente informado. **Cada clique executa novamente esse processo**;
-por isso, o resultado pode demorar mais do que uma inferência isolada.
+O painel Cliente contém o seletor de exemplo, os quatro campos principais,
+abas para editar as demais 15 características e o botão **Calcular previsão**.
+Esse é o único botão que inicia o processamento. Cada clique executa novamente
+o experimento completo: carregamento e divisão estratificada do CSV, validação
+cruzada da regressão logística, seleção genética (24 indivíduos, 15 gerações,
+semente 42), treinamento, teste reservado e previsão do cliente informado.
 
-O painel direito acompanha o processamento em tempo real, sempre visível:
+O painel de execução acompanha o algoritmo em tempo real, com:
 
-- **Console:** registros das etapas e das avaliações verdadeiras de subconjuntos;
-  os últimos eventos aparecem durante a execução e o registro completo fica
-  disponível no mesmo console ao terminar.
-- **Cromossomo:** 19 bits atualizados para cada subconjunto distinto avaliado,
-  com 1 representando inclusão e 0 exclusão de uma característica original.
-- **Gráfico:** F1-score em validação cruzada atualizado ao completar cada geração.
-- **Resultado:** ao final, as duas previsões individuais e as métricas de teste
-  provenientes desta própria execução são mostradas abaixo do gráfico.
+- **Indicadores superiores:** probabilidades de cancelamento dos dois modelos,
+  quantidade de características selecionadas e estado do processamento;
+- **Console:** eventos reais de avaliação e conclusão das gerações, com rolagem
+  interna. O registro completo pode ser salvo pelo botão **Baixar log completo**;
+- **Cromossomo:** 19 bits correspondentes às características originais, exibindo
+  o subconjunto efetivamente avaliado;
+- **Gráfico:** evolução do melhor F1-score de validação a cada geração;
+- **Resumo técnico:** F1 no teste reservado, subconjuntos avaliados, tempo,
+  percentual de redução de características e variação do F1.
 
-Não existe um segundo botão de treinamento nem um painel separado para a busca.
-A alteração dos campos exige um novo clique para atualizar o resultado. A seleção
-ocorre exclusivamente nos dados de desenvolvimento, sem acesso ao teste reservado;
-os mesmos parâmetros e a semente 42 do experimento principal são preservados.
+Ao alterar os dados após a execução, as probabilidades são marcadas como
+desatualizadas até um novo clique; o histórico da busca continua consultável.
+A execução web ocorre em memória e não altera os modelos ou relatórios gerados
+pela CLI. A metodologia e os parâmetros do experimento permanecem inalterados.
 
-A execução web é realizada em memória e **não sobrescreve** os arquivos
-`results/*.joblib` ou o relatório original. A CLI continua disponível para
-reprodução e geração desses arquivos. Para abrir a interface, com o CSV
-original em `data/raw/`, execute:
+Para abrir a interface, com o CSV em
+`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`, execute:
 
 ```powershell
 python -m streamlit run streamlit_app.py
@@ -216,66 +218,50 @@ python -m streamlit run streamlit_app.py
 
 ## Testes visuais automatizados
 
-A interface possui testes de ponta a ponta com **Playwright Test (Chromium)**,
-separados dos testes Python. O Playwright inicia o Streamlit automaticamente
-em uma porta de teste (`8517`) e verifica os estados **inicial, processamento,
-concluído e dados editados** nas larguras **1440, 1024, 768 e 390 px**.
-Também verifica ausência de rolagem horizontal e se os resultados ficam
-visíveis após o processamento real. Cada cenário executa a busca genética
-com os parâmetros do projeto; o teste completo pode levar alguns minutos.
+O **Playwright Test** abre o Streamlit em uma porta isolada (`8517`) e percorre
+o fluxo completo em **1440, 1024, 768 e 390 px**, com altura de 900 px.
+Ele verifica abertura, monitoramento real, conclusão e edição do cliente.
 
-Pré-requisitos: Python e dependências do projeto instalados, CSV original em
-`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`, Node.js com npm.
-Na raiz do repositório:
+Os critérios de aprovação agora incluem:
+
+- nenhuma rolagem vertical ou horizontal da **página**;
+- ambos os painéis principais dentro dos limites do viewport;
+- regiões internas com altura controlada e rolagem própria;
+- tema escuro, quatro indicadores e cromossomo com 19 bits;
+- atualização do console durante a busca genética e duas probabilidades reais;
+- invalidação das previsões após editar o cliente.
+
+Para instalar e executar:
 
 ```powershell
 npm install
 npx playwright install chromium
 npm run test:visual:update
 npm run test:visual
-npm run test:visual:report
 ```
 
-O comando `test:visual:update` cria automaticamente os **screenshots de
-referência**, que devem ser conferidos antes das comparações futuras.
-O comando `test:visual` compara a interface com essas referências e informa
-falhas visuais ou funcionais.
+A primeira execução com `test:visual:update` gera novas referências do
+dashboard escuro; confira-as antes de usá-las como base para comparações.
+O estado de processamento é registrado como screenshot de diagnóstico, porque
+seu conteúdo é variável. Os demais estados utilizam comparação visual.
 
-**Ao finalizar qualquer um desses dois comandos, o sistema gera automaticamente:**
+**Após cada execução, inclusive quando houver falhas, um ZIP é criado em:**
 
 ```text
 results/testes-visuais-para-revisao.zip
 ```
 
-**Envie esse ZIP no ChatGPT para revisão.** Ele reúne screenshots, referências,
-diferenças de imagens, relatório HTML, resultados estruturados JSON, logs do
-terminal, traces e vídeos quando produzidos pelo Playwright. Um manifesto
-informa quais testes passaram e quais falharam. **O ZIP também é criado quando
-os testes falham**, para permitir diagnosticar os erros a partir de um único
-anexo. O comando do teste continua retornando erro ao terminal caso haja falhas.
-
-Para gerar novamente o ZIP a partir de resultados já disponíveis, sem repetir
-a busca genética, execute:
+Envie esse ZIP para análise. Ele inclui referências, capturas, diferenças,
+relatório HTML, resultados estruturados e logs. Os dados CSV e modelos
+`.joblib` não são adicionados ao arquivo. Para compactar novamente os
+resultados existentes, sem repetir o experimento:
 
 ```powershell
 npm run test:visual:package
 ```
 
-O script compacta exclusivamente os artefatos do Playwright e os arquivos
-de configuração necessários à auditoria. **O CSV bruto, os modelos `.joblib`
-e os demais arquivos locais do experimento não entram no pacote.**
-Os screenshots de referência podem ser versionados após revisão; relatórios
-e o ZIP permanecem ignorados pelo Git.
-
-O screenshot de **execução em andamento** é anexado ao relatório, porém não
-é comparado pixel a pixel porque seu conteúdo depende do instante da captura.
-Os demais estados possuem comparação visual automática. Para conferir só uma
-largura use, por exemplo, `npm run test:visual -- --grep 390px`.
-
-As comparações dependem de navegador, sistema operacional e fontes. Gere as
-referências inicialmente no mesmo Windows que será usado para repetir os
-testes; recrie-as quando a mudança visual for deliberada. Para testes Python,
-continue usando `python -m pytest -q`.
+Para visualizar o relatório local use `npm run test:visual:report`.
+Os testes Python continuam disponíveis por `python -m pytest -q`.
 
 ## Artigo
 
