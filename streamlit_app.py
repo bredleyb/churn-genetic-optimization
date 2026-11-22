@@ -16,6 +16,7 @@ from src.genetic import GeneticConfig, select_features
 from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
 from src.tenure_control import render_tenure_control
+from src.client_scroll_cues import mount_client_scroll_cues
 from src.ui_data import (
     BILLING_FEATURES,
     INTERNET_FEATURES,
@@ -60,6 +61,8 @@ st.markdown(
   /* Ajuste óptico uniforme; o controle selecionável usa seu input real. */
   --n3-field-text-shift:-1px;
   --n3-page-pad:12px; --n3-panel-pad:12px;
+  --n3-client-shadow-top:0; --n3-client-shadow-bottom:0;
+  --n3-client-shadow-length:44px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
 .stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
@@ -103,11 +106,46 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-surface)!important;border:1px solid var(--n3-outline)!important;
   border-radius:6px!important;padding:var(--n3-panel-pad)!important;overflow:hidden!important;
 }
-.st-key-dashboard-client {display:grid!important;grid-template-rows:20px minmax(0,1fr) auto!important;gap:var(--n3-panel-pad)!important;align-content:stretch!important;}
+.st-key-dashboard-client {position:relative!important;display:grid!important;grid-template-rows:20px minmax(0,1fr) auto!important;gap:var(--n3-panel-pad)!important;align-content:stretch!important;}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {height:100%!important;max-height:100%!important;overflow:hidden!important;}
-.st-key-dashboard-client-fields {height:100%!important;max-height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
-.st-key-dashboard-client-footer {height:auto!important;padding-top:8px;border-top:1px solid var(--n3-line);}
+/* A barra do Cliente possui uma faixa exclusiva, inclusive nos navegadores
+   com scrollbar sobreposta, onde scrollbar-gutter sozinho não reserva espaço. */
+.st-key-dashboard-client-fields {
+  box-sizing:border-box!important;height:100%!important;max-height:100%!important;
+  min-height:0!important;min-width:0!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+  scrollbar-gutter:stable!important;scrollbar-width:thin!important;
+  scrollbar-color:var(--n3-outline) transparent!important;
+  padding-inline-end:10px!important;
+}
+/* Sombreamentos fixos nos limites do conteúdo rolável. A posição da rolagem
+   altera só duas propriedades CSS; o botão e o título não se movem. */
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading) {
+  position:relative!important;z-index:3!important;overflow:visible!important;
+}
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading)::after {
+  content:"";position:absolute;top:100%;left:0;right:0;
+  height:var(--n3-client-shadow-length);z-index:2;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(14,16,19,.96),rgba(14,16,19,0));
+  opacity:var(--n3-client-shadow-top,0);transition:opacity .12s ease-out;
+}
+.st-key-dashboard-client-footer {
+  position:relative!important;z-index:3!important;overflow:visible!important;
+  height:auto!important;padding-top:8px;border-top:1px solid var(--n3-line);
+}
+.st-key-dashboard-client-footer::before {
+  content:"";position:absolute;bottom:100%;left:0;right:0;
+  height:var(--n3-client-shadow-length);pointer-events:none;
+  background:linear-gradient(to top,rgba(14,16,19,.96),rgba(14,16,19,0));
+  opacity:var(--n3-client-shadow-bottom,0);transition:opacity .12s ease-out;
+}
+@media(prefers-reduced-motion:reduce) {
+  .st-key-dashboard-client-footer::before,
+  .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading)::after {
+    transition:none!important;
+  }
+}
 /* Identificadores discretos, centralizados dentro dos painéis e sem traços. */
 .churn-panel-heading {
   display:block!important;box-sizing:border-box!important;width:100%!important;
@@ -381,10 +419,10 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
  }
  .st-key-dashboard-mobile-detail {display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important;}
  .st-key-dashboard-mobile-detail [data-testid="stTabs"] {height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;}
- .st-key-dashboard-mobile-detail [data-baseweb="tab-list"] {height:41px!important;min-height:41px!important;}
+ .st-key-dashboard-mobile-detail [role="tablist"] {height:41px!important;min-height:41px!important;}
  .st-key-dashboard-mobile-detail [role="tab"] {font-size:15px!important;color:var(--n3-secondary)!important;}
  .st-key-dashboard-mobile-detail [role="tab"][aria-selected="true"] {color:var(--n3-text)!important;}
- .st-key-dashboard-mobile-detail [data-baseweb="tab-panel"] {
+ .st-key-dashboard-mobile-detail [role="tabpanel"] {
     height:calc(100% - 42px)!important;max-height:calc(100% - 42px)!important;
     min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
     scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;
@@ -654,7 +692,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 
 /* Quatro abas locais, com rótulos completos mesmo em painéis estreitos. */
 .st-key-dashboard-detail-tabs {min-width:0;}
-.st-key-dashboard-detail-tabs [data-baseweb="tab-list"] {
+.st-key-dashboard-detail-tabs [role="tablist"] {
   overflow-x:auto!important;overflow-y:hidden!important;
   flex-wrap:nowrap!important;scrollbar-width:thin;
   scrollbar-color:var(--n3-outline) transparent;
@@ -667,7 +705,18 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-detail-tabs [role="tab"][aria-selected="true"] {
   color:var(--n3-text)!important;font-weight:600!important;
 }
-.st-key-dashboard-detail-tabs [data-baseweb="tab-panel"] {
+/* React Aria usa box-shadow como anel de foco, criando duas barras laterais
+   durante capturas. Foco de teclado permanece identificável pela faixa inferior. */
+.st-key-dashboard-detail-tabs [role="tab"]:focus,
+.st-key-dashboard-detail-tabs [role="tab"][data-focus-visible] {
+  outline:none!important;box-shadow:none!important;
+}
+.st-key-dashboard-detail-tabs [role="tab"]:focus-visible,
+.st-key-dashboard-detail-tabs [role="tab"][data-focus-visible] {
+  background:var(--n3-elevated)!important;
+  box-shadow:inset 0 -2px 0 var(--n3-outline)!important;
+}
+.st-key-dashboard-detail-tabs [role="tabpanel"] {
   min-width:0!important;padding-top:8px!important;
 }
 
@@ -681,7 +730,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 
 /* Reduz o espaço das abas no tablet para exibir também o último rótulo. */
 @media (min-width:621px) and (max-width:900px) {
-  .st-key-dashboard-detail-tabs [data-baseweb="tab-list"] {gap:0!important;}
+  .st-key-dashboard-detail-tabs [role="tablist"] {gap:0!important;}
   .st-key-dashboard-detail-tabs [role="tab"] {
     font-size:13px!important;padding:7px 3px!important;
   }
@@ -1275,6 +1324,10 @@ def main() -> None:
                     _render_finished_run(st.session_state["workflow_run"], slots)
                 else:
                     _render_idle(slots)
+
+    # Componente JS sem interface: acompanha apenas o scroll do painel Cliente.
+    # Fora do grid fixo para não criar wrappers que afetem campos ou rodapé.
+    mount_client_scroll_cues(st)
 
 
 if __name__ == "__main__":
