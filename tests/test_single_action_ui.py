@@ -138,9 +138,12 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert '--n3-font-ui:"Familjen Grotesk","Segoe UI",Arial,sans-serif' in style
     assert ".stApp [data-testid=\"stWidgetLabel\"]" in style
     assert ".stApp .churn-console-lines" in style
-    assert "top:12px!important;right:18px!important;bottom:10px!important" in style
-    assert "top:9px!important;right:10px!important;bottom:8px!important" in style
-    assert "top:8px!important;right:8px!important;bottom:8px!important" in style
+    assert "--n3-page-pad:12px; --n3-panel-pad:12px" in style
+    assert "--n3-page-pad:10px;--n3-panel-pad:10px" in style
+    assert "--n3-page-pad:8px;--n3-panel-pad:8px" in style
+    assert "padding:var(--n3-page-pad)!important" in style
+    assert "top:var(--n3-page-pad)!important;right:var(--n3-page-pad)!important" in style
+    assert "bottom:var(--n3-page-pad)!important;left:var(--n3-page-pad)!important" in style
     assert "churn-topbar" not in style
     assert "churn-chart-descriptor" not in style
     assert "stMarkdownContainer\"]:has(.churn-monitor-title)" in style
@@ -155,12 +158,13 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "churn-workspace-heading" in style
     assert "grid-template-rows:20px minmax(0,1fr) auto" in style
     assert "grid-template-rows:20px auto minmax(0,1fr)" in style
-    assert "color:var(--n3-outline)!important" in style
+    assert "color:var(--n3-muted)!important" in style
     assert "text-align:center!important" in style
-    assert "content:\"\";flex:1 1 0" in style
+    assert ".churn-panel-heading::before" not in style
+    assert ".churn-panel-heading::after" not in style
+    assert "gap:var(--n3-panel-pad)!important" in style
+    assert "padding:var(--n3-panel-pad)!important" in style
     assert "position:absolute;right:0;top:0" in style
-    assert "padding:12px 16px 14px!important" in style
-    assert "padding:8px 10px 10px!important" in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
     assert "--n3-field-height:42px" in style

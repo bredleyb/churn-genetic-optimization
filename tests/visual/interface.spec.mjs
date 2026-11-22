@@ -85,6 +85,13 @@ async function geometry(page, stage, testInfo) {
   expect(layout.workspace, `${stage}: Previsão ausente`).toBeTruthy();
   expect(layout.clientTitle, `${stage}: título Cliente ausente`).toBeTruthy();
   expect(layout.workspaceTitle, `${stage}: título Previsão ausente`).toBeTruthy();
+  const pagePad = layout.width <= 620 ? 8 : layout.width <= 900 ? 10 : 12;
+  for (const [edge, measured] of [
+    ['superior',layout.row.y], ['inferior',layout.height - layout.row.bottom],
+    ['esquerda',layout.row.x], ['direita',layout.width - layout.row.right],
+  ]) {
+    expect(Math.abs(measured - pagePad), `${stage}: margem ${edge} desigual`).toBeLessThanOrEqual(2);
+  }
   expect(layout.clientFieldsTop, `${stage}: conteúdo Cliente ausente`).toBeTruthy();
   expect(layout.comparisonTop, `${stage}: comparação abaixo de Previsão ausente`).toBeTruthy();
   for (const [panel, heading, content] of [
@@ -93,8 +100,10 @@ async function geometry(page, stage, testInfo) {
   ]) {
     const gap = content.y - heading.bottom;
     expect(gap, `${stage}: conteúdo invade a faixa de título em ${panel}`).toBeGreaterThanOrEqual(-2);
-    expect(gap, `${stage}: espaço excessivo entre título e conteúdo em ${panel}`)
-      .toBeLessThanOrEqual(18);
+    const box = panel === 'Cliente' ? layout.client : layout.workspace;
+    const topGap = heading.y - box.y;
+    expect(Math.abs(gap - topGap), `${stage}: espaços acima e abaixo do título diferem em ${panel}`)
+      .toBeLessThanOrEqual(2);
   }
   expect(layout.clientTitle.y - layout.client.y, `${stage}: título Cliente muito distante do topo`)
     .toBeLessThanOrEqual(27);
@@ -291,19 +300,26 @@ for (const { width, height } of viewports) {
           const heading = page.getByRole('heading', { name, exact: true });
           const appearance = await heading.evaluate(el => {
             const css = getComputedStyle(el);
-            const before = getComputedStyle(el, '::before');
-            const after = getComputedStyle(el, '::after');
-            return {
-              color:css.color, align:css.textAlign, height:el.getBoundingClientRect().height,
-              before:before.backgroundColor, after:after.backgroundColor,
-            };
-          });
-          expect(appearance.color, `${name}: cor do título difere do contorno`)
-            .toBe('rgb(85, 88, 93)');
+            const range = document.createRange();
+          range.selectNodeContents(el);
+          const text = range.getBoundingClientRect();
+          const rect = el.getBoundingClientRect();
+          return {
+            color:css.color, align:css.textAlign, height:rect.height,
+            textCenter:text.x + text.width / 2,
+            headingCenter:rect.x + rect.width / 2,
+            before:getComputedStyle(el,'::before').content,
+            after:getComputedStyle(el,'::after').content,
+          };
+        });
+          expect(appearance.color, `${name}: título deve usar cinza mais claro`)
+            .toBe('rgb(183, 183, 183)');
           expect(appearance.align).toBe('center');
           expect(appearance.height).toBeLessThanOrEqual(21);
-          expect(appearance.before).toBe(appearance.color);
-          expect(appearance.after).toBe(appearance.color);
+          expect(Math.abs(appearance.textCenter - appearance.headingCenter),
+            `${name}: texto fora do centro`).toBeLessThanOrEqual(2);
+          expect(['none', 'normal']).toContain(appearance.before);
+          expect(['none', 'normal']).toContain(appearance.after);
         }
         await expect(page.locator('.churn-run-icon')).toHaveCount(0);
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);

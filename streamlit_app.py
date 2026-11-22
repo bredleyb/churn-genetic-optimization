@@ -55,11 +55,12 @@ st.markdown(
   --n3-positive:#5FE29A; --n3-negative:#FF6464;
   --n3-field-height:42px; --n3-field-radius:4px;
   --n3-field-text-size:16px; --n3-field-text-line:20px;
+  --n3-page-pad:12px; --n3-panel-pad:12px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
 .stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
 [data-testid="stHeader"],[data-testid="stDecoration"],[data-testid="stToolbar"] {display:none!important;}
-[data-testid="stMainBlockContainer"] {box-sizing:border-box!important;padding:12px 18px 10px!important;max-width:none!important;height:100dvh!important;overflow:hidden!important;}
+[data-testid="stMainBlockContainer"] {box-sizing:border-box!important;padding:var(--n3-page-pad)!important;max-width:none!important;height:100dvh!important;overflow:hidden!important;}
 .stApp {font-family:var(--n3-font-ui)!important;color:var(--n3-text)!important;}
 /* Os widgets do Streamlit podem definir tipografia própria via Emotion. */
 .stApp :is(button,input,textarea,select,[role="combobox"],[role="tab"],[role="option"]),
@@ -74,11 +75,12 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .stApp .churn-bit {
   font-family:Consolas,"Liberation Mono",monospace!important;
 }
-.st-key-dashboard-shell {height:calc(100dvh - 22px);width:100%;max-width:1680px;margin:auto;overflow:hidden;}
+.st-key-dashboard-shell {height:calc(100dvh - var(--n3-page-pad) - var(--n3-page-pad));width:100%;max-width:1680px;margin:auto;overflow:hidden;}
 /* A linha externa e seus wrappers são controlados; o Streamlit cria alturas automáticas. */
 .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
   /* Âncoras da viewport: impedir altura herdada da grade em janelas menores. */
-  position:fixed!important;top:12px!important;right:18px!important;bottom:10px!important;left:18px!important;
+  position:fixed!important;top:var(--n3-page-pad)!important;right:var(--n3-page-pad)!important;
+  bottom:var(--n3-page-pad)!important;left:var(--n3-page-pad)!important;
   box-sizing:border-box!important;display:grid!important;
   grid-template-columns:clamp(300px,27vw,380px) minmax(0,1fr)!important;
   gap:12px!important;width:auto!important;height:auto!important;
@@ -95,25 +97,20 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   box-sizing:border-box!important;min-width:0!important;min-height:0!important;
   width:100%!important;height:100%!important;max-height:100%!important;
   background:var(--n3-surface)!important;border:1px solid var(--n3-outline)!important;
-  border-radius:6px!important;padding:12px 16px 14px!important;overflow:hidden!important;
+  border-radius:6px!important;padding:var(--n3-panel-pad)!important;overflow:hidden!important;
 }
-.st-key-dashboard-client {display:grid!important;grid-template-rows:20px minmax(0,1fr) auto!important;gap:6px!important;align-content:stretch!important;}
+.st-key-dashboard-client {display:grid!important;grid-template-rows:20px minmax(0,1fr) auto!important;gap:var(--n3-panel-pad)!important;align-content:stretch!important;}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {height:100%!important;max-height:100%!important;overflow:hidden!important;}
 .st-key-dashboard-client-fields {height:100%!important;max-height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
 .st-key-dashboard-client-footer {height:auto!important;padding-top:8px;border-top:1px solid var(--n3-line);}
-/* Títulos discretos dentro dos painéis, centrados entre duas linhas internas.
-   O indicador da execução fica sobre o lado direito, sem deslocar o título. */
+/* Identificadores discretos, centralizados dentro dos painéis e sem traços. */
 .churn-panel-heading {
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  box-sizing:border-box!important;width:100%!important;height:20px!important;
-  gap:12px!important;padding:0 28px!important;margin:0!important;
+  display:block!important;box-sizing:border-box!important;width:100%!important;
+  height:20px!important;margin:0!important;padding:0!important;
   font-size:16px!important;line-height:20px!important;font-weight:600!important;
   letter-spacing:0!important;white-space:nowrap!important;
-  text-align:center!important;color:var(--n3-outline)!important;
-}
-.churn-panel-heading::before,.churn-panel-heading::after {
-  content:"";flex:1 1 0;min-width:0;height:1px;background:var(--n3-outline);
+  text-align:center!important;color:var(--n3-muted)!important;
 }
 /* Base visual compartilhada por seletores e entradas numéricas nativas. */
 .st-key-dashboard-client [data-testid="stWidgetLabel"] {
@@ -166,7 +163,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 /* Área analítica: cinco seções com função definida, uma só superfície principal. */
 .st-key-dashboard-workspace {
   display:grid!important;grid-template-rows:auto auto minmax(150px,1fr) auto minmax(116px,19dvh)!important;
-  gap:6px!important;align-content:stretch!important;
+  gap:var(--n3-panel-pad)!important;align-content:stretch!important;
 }
 .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;overflow:hidden!important;}
 .st-key-dashboard-analysis-section {height:100%!important;min-height:0!important;overflow:hidden!important;}
@@ -225,27 +222,23 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-monitor-section button[kind="tertiary"] {font-size:13px!important;color:var(--n3-secondary)!important;min-height:26px!important;padding:0 4px!important;}
 @media(max-width:1150px) {
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {grid-template-columns:310px minmax(0,1fr)!important;}
-  .st-key-dashboard-workspace {grid-template-rows:auto auto minmax(130px,1fr) auto minmax(100px,17dvh)!important;gap:8px!important;padding:12px!important;}
   .churn-prediction-value {font-size:32px;}
   .st-key-dashboard-selection-section {gap:12px!important;}
   .churn-bit {height:24px;font-size:11px;}
   .churn-metric dd {font-size:18px;}
 }
 @media(max-width:900px) {
-  [data-testid="stMainBlockContainer"] {padding:9px 10px 8px!important;}
-  .st-key-dashboard-shell {height:calc(100dvh - 17px);}
+  :root {--n3-page-pad:10px;--n3-panel-pad:10px;}
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    grid-template-columns:270px minmax(0,1fr)!important;
-    top:9px!important;right:10px!important;bottom:8px!important;left:10px!important;gap:8px!important;
+    grid-template-columns:270px minmax(0,1fr)!important;gap:8px!important;
   }
-  .st-key-dashboard-client,.st-key-dashboard-workspace {padding:9px 11px 11px!important;}
   .st-key-dashboard-selection-section {grid-template-columns:1fr!important;overflow-y:auto!important;}
   .churn-model-name {font-size:15px;}
   .churn-prediction-value {font-size:27px;}
   .churn-bits {gap:2px;}
 }
 @media(max-height:760px) and (min-width:621px) {
-  .st-key-dashboard-workspace {grid-template-rows:auto auto minmax(105px,1fr) auto minmax(90px,16dvh)!important;gap:6px!important;}
+  .st-key-dashboard-workspace {grid-template-rows:auto auto minmax(105px,1fr) auto minmax(90px,16dvh)!important;}
   .churn-model-detail {font-size:12px;}
   .churn-prediction-value {font-size:32px;}
   .churn-comparison {padding-bottom:7px;}
@@ -255,20 +248,20 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .churn-bit {height:23px;}
 }
 @media(max-width:620px) {
-  /* Preserva a correção diagnosticada com trace real: colunas e wrappers limitados. */
+  :root {--n3-page-pad:8px;--n3-panel-pad:8px;}
+  /* Grade de dois painéis com margens simétricas na viewport. */
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    position:fixed!important;top:8px!important;right:8px!important;bottom:8px!important;left:8px!important;
-    display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+    position:fixed!important;display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
     grid-template-rows:minmax(0,36fr) minmax(0,64fr)!important;
     gap:8px!important;box-sizing:border-box!important;
-    width:auto!important;height:auto!important;max-height:calc(100dvh - 16px)!important;
+    width:auto!important;height:auto!important;
+    max-height:calc(100dvh - var(--n3-page-pad) - var(--n3-page-pad))!important;
     min-height:0!important;margin:0!important;overflow:hidden!important;align-content:stretch!important;
   }
   .st-key-dashboard-client,.st-key-dashboard-workspace {height:100%!important;max-height:100%!important;min-height:0!important;}
-  .st-key-dashboard-client {padding:8px 10px 10px!important;gap:6px!important;}
-  .churn-panel-heading {font-size:14px!important;gap:8px!important;padding:0 22px!important;}
+  .churn-panel-heading {font-size:14px!important;}
   .st-key-dashboard-client-footer button {height:44px!important;min-height:44px!important;}
-  .st-key-dashboard-workspace {padding:8px 10px 10px!important;display:grid!important;grid-template-rows:auto auto minmax(110px,1fr) auto minmax(75px,15dvh)!important;gap:7px!important;}
   .churn-comparison {padding-bottom:7px;}
   .churn-section-top h3 {font-size:14px;}
   .churn-model-name {font-size:14px;}
@@ -542,8 +535,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   }
 }
 
-/* A faixa de título ocupa exatamente um trilho de 20px em ambos os painéis.
-   O conteúdo seguinte começa após o mesmo gap de 6px, sem espaço reservado extra. */
+/* Padding superior e distância após os títulos compartilham --n3-panel-pad. */
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading),
 .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.churn-workspace-heading) {
   box-sizing:border-box!important;margin:0!important;padding:0!important;
