@@ -1,11 +1,11 @@
 [theme]
-base = "light"
-primaryColor = "#0F766E"
-backgroundColor = "#F8FAFC"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#0F172A"
-linkColor = "#0F766E"
-borderColor = "#E2E8F0"
+base = "dark"
+primaryColor = "#30B6A7"
+backgroundColor = "#0B111B"
+secondaryBackgroundColor = "#111B28"
+textColor = "#E8EEF5"
+linkColor = "#59CBBE"
+borderColor = "#263547"
 font = "sans serif"
 
 [browser]
