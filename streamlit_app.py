@@ -43,187 +43,195 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-/* Base do produto: componentes com chave explícita e classes de domínio. */
-:root {color-scheme: dark;}
-html, body, #root {overflow: hidden !important; background: #0B111B !important;}
-.stApp, [data-testid="stMain"] {background: #0B111B !important; overflow: hidden !important; height: 100dvh !important;}
-[data-testid="stHeader"], [data-testid="stDecoration"] {display: none !important;}
-[data-testid="stMainBlockContainer"] {padding: 10px 18px 0 !important; max-width: none !important; height: 100dvh !important; overflow: hidden !important;}
-.st-key-dashboard-shell {height: calc(100dvh - 20px); max-width: 1640px; margin: auto; overflow: hidden;}
-.churn-topbar {display:flex; justify-content:space-between; align-items:center; gap:16px; height:52px; margin:0 0 10px;}
-.churn-topbar h1 {font-size:20px;line-height:1.2;font-weight:650;letter-spacing:-.025em;margin:0;color:#F1F5F9;}
-.churn-topbar .churn-top-meta {color:#8FA1B6;font-size:12px;white-space:nowrap;}
-.st-key-dashboard-client, .st-key-dashboard-workspace {
-  box-sizing:border-box;
-  height:calc(100dvh - 88px)!important; min-height:0!important; overflow:hidden!important;
-  background:#111B28!important; border:1px solid #263547!important; border-radius:12px!important;
-  padding:14px!important;
+/* N3 — sistema monocromático para leitura em projetor.
+   Contraste deliberado, sem cartões decorativos, sombras ou gradientes. */
+:root {
+  color-scheme: dark;
+  --n3-bg:#000000; --n3-surface:#0E1013; --n3-control:#17181B;
+  --n3-elevated:#202124; --n3-surface-alt:#282A2D;
+  --n3-line:#383A3E; --n3-outline:#55585D;
+  --n3-text:#F5F5F5; --n3-secondary:#D8D8D8; --n3-muted:#B7B7B7;
+  --n3-positive:#5FE29A; --n3-negative:#FF6464;
 }
-.st-key-dashboard-client-fields {height:calc(100dvh - 248px)!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin;scrollbar-color:#34465B transparent;}
-.st-key-dashboard-client-footer {padding-top:10px; background:#111B28;}
-.st-key-dashboard-client-footer [data-testid="stButton"] button {min-height:38px; font-weight:650;}
-.churn-panel-heading {font-size:15px;letter-spacing:-.01em;font-weight:650;margin:0 0 10px;color:#E8EEF5;}
-.churn-label {font-size:11px;color:#8FA1B6;}
-.churn-subheading {font-size:11px;letter-spacing:.015em;text-transform:uppercase;color:#93A5BA;font-weight:650;margin:0 0 7px;}
-.churn-help {color:#90A1B5;font-size:12px;line-height:1.4;}
-.st-key-dashboard-client [data-testid="stWidgetLabel"] p {font-size:12px;}
-.st-key-dashboard-client [data-testid="stVerticalBlock"] {gap:.55rem;}
-.st-key-dashboard-workspace [data-testid="stVerticalBlock"] {gap:.45rem;}
-.st-key-dashboard-client [data-baseweb="select"] > div,
-.st-key-dashboard-client input {min-height:35px;}
-.st-key-dashboard-client div[data-testid="stSegmentedControl"] {margin:5px 0 2px;}
-.st-key-dashboard-client .st-key-dashboard-client-fields [data-testid="stVerticalBlock"] {gap:.42rem;}
-.st-key-dashboard-workspace {overflow-y:auto!important;scrollbar-width:thin;scrollbar-color:#34465B transparent;}
-.churn-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;min-width:0;margin-bottom:5px;}
-.churn-kpi {min-width:0;padding:11px 12px 10px;border:1px solid #273749;background:#162230;border-radius:9px;}
-.churn-kpi-label {font-size:11px;color:#93A6BA;line-height:1.25;margin:0 0 7px;}
-.churn-kpi-value {font-size:21px;line-height:1.15;font-weight:700;letter-spacing:-.025em;color:#F1F5F9;white-space:nowrap;}
-.churn-kpi-value.is-high {color:#F38E88;}
-.churn-kpi-value.is-low {color:#63D7C0;}
-.churn-kpi-foot {font-size:10px;line-height:1.3;color:#8194A9;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.churn-phase {font-size:11px;color:#A6B7C9;line-height:1.4;margin:0 0 4px;}
-.churn-console {margin:0;border:1px solid #2C3D50;border-radius:9px;overflow:hidden;background:#0B1420;min-width:0;}
-.churn-console-head {display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-bottom:1px solid #263547;font-size:11px;font-weight:650;color:#D7E4F1;}
-.churn-console-head small {font-size:10px;color:#7F94AA;font-weight:400;}
-.churn-console-lines {height:192px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#34465B transparent;padding:9px 10px;color:#BACADC;font:11px/1.48 ui-monospace, SFMono-Regular, Consolas,monospace;overflow-wrap:anywhere;}
+html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
+.stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
+[data-testid="stHeader"],[data-testid="stDecoration"],[data-testid="stToolbar"] {display:none!important;}
+[data-testid="stMainBlockContainer"] {box-sizing:border-box!important;padding:12px 18px 10px!important;max-width:none!important;height:100dvh!important;overflow:hidden!important;}
+.stApp {font-family:"Segoe UI Variable","Segoe UI",Arial,sans-serif!important;color:var(--n3-text)!important;}
+.st-key-dashboard-shell {height:calc(100dvh - 22px);width:100%;max-width:1680px;margin:auto;overflow:hidden;}
+.churn-topbar {height:42px;margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.churn-topbar h1 {font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.15;margin:0;color:var(--n3-text);}
+.churn-topbar .churn-top-meta {font-size:13px;line-height:1.3;color:var(--n3-muted);white-space:nowrap;}
+/* A linha externa e seus wrappers são controlados; o Streamlit cria alturas automáticas. */
+.st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
+  box-sizing:border-box!important;display:grid!important;
+  grid-template-columns:clamp(300px,27vw,380px) minmax(0,1fr)!important;
+  gap:12px!important;width:100%!important;height:calc(100dvh - 75px)!important;
+  min-height:0!important;max-height:none!important;overflow:hidden!important;
+}
+.st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] {
+  box-sizing:border-box!important;width:100%!important;min-width:0!important;height:100%!important;min-height:0!important;overflow:hidden!important;
+}
+.st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"],
+.st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"] {
+  box-sizing:border-box!important;display:block!important;width:100%!important;height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;
+}
+.st-key-dashboard-client,.st-key-dashboard-workspace {
+  box-sizing:border-box!important;min-width:0!important;min-height:0!important;
+  width:100%!important;height:100%!important;max-height:100%!important;
+  background:var(--n3-surface)!important;border:1px solid var(--n3-outline)!important;
+  border-radius:6px!important;padding:16px!important;overflow:hidden!important;
+}
+.st-key-dashboard-client {display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:10px!important;align-content:stretch!important;}
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;}
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {height:100%!important;max-height:100%!important;overflow:hidden!important;}
+.st-key-dashboard-client-fields {height:100%!important;max-height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
+.st-key-dashboard-client-footer {height:auto!important;padding-top:8px;border-top:1px solid var(--n3-line);}
+.churn-panel-heading {font-size:19px;line-height:1.3;font-weight:600;letter-spacing:-.01em;margin:0!important;color:var(--n3-text);}
+.churn-subheading {font-size:14px;line-height:1.4;font-weight:600;color:var(--n3-secondary);margin:8px 0 0;}
+/* Campos: 42px e texto funcional de 16px; sem cantos em pílula. */
+.st-key-dashboard-client [data-testid="stWidgetLabel"] p,
+.st-key-dashboard-client label p {font-size:15px!important;line-height:1.35!important;color:var(--n3-secondary)!important;}
+.st-key-dashboard-client [data-testid="stVerticalBlock"] {gap:.65rem;}
+.st-key-dashboard-client-fields [data-testid="stVerticalBlock"] {gap:.62rem;}
+.st-key-dashboard-client div[data-baseweb="select"]>div,
+.st-key-dashboard-client input {min-height:42px!important;font-size:16px!important;color:var(--n3-text)!important;background:var(--n3-control)!important;border-radius:4px!important;}
+.st-key-dashboard-client [data-baseweb="select"]>div,
+.st-key-dashboard-client [data-testid="stNumberInput"]>div>div {background:var(--n3-control)!important;border-color:var(--n3-outline)!important;border-radius:4px!important;}
+.st-key-dashboard-client-footer [data-testid="stButton"] button[kind="primary"],
+.st-key-dashboard-client-footer button {height:48px!important;min-height:48px!important;background:var(--n3-text)!important;color:#000!important;border:1px solid var(--n3-text)!important;border-radius:4px!important;font-size:16px!important;font-weight:600!important;}
+.st-key-dashboard-client-footer button:hover {background:#D8D8D8!important;border-color:#D8D8D8!important;}
+.st-key-dashboard-client-footer button:focus-visible {outline:2px solid #fff!important;outline-offset:3px!important;}
+.st-key-dashboard-client-fields button[kind="tertiary"],
+.st-key-dashboard-client-fields button {font-size:14px!important;color:var(--n3-secondary)!important;}
+/* Área analítica: cinco seções com função definida, uma só superfície principal. */
+.st-key-dashboard-workspace {
+  display:grid!important;grid-template-rows:auto auto minmax(150px,1fr) auto minmax(116px,19dvh)!important;
+  gap:10px!important;align-content:stretch!important;
+}
+.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;overflow:hidden!important;}
+.st-key-dashboard-analysis-section {height:100%!important;min-height:0!important;overflow:hidden!important;}
+.st-key-dashboard-selection-section {display:grid!important;grid-template-columns: minmax(0,1fr) minmax(0,1fr)!important;gap:22px!important;min-height:0!important;overflow:hidden!important;align-items:start;}
+.st-key-dashboard-monitor-section {height:100%!important;min-height:0!important;overflow:auto!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
+.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section),
+.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {height:100%!important;min-height:0!important;overflow:hidden!important;}
+/* Predição: dois resultados em uma comparação contínua. */
+.churn-comparison {margin:0;padding:0 0 12px;border-bottom:1px solid var(--n3-line);}
+.churn-section-top {display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 8px;min-width:0;}
+.churn-section-top h3 {font-size:16px;font-weight:600;line-height:1.35;margin:0;color:var(--n3-text);}
+.churn-state {font-size:13px;color:var(--n3-muted);white-space:nowrap;}
+.churn-state.is-error {color:var(--n3-negative);}
+.churn-models {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;}
+.churn-model {min-width:0;padding:0 18px 0 0;}
+.churn-model + .churn-model {border-left:1px solid var(--n3-line);padding:0 0 0 22px;}
+.churn-model-name {font-size:16px;font-weight:600;color:var(--n3-secondary);line-height:1.3;}
+.churn-model-detail {font-size:13px;color:var(--n3-muted);line-height:1.4;}
+.churn-prediction-value {font-size:36px;font-weight:650;letter-spacing:-.025em;line-height:1.2;color:var(--n3-text);font-variant-numeric:tabular-nums;margin-top:4px;}
+.churn-outcome {font-size:15px;line-height:1.3;color:var(--n3-secondary);font-weight:600;}
+.churn-outcome.is-positive {color:var(--n3-positive);}
+.churn-outcome.is-negative {color:var(--n3-negative);}
+/* Gráfico SVG: fonte fora do vetor para não encolher com a escala. */
+.churn-chart {height:100%;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid var(--n3-line);padding:2px 0 10px;}
+.churn-chart-descriptor {font-size:13px;color:var(--n3-muted);white-space:nowrap;}
+.churn-chart-plot {display:flex;gap:8px;flex:1;min-height:100px;}
+.churn-chart-axis-y {width:33px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-bottom:20px;font-size:13px;color:var(--n3-secondary);font-variant-numeric:tabular-nums;}
+.churn-chart-plot-main {flex:1;min-width:0;display:flex;flex-direction:column;}
+.churn-chart-svg {width:100%;flex:1;min-height:80px;display:block;overflow:visible;}
+.churn-chart-grid line {stroke:var(--n3-line);stroke-width:1.4;vector-effect:non-scaling-stroke;}
+.churn-chart-line {fill:none;stroke:var(--n3-text);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;}
+.churn-chart-axis-x {display:flex;justify-content:space-between;color:var(--n3-secondary);font-size:13px;font-variant-numeric:tabular-nums;margin-top:3px;}
+.churn-chart-caption {color:var(--n3-muted);font-size:13px;line-height:1.35;min-height:17px;margin:4px 0 0 41px;}
+/* Características e resultados técnicos: nenhuma fila de KPI aninhados. */
+.churn-chromosome {min-width:0;}
+.churn-selection-count {font-size:15px;font-weight:600;color:var(--n3-text);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.churn-bits {display:grid;grid-template-columns:repeat(19,minmax(0,1fr));gap:3px;min-width:0;}
+.churn-bit {height:26px;min-width:0;display:flex;align-items:center;justify-content:center;border-radius:2px;background:var(--n3-elevated);color:var(--n3-muted);font:600 12px/1 Consolas,"Liberation Mono",monospace;}
+.churn-bit.is-on {color:#000;background:var(--n3-text);}
+.churn-chromosome-note {font-size:12px;color:var(--n3-muted);margin-top:5px;}
+.churn-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0;}
+.churn-metric {min-width:0;}
+.churn-metric dt {font-size:13px;color:var(--n3-secondary);white-space:nowrap;}
+.churn-metric dd {font-size:20px;color:var(--n3-text);font-weight:600;margin:3px 0 0;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.churn-technical-note {font-size:12px;line-height:1.4;color:var(--n3-muted);margin-top:7px;}
+.churn-stale {font-size:13px;line-height:1.4;color:var(--n3-secondary);border-top:1px solid var(--n3-line);margin-top:6px;padding-top:6px;}
+/* Monitor: monoespaçada, conteúdo mais recente primeiro, largura estável. */
+.churn-monitor-title {font-size:16px;font-weight:600;color:var(--n3-text);line-height:1.4;}
+.churn-phase {font-size:13px;color:var(--n3-secondary);}
+.churn-console {background:var(--n3-control);border-top:1px solid var(--n3-line);margin-top:4px;}
+.churn-console-lines {max-height:66px;min-height:42px;overflow-y:auto;overflow-x:hidden;padding:5px 2px;scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;font:13px/1.4 Consolas,"Liberation Mono",monospace;color:var(--n3-secondary);overflow-wrap:anywhere;}
 .churn-log-line {display:block;white-space:pre-wrap;}
-.churn-log-line.is-step {color:#64CFC2;}
-.churn-log-line.is-result {color:#EAF3FC;}
-.churn-chromosome {margin:5px 0 0;background:#152130;border:1px solid #2A3B4D;border-radius:9px;padding:10px;min-width:0;}
-.churn-chromosome-head {display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px;color:#B1C1D2;margin-bottom:8px;}
-.churn-chromosome-head strong {font-weight:650;color:#E4EEF8;}
-.churn-bits {display:grid;grid-template-columns:repeat(19,minmax(0,1fr));gap:2px;}
-.churn-bit {height:21px;display:flex;align-items:center;justify-content:center;border-radius:3px;background:#304053;color:#A4B4C5;font:600 9px ui-monospace, Consolas,monospace;min-width:0;}
-.churn-bit.is-on {background:#168D88;color:#EEFFFC;}
-.churn-legend {color:#8498AF;font-size:10px;margin-top:7px;}
-.churn-mini-heading {font-size:11px;font-weight:650;color:#C3D2E1;margin:0 0 6px;}
-.churn-chart-fallback {height:175px;border:1px solid #253548;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#8194AA;}
-.churn-tech {display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.churn-tech-item {border:1px solid #253548;border-radius:8px;background:#152131;padding:9px 10px;min-width:0;}
-.churn-tech-item span {display:block;font-size:10px;color:#8DA1B5;}
-.churn-tech-item strong {display:block;margin-top:4px;font-size:16px;color:#EEF5FA;font-variant-numeric:tabular-nums;}
-.churn-tech-foot {font-size:10px;color:#8BA0B5;line-height:1.4;margin-top:8px;}
-.churn-stale {font-size:11px;color:#F4BC83;border-left:2px solid #CC8B44;padding:6px 8px;background:#251F20;margin-top:4px;}
-.churn-ready {font-size:12px;color:#8EA2B8;padding:5px 0;}
-.churn-footer {color:#667E96;font-size:10px;}
-.st-key-dashboard-workspace div[data-testid="stProgress"] {margin:6px 0 7px;}
-.st-key-dashboard-workspace .stPlotlyChart,.st-key-dashboard-workspace [data-testid="stVegaLiteChart"] {min-width:0!important;}
-@media (max-width:1150px) {
-  .churn-kpi {padding:9px 8px;}
-  .churn-kpi-value {font-size:17px;}
-  .churn-kpi-foot {font-size:9px;}
-  .churn-console-lines {height:170px;}
+.churn-log-line.is-result {color:var(--n3-text);font-weight:600;}
+.churn-log-line.is-step {color:var(--n3-secondary);}
+.st-key-dashboard-monitor-section [data-testid="stVerticalBlock"] {gap:.18rem!important;}
+.st-key-dashboard-workspace [data-testid="stProgress"] {margin:1px 0!important;}
+.st-key-dashboard-workspace [data-testid="stProgress"] p {font-size:12px!important;color:var(--n3-muted)!important;}
+.st-key-dashboard-monitor-section button[kind="tertiary"] {font-size:13px!important;color:var(--n3-secondary)!important;min-height:26px!important;padding:0 4px!important;}
+@media(max-width:1150px) {
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {grid-template-columns:310px minmax(0,1fr)!important;}
+  .st-key-dashboard-workspace {grid-template-rows:auto auto minmax(130px,1fr) auto minmax(100px,17dvh)!important;gap:8px!important;padding:12px!important;}
+  .churn-prediction-value {font-size:32px;}
+  .st-key-dashboard-selection-section {gap:12px!important;}
+  .churn-bit {height:24px;font-size:11px;}
+  .churn-metric dd {font-size:18px;}
 }
-@media (max-width:900px) {
-  [data-testid="stMainBlockContainer"] {padding:7px 10px 0!important;}
-  .churn-topbar {height:44px; margin-bottom:6px;}
-  .churn-topbar h1 {font-size:17px;}
-  .churn-topbar .churn-top-meta {font-size:10px;}
-  .st-key-dashboard-client, .st-key-dashboard-workspace {height:calc(100dvh - 68px)!important;padding:10px!important;}
-  .st-key-dashboard-client-fields {height:calc(100dvh - 228px)!important;}
-  .churn-kpis {grid-template-columns:repeat(2,minmax(0,1fr));}
-  .churn-console-lines {height:144px;}
-  .churn-bits {grid-template-columns:repeat(10,minmax(0,1fr));}
-}
-@media (max-width:620px) {
-  /* Sem alturas internas em pixels: as colunas empilhadas devem ocupar apenas sua cota do viewport. */
-  .churn-topbar {height:45px;}
-  .churn-topbar .churn-top-meta {display:none;}
-  /* O st.columns empilha as colunas abaixo de 640 px. É preciso limitar
-     também a linha externa: controlar só os cartões internos deixa o tamanho
-     natural das colunas ultrapassar a janela. */
+@media(max-width:900px) {
+  [data-testid="stMainBlockContainer"] {padding:9px 10px 8px!important;}
+  .st-key-dashboard-shell {height:calc(100dvh - 17px);}
+  .churn-topbar {height:38px;margin-bottom:8px;}
+  .churn-topbar h1 {font-size:18px;}
+  .churn-topbar .churn-top-meta {font-size:12px;}
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    /* A altura intrínseca dos wrappers do Streamlit pode ultrapassar o grid.
-       Tirar a linha do fluxo e prender seus limites ao viewport evita que
-       o conteúdo dos widgets expanda a área principal no modo móvel. */
-    position: fixed !important;
-    top: 60px !important;
-    right: 10px !important;
-    bottom: 8px !important;
-    left: 10px !important;
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: minmax(0, 43fr) minmax(0, 57fr) !important;
-    gap: 8px !important;
-    box-sizing: border-box !important;
-    width: auto !important;
-    height: auto !important;
-    max-height: calc(100dvh - 68px) !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    align-content: stretch !important;
+    grid-template-columns:270px minmax(0,1fr)!important;height:calc(100dvh - 65px)!important;gap:8px!important;
   }
-  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] {
-    width: 100% !important;
-    min-width: 0 !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-  .st-key-dashboard-client, .st-key-dashboard-workspace {
-    height: 100% !important;
-    max-height: 100% !important;
-    min-height: 0 !important;
-  }
-  /* Hierarquia real observada no trace do Playwright:
-     stColumn > stVerticalBlock > stLayoutWrapper > dashboard-client/workspace.
-     Os dois wrappers intermediários são auto-height no Streamlit; sem restrição,
-     o painel Cliente cresce além da linha de 354px mesmo com a grade em 832px. */
-  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
-    box-sizing: border-box !important;
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"] {
-    box-sizing: border-box !important;
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-  /* O cliente precisa de uma área flexível de campos e rodapé sempre visível. */
-  .st-key-dashboard-client {
-    display: grid !important;
-    grid-template-rows: auto minmax(0, 1fr) auto !important;
-    gap: 8px !important;
-    align-content: stretch !important;
-  }
-  .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {
-    min-width: 0 !important;
-    min-height: 0 !important;
-  }
-  .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {
-    height: 100% !important;
-    max-height: 100% !important;
-    overflow: hidden !important;
-  }
-  .st-key-dashboard-client-fields {
-    height: 100% !important;
-    max-height: 100% !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-  }
-  .st-key-dashboard-client-footer {height:auto!important;}
-  .churn-kpis {grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
-  .churn-kpi {padding:7px 5px;}
-  .churn-kpi-label {font-size:9px;}
-  .churn-kpi-value {font-size:15px;}
-  .churn-kpi-foot {font-size:9px;}
-  .churn-console-lines {height:110px;}
-  .churn-chromosome {padding:8px;}
+  .st-key-dashboard-client,.st-key-dashboard-workspace {padding:11px!important;}
+  .st-key-dashboard-selection-section {grid-template-columns:1fr!important;overflow-y:auto!important;}
+  .churn-model-name {font-size:15px;}
+  .churn-prediction-value {font-size:27px;}
+  .churn-chart-descriptor {font-size:12px;}
+  .churn-bits {gap:2px;}
 }
-@media (max-width:410px) {
-  .churn-topbar h1 {font-size:16px;}
-  .churn-kpi-value {font-size:13px;}
-  .churn-kpi-foot {display:none;}
+@media(max-height:760px) and (min-width:621px) {
+  .st-key-dashboard-workspace {grid-template-rows:auto auto minmax(105px,1fr) auto minmax(90px,16dvh)!important;gap:6px!important;}
+  .churn-model-detail {font-size:12px;}
+  .churn-prediction-value {font-size:32px;}
+  .churn-comparison {padding-bottom:7px;}
+  .churn-console-lines {max-height:52px;min-height:32px;}
+  .churn-chart-caption {font-size:12px;}
+  .churn-section-top {margin-bottom:5px;}
+  .churn-bit {height:23px;}
+}
+@media(max-width:620px) {
+  .churn-topbar {height:37px;margin-bottom:8px;}
+  .churn-topbar .churn-top-meta {display:none;}
+  /* Preserva a correção diagnosticada com trace real: colunas e wrappers limitados. */
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
+    position:fixed!important;top:54px!important;right:8px!important;bottom:8px!important;left:8px!important;
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:minmax(0,36fr) minmax(0,64fr)!important;
+    gap:8px!important;box-sizing:border-box!important;
+    width:auto!important;height:auto!important;max-height:calc(100dvh - 62px)!important;
+    min-height:0!important;margin:0!important;overflow:hidden!important;align-content:stretch!important;
+  }
+  .st-key-dashboard-client,.st-key-dashboard-workspace {height:100%!important;max-height:100%!important;min-height:0!important;}
+  .st-key-dashboard-client {padding:10px!important;gap:6px!important;}
+  .churn-panel-heading {font-size:17px;}
+  .st-key-dashboard-client-footer button {height:44px!important;min-height:44px!important;}
+  .st-key-dashboard-workspace {padding:10px!important;display:grid!important;grid-template-rows:auto auto minmax(110px,1fr) auto minmax(75px,15dvh)!important;gap:7px!important;}
+  .churn-comparison {padding-bottom:7px;}
+  .churn-section-top h3 {font-size:14px;}
+  .churn-model-name {font-size:14px;}
+  .churn-model-detail {font-size:12px;}
+  .churn-model {padding-right:10px;}
+  .churn-model+.churn-model {padding-left:10px;}
+  .churn-prediction-value {font-size:26px;}
+  .churn-outcome {font-size:13px;}
+  .churn-chart-descriptor {display:none;}
+  .churn-chart-plot {min-height:65px;}
+  .churn-chart-axis-y,.churn-chart-axis-x {font-size:12px;}
+  .churn-chart-caption {font-size:12px;}
+  .st-key-dashboard-selection-section {display:block!important;overflow-y:auto!important;}
+  .churn-monitor-title {font-size:14px;}
+  .churn-console-lines {font-size:12px;max-height:46px;min-height:24px;}
 }
 </style>
 """,
