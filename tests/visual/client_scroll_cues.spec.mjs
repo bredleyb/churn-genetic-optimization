@@ -33,11 +33,24 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
       const dimensions = await fields.evaluate(el => {
         const css = getComputedStyle(el);
         return {scrollable:el.scrollHeight-el.clientHeight,
-          gutter:css.scrollbarGutter,padding:parseFloat(css.paddingInlineEnd)};
+          gutter:css.scrollbarGutter,
+          paddingLeft:parseFloat(css.paddingInlineStart),
+          paddingRight:parseFloat(css.paddingInlineEnd)};
       });
-      expect(dimensions.gutter).toBe('stable');
-      expect(dimensions.padding).toBeGreaterThanOrEqual(10);
+      expect(dimensions.gutter).toBe('stable both-edges');
+      expect(dimensions.paddingLeft).toBe(10);
+      expect(dimensions.paddingRight).toBe(10);
       expect(dimensions.scrollable).toBeGreaterThan(2);
+      // O controle de largura total deve receber o mesmo recuo dos dois lados,
+      // independentemente de scrollbar clássica, overlay ou oculta.
+      const insets = await page.locator('.st-key-dashboard-detail-tabs [data-testid="stSelectbox"] [role="group"]:visible')
+        .first().evaluate(el => {
+          const outer = document.querySelector('.st-key-dashboard-client-fields').getBoundingClientRect();
+          const inner = el.getBoundingClientRect();
+          return {left:inner.left-outer.left,right:outer.right-inner.right};
+        });
+      expect(Math.abs(insets.left - insets.right), 'Margens horizontais do formulário assimétricas')
+        .toBeLessThanOrEqual(3);
 
       const opacity = async () => client.evaluate(el => ({
         top:Number(getComputedStyle(el).getPropertyValue('--n3-client-shadow-top')),
@@ -53,12 +66,30 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
       await expect.poll(async () => (await opacity()).top).toBeLessThan(.01);
       const overlays = await page.evaluate(() => {
         const panel=document.querySelector('.st-key-dashboard-client');
-        const heading=panel?.querySelector(':scope > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading)');
+        const fieldsLayer=panel?.querySelector(':scope > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields)');
         const footer=panel?.querySelector('.st-key-dashboard-client-footer');
-        return {heading:getComputedStyle(heading,'::after').pointerEvents,
-          footer:getComputedStyle(footer,'::before').pointerEvents};
+        const scroller=panel?.querySelector('.st-key-dashboard-client-fields');
+        const topStyle=getComputedStyle(fieldsLayer,'::before');
+        const bottomStyle=getComputedStyle(footer,'::before');
+        return {
+          topPointer:topStyle.pointerEvents,bottomPointer:bottomStyle.pointerEvents,
+          topOpacity:Number(topStyle.opacity),bottomOpacity:Number(bottomStyle.opacity),
+          topLength:topStyle.height,bottomLength:bottomStyle.height,
+          topGradient:topStyle.backgroundImage,bottomGradient:bottomStyle.backgroundImage,
+          topY:fieldsLayer.getBoundingClientRect().top,
+          scrollY:scroller.getBoundingClientRect().top,
+        };
       });
-      expect(overlays).toEqual({heading:'none',footer:'none'});
+      expect(overlays.topPointer).toBe('none');
+      expect(overlays.bottomPointer).toBe('none');
+      expect(overlays.topOpacity).toBeLessThan(.01);
+      expect(overlays.bottomOpacity).toBeGreaterThan(.99);
+      expect(overlays.topLength).toBe('60px');
+      expect(overlays.bottomLength).toBe('52px');
+      expect(overlays.topGradient).toContain('0.72');
+      expect(overlays.bottomGradient).toContain('0.48');
+      expect(Math.abs(overlays.topY-overlays.scrollY), 'Gradiente superior fora da área rolável')
+        .toBeLessThanOrEqual(2);
       await scrollTo(dimensions.scrollable/2);
       await expect.poll(async () => (await opacity()).top).toBeGreaterThan(.99);
       await expect.poll(async () => (await opacity()).bottom).toBeGreaterThan(.99);
@@ -66,6 +97,15 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
       await expect.poll(async () => (await opacity()).top).toBeGreaterThan(.99);
       await expect.poll(async () => (await opacity()).bottom).toBeLessThan(.01);
       await expect(footer.getByRole('button',{name:'Calcular previsão'})).toBeVisible();
+      // Abas com conteúdo insuficiente para rolar não exibem gradientes.
+      for (const name of ['Perfil','Conta','Serviços','Extras']) {
+        await page.locator('.st-key-dashboard-detail-tabs').getByRole('tab',{name,exact:true}).click();
+        const hasScroll = await fields.evaluate(el => el.scrollHeight > el.clientHeight + 1);
+        if (!hasScroll) {
+          await expect.poll(async () => (await opacity()).top).toBeLessThan(.01);
+          await expect.poll(async () => (await opacity()).bottom).toBeLessThan(.01);
+        }
+      }
     });
 }
 test('captura não mostra barras laterais de foco na aba ativa', async ({page}) => {

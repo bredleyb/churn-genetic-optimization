@@ -192,8 +192,14 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert 'icon=":material/restart_alt:"' not in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
-    assert "scrollbar-gutter:stable!important" in style
-    assert "padding-inline-end:10px!important" in style
+    assert "scrollbar-gutter:stable both-edges!important" in style
+    assert "padding-inline:10px!important" in style
+    assert "padding-inline-end:10px!important" not in style
+    assert "--n3-client-shadow-top-length:60px" in style
+    assert "--n3-client-shadow-bottom-length:52px" in style
+    assert ".st-key-dashboard-client-fields)::before" in style
+    assert "rgba(0,0,0,.72)" in style
+    assert "rgba(0,0,0,.48)" in style
     assert "--n3-client-shadow-top:0; --n3-client-shadow-bottom:0" in style
     assert "opacity:var(--n3-client-shadow-top,0)" in style
     assert "opacity:var(--n3-client-shadow-bottom,0)" in style
