@@ -455,6 +455,13 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .st-key-dashboard-selection-section .churn-bits {
     grid-template-columns:repeat(19,minmax(0,1fr))!important;
   }
+  /* O MarkdownContainer do Streamlit usa margem inferior negativa. Na grade
+     de duas linhas ela reduz artificialmente a altura da primeira linha:
+     -16px de margem + 6px de gap = sobreposição de 10px. */
+  .st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-chromosome),
+  .st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-technical) {
+    margin-bottom:0!important;
+  }
 }
 
 /* Tablet em paisagem: a seleção precisa acomodar também as métricas após

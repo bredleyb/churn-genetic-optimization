@@ -47,6 +47,8 @@ async function geometry(page, stage, testInfo) {
       chart: bounds('.st-key-dashboard-desktop-detail .churn-chart'),
       technical: bounds('.st-key-dashboard-desktop-detail .churn-technical'),
       chromosome: bounds('.st-key-dashboard-desktop-detail .churn-chromosome'),
+      chromosomeMarkdown: bounds('.st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-chromosome)'),
+      technicalMarkdown: bounds('.st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-technical)'),
       monitor: bounds('.st-key-dashboard-desktop-detail .churn-console'),
       consoleMarkdown: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-console)'),
       monitorTitle: bounds('.st-key-dashboard-desktop-detail .churn-monitor-title'),
@@ -145,6 +147,10 @@ async function geometry(page, stage, testInfo) {
         expect(layout.chromosome.right, `${stage}: cromossomo sobrepõe métricas`)
           .toBeLessThanOrEqual(layout.technical.x + 2);
       } else {
+        for (const name of ['chromosomeMarkdown', 'technicalMarkdown']) {
+          expect(layout[name], `${stage}: ${name} ausente`).toBeTruthy();
+          expect(layout[name].marginBottom, `${stage}: margem negativa causa sobreposição`).toBe('0px');
+        }
         expect(layout.chromosome.bottom, `${stage}: cromossomo sobrepõe métricas`)
           .toBeLessThanOrEqual(layout.technical.y + 2);
       }

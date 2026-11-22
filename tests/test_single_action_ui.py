@@ -126,6 +126,8 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "Painel técnico desktop: a área do console absorve o espaço restante" in style
     assert "Em desktop, a faixa inferior reúne as características e o monitor" in style
     assert "grid-template-rows:minmax(0,1fr) minmax(274px,36dvh)" in style
+    assert '[data-testid="stMarkdownContainer"]:has(.churn-chromosome)' in style
+    assert '[data-testid="stMarkdownContainer"]:has(.churn-technical)' in style
 
 
 def test_results_use_semantic_classification_only(monkeypatch):
