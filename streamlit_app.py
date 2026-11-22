@@ -46,7 +46,7 @@ st.markdown(
     """
 <style>
 /* N3 — sistema monocromático para leitura em projetor.
-   Contraste deliberado, sem cartões decorativos, sombras ou gradientes. */
+   Contraste deliberado; gradientes somente como pistas funcionais de rolagem. */
 :root {
   color-scheme: dark;
   --n3-font-ui:"Familjen Grotesk","Segoe UI",Arial,sans-serif;
@@ -720,7 +720,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   min-width:0!important;padding-top:8px!important;
 }
 
-/* O campo de meses utiliza st.number_input como Cobrança e Total cobrado. */
+/* O campo de meses utiliza um componente v2 com valor e unidade protegida. */
 .st-key-dashboard-tenure-control {min-width:0!important;}
 @media(max-width:620px) {
   .st-key-dashboard-detail-tabs [role="tab"] {
@@ -1325,9 +1325,9 @@ def main() -> None:
                 else:
                     _render_idle(slots)
 
-    # Componente JS sem interface: acompanha apenas o scroll do painel Cliente.
-    # Fora do grid fixo para não criar wrappers que afetem campos ou rodapé.
-    mount_client_scroll_cues(st)
+        # Componente JS sem interface, dentro do shell e fora da grade fixa.
+        # Não acrescenta altura ao documento nem desloca campos ou rodapé.
+        mount_client_scroll_cues(st)
 
 
 if __name__ == "__main__":
