@@ -214,6 +214,44 @@ original em `data/raw/`, execute:
 python -m streamlit run streamlit_app.py
 ```
 
+## Testes visuais automatizados
+
+A interface possui testes de ponta a ponta com **Playwright Test (Chromium)**,
+separados dos testes Python. O Playwright inicia o Streamlit automaticamente
+em uma porta de teste (`8517`) e verifica os estados **inicial, processamento,
+concluído e dados editados** nas larguras **1440, 1024, 768 e 390 px**.
+Também verifica ausência de rolagem horizontal e se os resultados ficam
+visíveis após o processamento real. Cada cenário executa a busca genética
+com os parâmetros do projeto; o teste completo pode levar alguns minutos.
+
+Pré-requisitos: Python e dependências do projeto instalados, CSV original em
+`data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`, Node.js com npm.
+Na raiz do repositório:
+
+```powershell
+npm install
+npx playwright install chromium
+npm run test:visual:update
+npm run test:visual
+npm run test:visual:report
+```
+
+O primeiro comando `test:visual:update` cria automaticamente os **screenshots
+de referência**, que devem ser conferidos e preservados para comparações futuras.
+O `test:visual` compara novas capturas com essas referências, informando falhas e
+produzindo imagens de diferença. As capturas temporárias, o relatório HTML e os
+rastros de erros ficam em `results/`, fora do Git. O screenshot de **execução em
+andamento** é anexado ao relatório, mas não é comparado pixel a pixel porque seu
+conteúdo depende do instante da captura. Os demais estados possuem comparação
+visual automática. Para conferir só uma largura use, por exemplo,
+`npm run test:visual -- --grep 390px`.
+
+As comparações dependem de navegador, sistema operacional e fontes. Gere as
+referências inicialmente no mesmo Windows que será usado para repetir os testes;
+recrie-as quando a mudança visual for deliberada. Os screenshots de referência
+podem ser versionados após revisão. Para testes Python, continue usando
+`python -m pytest -q`.
+
 ## Artigo
 
 O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação

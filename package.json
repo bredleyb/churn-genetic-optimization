@@ -1,0 +1,12 @@
+{
+  "name": "churn-genetic-optimization-visual-tests",
+  "private": true,
+  "scripts": {
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots",
+    "test:visual:report": "playwright show-report results/playwright-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.57.0"
+  }
+}
