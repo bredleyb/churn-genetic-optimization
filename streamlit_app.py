@@ -545,7 +545,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .churn-comparison .churn-state.is-error {color:var(--n3-negative);}
 
-/* Quatro abas locais, com rolagem horizontal em painéis estreitos. */
+/* Quatro abas locais, com rótulos completos mesmo em painéis estreitos. */
 .st-key-dashboard-detail-tabs {min-width:0;}
 .st-key-dashboard-detail-tabs [data-baseweb="tab-list"] {
   overflow-x:auto!important;overflow-y:hidden!important;
@@ -564,47 +564,59 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   min-width:0!important;padding-top:8px!important;
 }
 
-/* Campo de tempo: valor textual real, botões independentes e nenhum pseudo-elemento. */
+/* Campo de tempo: mesma superfície e ritmo de rótulo do controle numérico nativo. */
 .st-key-dashboard-tenure-control {min-width:0!important;}
 .churn-tenure-label {
   color:var(--n3-secondary);font-size:15px;line-height:1.35;
-  font-weight:400;margin-bottom:5px;
+  font-weight:400;margin:0 0 8px;
 }
 .st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"] {
-  gap:0!important;align-items:stretch!important;
+  box-sizing:border-box!important;gap:0!important;align-items:stretch!important;
+  height:42px!important;min-height:42px!important;
+  background:var(--n3-control)!important;
+  border:1px solid var(--n3-outline)!important;border-radius:4px!important;
+  overflow:hidden!important;
 }
-.st-key-dashboard-tenure-control [data-testid="stColumn"] {min-width:0!important;}
+.st-key-dashboard-tenure-control [data-testid="stColumn"] {
+  min-width:0!important;min-height:0!important;height:100%!important;
+}
+.st-key-dashboard-tenure-control [data-testid="stTextInput"],
+.st-key-dashboard-tenure-control [data-testid="stButton"] {
+  height:100%!important;min-height:0!important;
+}
+.st-key-dashboard-tenure-control [data-testid="stTextInput"] div[data-baseweb="input"] {
+  min-width:0!important;height:100%!important;overflow:hidden!important;
+  background:transparent!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;
+}
 .st-key-dashboard-tenure-control [data-testid="stTextInput"] input {
-  width:100%!important;min-width:0!important;
-  padding:0 8px!important;min-height:42px!important;
+  box-sizing:border-box!important;width:100%!important;min-width:0!important;
+  height:40px!important;min-height:40px!important;padding:0 8px!important;
   font-size:15px!important;font-variant-numeric:tabular-nums!important;
-  border-radius:4px 0 0 4px!important;
+  background:transparent!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;
 }
 .st-key-dashboard-tenure-control [data-testid="stButton"] button {
-  width:100%!important;min-width:0!important;height:42px!important;
-  min-height:42px!important;padding:0!important;
+  box-sizing:border-box!important;width:100%!important;min-width:0!important;
+  height:40px!important;min-height:40px!important;padding:0!important;
   display:flex!important;align-items:center!important;justify-content:center!important;
-  background:var(--n3-control)!important;color:var(--n3-text)!important;
-  border:1px solid var(--n3-outline)!important;border-radius:0!important;
-  font-size:19px!important;font-weight:500!important;
+  background:transparent!important;color:var(--n3-text)!important;
+  border:0!important;border-radius:0!important;
+  font-size:18px!important;font-weight:500!important;
 }
-.st-key-dashboard-tenure-control [data-testid="stColumn"]:last-child button {
-  border-radius:0 4px 4px 0!important;
+.st-key-dashboard-tenure-control [data-testid="stButton"] button:hover {
+  background:var(--n3-elevated)!important;
 }
-/* O texto completo mantém o nome acessível; o ícone fica centralizado. */
+/* O nome completo continua acessível, com ícones visuais centralizados. */
 .st-key-dashboard-tenure-control [data-testid="stButton"] button p {
   position:absolute!important;width:1px!important;height:1px!important;
   overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;
 }
 .st-key-dashboard-tenure-control [data-testid="stButton"] button [data-testid="stIconMaterial"] {
-  font-size:20px!important;
+  font-size:18px!important;
 }
-.st-key-dashboard-tenure-control [data-testid="stTextInput"] div[data-baseweb="input"] {
-  min-width:0!important;overflow:hidden!important;
-}
-.st-key-dashboard-tenure-control button:focus-visible,
-.st-key-dashboard-tenure-control input:focus-visible {
-  outline:2px solid var(--n3-text)!important;outline-offset:1px!important;
+.st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"]:focus-within {
+  outline:2px solid var(--n3-text)!important;outline-offset:2px!important;
 }
 @media(max-width:620px) {
   .st-key-dashboard-detail-tabs [role="tab"] {
@@ -612,6 +624,13 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   }
 }
 
+/* Reduz o espaço das abas no tablet para exibir também o último rótulo. */
+@media (min-width:621px) and (max-width:900px) {
+  .st-key-dashboard-detail-tabs [data-baseweb="tab-list"] {gap:0!important;}
+  .st-key-dashboard-detail-tabs [role="tab"] {
+    font-size:13px!important;padding:7px 3px!important;
+  }
+}
 /* A faixa dos campos rápidos passa a uma coluna no tablet estreito. */
 @media (min-width:621px) and (max-width:900px) {
   .st-key-dashboard-quick-fields [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-tenure-control),
