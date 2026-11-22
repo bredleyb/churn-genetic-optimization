@@ -36,6 +36,7 @@ class DummyUI(ModuleType):
         self.panel_settings = []
         self.styled_markup = []
         self.selectbox_labels = []
+        self.number_inputs = []
         self.tab_groups = []
 
     def set_page_config(self, **kwargs):
@@ -73,6 +74,7 @@ class DummyUI(ModuleType):
         return self.session_state[key]
 
     def number_input(self, label, *, key, **kwargs):
+        self.number_inputs.append({"label": label, "key": key, **kwargs})
         return self.session_state[key]
 
     def checkbox(self, label, *, key, **kwargs):
@@ -110,7 +112,7 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
-    assert ui.buttons == ["Restaurar", "Diminuir um mês", "Aumentar um mês", "Calcular previsão"]
+    assert ui.buttons == ["Restaurar", "Calcular previsão"]
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
     assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups
@@ -153,19 +155,12 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "churn-workspace-heading" in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
-    assert 'content:"meses"' not in style
+    assert "--n3-field-height:42px" in style
+    assert "--n3-field-radius:4px" in style
     assert "st-key-dashboard-tenure-control" in style
-    assert "churn-tenure-label" in style
-    assert "font-weight:400;margin:0 0 8px" in style
-    assert '[data-testid="stTextInputRootElement"]' in style
-    assert '[data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(n+2)' in style
-    assert 'background:var(--n3-control)!important;' in style
-    assert 'background:var(--n3-surface)!important;color:var(--n3-text)!important;' in style
-    assert 'box-shadow:none!important;outline:0!important;' in style
-    assert "height:42px!important;min-height:42px!important;" in style
-    assert "background:var(--n3-control)!important;" in style
-    assert "border:1px solid var(--n3-outline)!important;border-radius:4px!important;" in style
-    assert "border:0!important;border-radius:0!important;" in style
+    assert 'st-key-dashboard-client [data-testid="stNumberInput"] button' in style
+    assert "line-height:var(--n3-field-text-line)!important" in style
+    assert "churn-tenure-label" not in style
     assert "font-size:13px!important;padding:7px 3px!important;" in style
     assert "border:2px solid var(--n3-text);border-radius:50%" in style
     assert ".st-key-dashboard-detail-tabs [role=\"tab\"]" in style
@@ -431,59 +426,35 @@ def test_idle_comparison_has_no_redundant_heading_or_ready_status(monkeypatch):
     assert "Seleção genética" in slot.content
 
 
-@pytest.mark.parametrize("input_text,number,display", [
-    ("1", 1, "1 mês"),
-    ("9 meses", 9, "9 meses"),
-    ("10", 10, "10 meses"),
-    ("24 meses", 24, "24 meses"),
-    ("120", 120, "120 meses"),
-])
-def test_tenure_text_is_parsed_and_formatted(monkeypatch, input_text, number, display):
+def test_time_and_monthly_use_native_number_inputs(monkeypatch):
     ui = DummyUI(False)
     monkeypatch.setitem(sys.modules, "streamlit", ui)
-    spec = importlib.util.spec_from_file_location("n3_tenure_input_test", ROOT / "streamlit_app.py")
+    spec = importlib.util.spec_from_file_location("n3_native_time_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app.main()
+    inputs = {item["key"]: item for item in ui.number_inputs}
+    tenure = inputs["field_tenure"]
+    assert tenure["label"] == "Tempo como cliente"
+    assert "meses" in tenure["help"]
+    assert (tenure["min_value"], tenure["max_value"], tenure["step"], tenure["format"]) == (0, 999, 1, "%d")
+    assert (tenure["on_change"], tenure["args"]) == (app._remember_field, ("tenure",))
+    assert inputs["field_MonthlyCharges"]["format"] == "%.2f"
+    assert ui.session_state["field_tenure"] == 3
+    assert "tenure_display" not in ui.session_state
+
+
+def test_time_change_and_profile_reset_preserve_state(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_native_time_state_test", ROOT / "streamlit_app.py")
     app = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(app)
     app._apply_profile("Exemplo 1")
-    ui.session_state["tenure_display"] = input_text
-    app._on_tenure_change()
-    assert ui.session_state["field_tenure"] == number
-    assert ui.session_state["tenure_display"] == display
-    assert ui.session_state["customer_values"]["tenure"] == number
-    assert ui.session_state["tenure_error"] == ""
-
-
-def test_tenure_stepper_adjusts_and_clears_invalid_text(monkeypatch):
-    ui = DummyUI(False)
-    monkeypatch.setitem(sys.modules, "streamlit", ui)
-    spec = importlib.util.spec_from_file_location("n3_tenure_step_test", ROOT / "streamlit_app.py")
-    app = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(app)
-    app._apply_profile("Exemplo 1")
-    ui.session_state["tenure_display"] = "invalido"
-    app._on_tenure_change()
-    assert ui.session_state["tenure_error"]
-    assert ui.session_state["customer_values"]["tenure"] == 3
-    app._step_tenure(1)
-    assert ui.session_state["tenure_display"] == "4 meses"
-    assert ui.session_state["field_tenure"] == 4
-    app._step_tenure(-1)
-    assert ui.session_state["tenure_display"] == "3 meses"
-    assert ui.session_state["tenure_error"] == ""
-    ui.session_state["field_tenure"] = 0
-    app._step_tenure(-1)
-    assert ui.session_state["field_tenure"] == 0
-
-
-def test_tenure_input_rejects_invalid_values(monkeypatch):
-    ui = DummyUI(False)
-    monkeypatch.setitem(sys.modules, "streamlit", ui)
-    spec = importlib.util.spec_from_file_location("n3_tenure_invalid_test", ROOT / "streamlit_app.py")
-    app = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(app)
-    app._apply_profile("Exemplo 1")
-    for value in ("", "-2", "3.5", "abc", "1000 meses"):
-        ui.session_state["tenure_display"] = value
-        app._on_tenure_change()
-        assert ui.session_state["tenure_error"]
-        assert ui.session_state["customer_values"]["tenure"] == 3
+    original = app._current_customer()
+    ui.session_state["field_tenure"] = 24
+    app._remember_field("tenure")
+    assert ui.session_state["customer_values"]["tenure"] == 24
+    assert app._is_stale({"customer": original})
+    app._apply_profile("Exemplo 2")
+    assert ui.session_state["field_tenure"] == app.load_profile(ROOT, "Exemplo 2")["tenure"]

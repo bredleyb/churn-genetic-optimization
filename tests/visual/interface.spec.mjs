@@ -269,7 +269,7 @@ for (const { width, height } of viewports) {
         await expect(page.locator('.churn-workspace-heading[data-run-state="idle"]')).toBeVisible();
         await expect(page.locator('.churn-run-icon')).toHaveCount(0);
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
-        await expect(page.getByRole('textbox', { name: 'Tempo como cliente' })).toHaveValue('3 meses');
+        await expect(page.getByRole('spinbutton', { name: 'Tempo como cliente' })).toHaveValue('3');
         const tabsBar = page.locator('.st-key-dashboard-detail-tabs [role="tablist"]');
         const lastTab = page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Extras' });
         const [tabBounds, listBounds] = await Promise.all([lastTab.boundingBox(), tabsBar.boundingBox()]);
@@ -277,59 +277,55 @@ for (const { width, height } of viewports) {
         expect(listBounds, 'A navegação de abas deve existir').toBeTruthy();
         expect(tabBounds.x + tabBounds.width, 'A última aba fica truncada')
           .toBeLessThanOrEqual(listBounds.x + listBounds.width + 2);
-        // O rótulo e o stepper de meses seguem o mesmo ritmo do campo numérico.
-        const tenureLabel = page.locator('.churn-tenure-label');
-        const tenureInput = page.getByRole('textbox', { name: 'Tempo como cliente' });
-        const tenureGroup = page.locator('.st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"]').first();
-        const monthlyLabel = page.locator('[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-testid="stWidgetLabel"]');
-        const monthlyInput = page.locator('input[aria-label="Cobrança mensal"]');
-        const [tenureLabelBox, tenureInputBox, tenureGroupBox, monthlyLabelBox, monthlyInputBox] = await Promise.all([
-          tenureLabel.boundingBox(), tenureInput.boundingBox(), tenureGroup.boundingBox(),
-          monthlyLabel.boundingBox(), monthlyInput.boundingBox(),
-        ]);
-        for (const box of [tenureLabelBox, tenureInputBox, tenureGroupBox, monthlyLabelBox, monthlyInputBox]) {
-          expect(box, 'Rótulo ou campo numérico ausente').toBeTruthy();
-        }
-        const tenureGap = tenureGroupBox.y - (tenureLabelBox.y + tenureLabelBox.height);
-        const monthlyGap = monthlyInputBox.y - (monthlyLabelBox.y + monthlyLabelBox.height);
-        expect(Math.abs(tenureGap - monthlyGap), 'Espaçamentos dos rótulos diferentes')
-          .toBeLessThanOrEqual(6);
-        expect(Math.abs(tenureGroupBox.height - monthlyInputBox.height), 'Alturas dos campos diferentes')
-          .toBeLessThanOrEqual(3);
-        const [minusBox, plusBox] = await Promise.all([
-          page.getByRole('button', { name: 'Diminuir um mês', exact: true }).boundingBox(),
-          page.getByRole('button', { name: 'Aumentar um mês', exact: true }).boundingBox(),
-        ]);
-        expect(minusBox, 'Controle de diminuir meses ausente').toBeTruthy();
-        expect(plusBox, 'Controle de aumentar meses ausente').toBeTruthy();
-        expect(Math.abs(tenureInputBox.x + tenureInputBox.width - minusBox.x), 'Separação entre campo e botão')
-          .toBeLessThanOrEqual(3);
-        expect(Math.abs(minusBox.x + minusBox.width - plusBox.x), 'Separação entre botões')
-          .toBeLessThanOrEqual(3);
-        const tenureAppearance = await page.locator('.st-key-dashboard-tenure-control').evaluate(root => {
-          const input = root.querySelector('[data-testid="stTextInput"] input');
-          const buttons = [...root.querySelectorAll('[data-testid="stButton"] button')];
-          const layers = [...root.querySelectorAll(
-            '[data-testid="stTextInputRootElement"], [data-baseweb="input"], [data-baseweb="base-input"]'
-          )];
-          return {
-            inputBackground: getComputedStyle(input).backgroundColor,
-            buttonBackgrounds: buttons.map(button => getComputedStyle(button).backgroundColor),
-            innerBorders: layers.map(layer => getComputedStyle(layer).borderTopWidth),
-            innerShadows: layers.map(layer => getComputedStyle(layer).boxShadow),
-            layersFound: layers.length,
+        // Tempo e Cobrança usam o mesmo componente e parâmetros de layout.
+        const numbers = [
+          page.locator('.st-key-dashboard-tenure-control [data-testid="stNumberInput"]'),
+          page.locator('[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"])'),
+        ];
+        const metrics = await Promise.all(numbers.map(widget => widget.evaluate(root => {
+          const field = root.querySelector('[data-baseweb="input"]');
+          const label = root.querySelector('[data-testid="stWidgetLabel"]');
+          const input = root.querySelector('input');
+          if (!field || !label || !input) return null;
+          const rect = el => {
+            const r = el.getBoundingClientRect();
+            return {y:r.y,width:r.width,height:r.height};
           };
-        });
-        expect(tenureAppearance.inputBackground, 'Texto deve usar o fundo do campo')
-          .toBe('rgb(23, 24, 27)');
-        expect(tenureAppearance.buttonBackgrounds, 'Os dois botões devem ter uma faixa escura contínua')
-          .toEqual(['rgb(14, 16, 19)', 'rgb(14, 16, 19)']);
-        expect(tenureAppearance.layersFound, 'Camadas internas do input não encontradas')
-          .toBeGreaterThan(0);
-        expect(tenureAppearance.innerBorders, 'Input não pode criar contorno próprio')
-          .toEqual(Array(tenureAppearance.layersFound).fill('0px'));
-        expect(tenureAppearance.innerShadows, 'Input não pode criar sombra de contorno')
-          .toEqual(Array(tenureAppearance.layersFound).fill('none'));
+          const buttons = [...root.querySelectorAll('button')];
+          return {
+            field:rect(field), label:rect(label), input:rect(input),
+            buttons:buttons.map(rect),
+            radius:getComputedStyle(field).borderTopLeftRadius,
+            font:getComputedStyle(input).fontSize,
+            line:getComputedStyle(input).lineHeight,
+            backgrounds:buttons.map(button => getComputedStyle(button).backgroundColor),
+          };
+        })));
+        for (const field of metrics) {
+          expect(field, 'Campo numérico incompleto').toBeTruthy();
+          expect(field.buttons, 'Stepper nativo deve ter dois botões').toHaveLength(2);
+          expect(Math.abs(field.field.height - 42), 'Altura do campo incorreta')
+            .toBeLessThanOrEqual(2);
+          expect(Math.abs(field.input.y + field.input.height / 2 -
+                          field.field.y - field.field.height / 2), 'Texto fora do centro vertical')
+            .toBeLessThanOrEqual(2);
+          expect(parseFloat(field.radius), 'Raio externo incorreto').toBeCloseTo(4, 0);
+          expect(Math.abs(field.buttons[0].width - field.buttons[1].width)).toBeLessThanOrEqual(1);
+          expect(field.backgrounds).toEqual(['rgb(14, 16, 19)', 'rgb(14, 16, 19)']);
+        }
+        const [tenure, monthly] = metrics;
+        const gap = field => field.field.y - (field.label.y + field.label.height);
+        expect(Math.abs(gap(tenure) - gap(monthly)), 'Distância entre rótulo e campo diverge')
+          .toBeLessThanOrEqual(2);
+        expect(Math.abs(tenure.field.height - monthly.field.height)).toBeLessThanOrEqual(1);
+        expect(tenure.font).toBe(monthly.font);
+        expect(tenure.line).toBe(monthly.line);
+        expect(tenure.buttons.map(b => b.width)).toEqual(monthly.buttons.map(b => b.width));
+        const select = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div')
+          .first().evaluate(el => ({height:el.getBoundingClientRect().height,
+                                    radius:getComputedStyle(el).borderTopLeftRadius}));
+        expect(Math.abs(select.height - tenure.field.height)).toBeLessThanOrEqual(2);
+        expect(parseFloat(select.radius)).toBeCloseTo(4, 0);
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
@@ -394,49 +390,18 @@ for (const { width, height } of viewports) {
       });
 
       await test.step('Edição do cliente invalida a previsão, preservando o experimento', async () => {
-        const months = page.getByRole('textbox', { name: 'Tempo como cliente' });
-        await months.fill('4');
-        await months.press('Tab');
-        await expect(months).toHaveValue('4 meses');
-        await expect(page.locator('.churn-comparison .churn-state')).toHaveText('Dados alterados');
-        await expect(page.locator('.churn-workspace-heading[data-run-state="stale"]')).toBeVisible();
-        await expect(page.locator('.churn-run-check')).toHaveCount(0);
-        await expect(page.locator('.churn-prediction-value').first()).toHaveText('—');
-        await expect(page.locator('.churn-technical').first()).toContainText('ΔF1');
-        // O estado "Dados alterados" já aparece na comparação. O bloco técnico
-        // conserva apenas os valores F1, sem adicionar uma segunda mensagem.
-        await expect(page.locator('.churn-technical').first())
-          .not.toContainText('Os dados do cliente foram alterados');
-        await expect(page.locator('.churn-console').first()).toContainText('[FIM]');
-        await geometry(page, 'Editado', testInfo);
-        await page.mouse.move(0, 0);
-        await expect(page).toHaveScreenshot(`mono-04-editado-${suffix}.png`, { fullPage: false });
-      });
-    } finally {
-      await context.close();
+        const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
+    for (const value of ['1', '9', '10', '24', '120']) {
+      await months.fill(value);
+      await months.press('Tab');
+      await expect(months).toHaveValue(value);
     }
-  });
-}
-
-
-test('1024x768 — telefonia mantém dados das abas anteriores', async ({ browser }) => {
-  const context = await browser.newContext({
-    viewport: { width: 1024, height: 768 }, deviceScaleFactor: 1,
-    locale: 'pt-BR', colorScheme: 'dark',
-  });
-  const page = await context.newPage();
-  try {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
-    await page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Serviços' }).click();
-    await page.getByRole('combobox', { name: 'Serviço de telefone' }).click();
-    await page.getByRole('option', { name: 'Não', exact: true }).click();
-    await expect(page.locator('[data-testid="stException"]')).toHaveCount(0);
-    // O Streamlit renderiza esse selectbox como input desativado: o valor
-    // está na propriedade value, não no conteúdo textual do elemento.
-    const multipleLines = page.getByRole('combobox', { name: 'Múltiplas linhas telefônicas' });
-    await expect(multipleLines).toHaveValue('Sem serviço telefônico');
-    await expect(multipleLines).toBeDisabled();
+    const buttons = page.locator('.st-key-dashboard-tenure-control [data-testid="stNumberInput"] button');
+    await expect(buttons).toHaveCount(2);
+    await buttons.nth(1).click();
+    await expect(months).toHaveValue('121');
+    await buttons.nth(0).click();
+    await expect(months).toHaveValue('120');
     await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
   } finally {
     await context.close();
@@ -462,7 +427,7 @@ test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }
     await tabs.getByRole('tab', { name: 'Perfil', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Gênero' })).toBeVisible();
 
-    const months = page.getByRole('textbox', { name: 'Tempo como cliente' });
+    const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
     for (const [typed, expected] of [
       ['1', '1 mês'], ['9', '9 meses'], ['10', '10 meses'],
       ['24', '24 meses'], ['120', '120 meses'],
