@@ -64,9 +64,11 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .churn-topbar .churn-top-meta {font-size:13px;line-height:1.3;color:var(--n3-muted);white-space:nowrap;}
 /* A linha externa e seus wrappers são controlados; o Streamlit cria alturas automáticas. */
 .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
+  /* Âncoras da viewport: impedir altura herdada da grade em janelas menores. */
+  position:fixed!important;top:80px!important;right:18px!important;bottom:10px!important;left:18px!important;
   box-sizing:border-box!important;display:grid!important;
   grid-template-columns:clamp(300px,27vw,380px) minmax(0,1fr)!important;
-  gap:12px!important;width:100%!important;height:calc(100dvh - 75px)!important;
+  gap:12px!important;width:auto!important;height:auto!important;
   min-height:0!important;max-height:none!important;overflow:hidden!important;
 }
 .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] {
@@ -181,7 +183,8 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .churn-topbar h1 {font-size:18px;}
   .churn-topbar .churn-top-meta {font-size:12px;}
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    grid-template-columns:270px minmax(0,1fr)!important;height:calc(100dvh - 65px)!important;gap:8px!important;
+    grid-template-columns:270px minmax(0,1fr)!important;
+    top:71px!important;right:10px!important;bottom:8px!important;left:10px!important;gap:8px!important;
   }
   .st-key-dashboard-client,.st-key-dashboard-workspace {padding:11px!important;}
   .st-key-dashboard-selection-section {grid-template-columns:1fr!important;overflow-y:auto!important;}

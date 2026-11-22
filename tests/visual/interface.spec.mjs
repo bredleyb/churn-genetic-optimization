@@ -19,7 +19,7 @@ async function geometry(page, stage, testInfo) {
       const css = getComputedStyle(element);
       return {
         x: box.x, y: box.y, right: box.right, bottom: box.bottom,
-        width: box.width, height: box.height, overflowY: css.overflowY,
+        width: box.width, height: box.height, overflowY: css.overflowY, position: css.position,
       };
     };
     const root = document.scrollingElement || document.documentElement;
@@ -50,6 +50,9 @@ async function geometry(page, stage, testInfo) {
     body: JSON.stringify(layout, null, 2), contentType: 'application/json',
   });
   expect(layout.row, `${stage}: grade principal ausente`).toBeTruthy();
+  expect(layout.row.position, `${stage}: grade deve ficar ancorada à viewport`).toBe('fixed');
+  expect(layout.row.bottom, `${stage}: grade extrapola a altura da janela`)
+    .toBeLessThanOrEqual(layout.height - 4);
   expect(layout.client, `${stage}: Cliente ausente`).toBeTruthy();
   expect(layout.workspace, `${stage}: Análise ausente`).toBeTruthy();
   expect(layout.scrollHeight, `${stage}: página com rolagem vertical`).toBeLessThanOrEqual(layout.clientHeight + 2);
