@@ -362,21 +362,30 @@ for (const { width, height } of viewports) {
         await restore.hover();
         await expect.poll(() => restore.evaluate(el => getComputedStyle(el).backgroundColor))
           .toBe('rgb(32, 33, 36)');
-        // A área da seta reage ao hover na superfície clicável inteira do select,
-        // sem depender de qual wrapper interno o BaseWeb escolheu renderizar.
-        const selects = page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div');
+        // Streamlit 1.67 usa um botão real com aria-label="Open" para expansão.
+        // Verificar a superfície pintada, não um pseudo-elemento antigo/invisível.
+        const selects = page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"]');
         await expect(selects).toHaveCount(2);
         for (const field of await selects.all()) {
-          const before = await field.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
-          expect(before, 'Fundo padrão da região de expansão incorreto').toBe('rgb(14, 16, 19)');
-          const rect = await field.boundingBox();
-          await field.hover({ position: { x: rect.width - 16, y: rect.height / 2 } });
-          await expect.poll(() => field.evaluate(el => getComputedStyle(el, '::before').backgroundColor))
+          const arrow = field.getByRole('button', { name: 'Open' });
+          await expect(arrow).toBeVisible();
+          await expect.poll(() => arrow.evaluate(el => getComputedStyle(el).backgroundColor))
+            .toBe('rgb(14, 16, 19)');
+          await expect.poll(() => arrow.evaluate(el => getComputedStyle(el).color))
+            .toBe('rgb(216, 216, 216)');
+          await arrow.hover();
+          await expect.poll(() => arrow.evaluate(el => getComputedStyle(el).backgroundColor))
             .toBe('rgb(32, 33, 36)');
           await page.mouse.move(0, 0);
-          await expect.poll(() => field.evaluate(el => getComputedStyle(el, '::before').backgroundColor))
+          await expect.poll(() => arrow.evaluate(el => getComputedStyle(el).backgroundColor))
             .toBe('rgb(14, 16, 19)');
         }
+        await page.mouse.move(0, 0);
+        const profileArrow = page.locator('.st-key-dashboard-client-fields [data-testid="stSelectbox"]')
+          .first().getByRole('button', { name: 'Open' });
+        await profileArrow.hover();
+        await expect.poll(() => profileArrow.evaluate(el => getComputedStyle(el).backgroundColor))
+          .toBe('rgb(32, 33, 36)');
         await page.mouse.move(0, 0);
         const tabsBar = page.locator('.st-key-dashboard-detail-tabs [role="tablist"]');
         const lastTab = page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Extras' });
@@ -427,15 +436,55 @@ for (const { width, height } of viewports) {
         expect(time.font).toBe(charge.font);
         expect(time.font).toBe('14px');
         expect(time.line).toBe(charge.line);
+        const actionIconColors = await Promise.all([
+          page.locator('.n3-tenure-field button[data-step="1"]'),
+          page.locator('[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) button').first(),
+        ].map(locator => locator.evaluate(el => getComputedStyle(el).color)));
+        expect(actionIconColors, 'Os ícones −/+ devem seguir os mesmos tons dos seletores')
+          .toEqual(['rgb(216, 216, 216)', 'rgb(216, 216, 216)']);
+        const selectionText = await Promise.all(
+          (await selects.all()).map(field => field.locator('input[role="combobox"]')
+            .evaluate(input => ({
+              font:getComputedStyle(input).fontSize,
+              line:getComputedStyle(input).lineHeight,
+              paddingTop:getComputedStyle(input).paddingTop,
+              paddingBottom:getComputedStyle(input).paddingBottom,
+            })))
+        );
+        for (const values of selectionText) {
+          expect(values, 'Valor selecionado com tipografia ou padding divergente')
+            .toEqual({font:'14px',line:'20px',paddingTop:'0px',paddingBottom:'0px'});
+        }
+        // Medir caixas reais de rótulo e input; CSS escrito, mas inativo,
+        // não pode ser considerado uma correção de alinhamento.
+        const labelGeometry = await Promise.all(
+          (await selects.all()).map(field => field.evaluate(root => {
+            const label = root.querySelector('[data-testid="stWidgetLabel"]');
+            const text = label?.querySelector('p');
+            const group = root.querySelector('[role="group"]');
+            if (!label || !text || !group) return null;
+            const a = label.getBoundingClientRect();
+            const b = text.getBoundingClientRect();
+            const c = group.getBoundingClientRect();
+            return {height:a.height, textOffset:(b.top + b.height / 2) - (a.top + a.height / 2),
+              gap:c.top - a.bottom};
+          }))
+        );
+        for (const item of labelGeometry) {
+          expect(item, 'Rótulo do seletor ausente').toBeTruthy();
+          expect(Math.abs(item.height - 20), 'Altura dos rótulos divergente').toBeLessThanOrEqual(1);
+          expect(Math.abs(item.textOffset), 'Texto do rótulo descentralizado').toBeLessThanOrEqual(2);
+          expect(Math.abs(item.gap - 6), 'Espaçamento rótulo/campo divergente').toBeLessThanOrEqual(2);
+        }
         // O campo de meses e o seletor usam exatamente o mesmo fundo.
         const fills = await Promise.all([
           page.locator('.n3-tenure-field').evaluate(el => getComputedStyle(el).backgroundColor),
-          page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div').first()
+          page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"] [role="group"]').first()
             .evaluate(el => getComputedStyle(el).backgroundColor),
         ]);
         expect(fills).toEqual(['rgb(14, 16, 19)', 'rgb(14, 16, 19)']);
         expect(time.buttons.map(button => button.width)).toEqual(charge.buttons.map(button => button.width));
-        const selector = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div')
+        const selector = await page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"] [role="group"]')
           .first().evaluate(el => ({height:el.getBoundingClientRect().height,
                                     radius:getComputedStyle(el).borderTopLeftRadius}));
         expect(Math.abs(selector.height - time.field.height)).toBeLessThanOrEqual(2);
@@ -444,7 +493,7 @@ for (const { width, height } of viewports) {
         // a borda e os botões permanecem alinhados pelo layout.
         const opticOffsets = await Promise.all([
           page.locator('.st-key-dashboard-client [data-testid="stWidgetLabel"] p').first(),
-          page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div > div:first-child').first(),
+          page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"] input[role="combobox"]').first(),
           page.locator('input[aria-label="Cobrança mensal"]'),
           page.locator('.n3-tenure-field input'),
           page.locator('.n3-tenure label'),
@@ -453,10 +502,10 @@ for (const { width, height } of viewports) {
         expect(opticOffsets, 'Rótulos e valores devem usar o mesmo ajuste óptico')
           .toEqual([-1, -1, -1, -1, -1]);
         // Serviço de internet deve usar a mesma centralização vertical dos outros seletores.
-        const internetCenter = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"]:has(input[aria-label="Serviço de internet"])')
+        const internetCenter = await page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"]:has(input[aria-label="Serviço de internet"])')
           .evaluate(root => {
-            const outer = root.firstElementChild?.getBoundingClientRect();
-            const inner = root.querySelector('input')?.getBoundingClientRect();
+            const outer = root.querySelector('[role="group"]')?.getBoundingClientRect();
+            const inner = root.querySelector('input[role="combobox"]')?.getBoundingClientRect();
             return outer && inner ? Math.abs((outer.y + outer.height / 2) -
               (inner.y + inner.height / 2)) : null;
           });

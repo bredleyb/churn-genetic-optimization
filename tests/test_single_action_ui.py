@@ -199,9 +199,12 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "top:calc(50% + var(--n3-field-text-shift))!important" in style
     assert "background:var(--n3-field-fill)!important" in style
     assert "background:var(--n3-field-action-fill)!important" in style
-    assert "> div:hover::before" in style
-    assert 'pointer-events:none;z-index:0' in style
-    assert "background:var(--n3-elevated);" in style
+    assert '[data-testid="stSelectbox"] [role="group"]' in style
+    assert '[data-testid="stSelectbox"] input[role="combobox"]' in style
+    assert '[data-testid="stSelectbox"] button[aria-label="Open"]:hover' in style
+    assert 'background:var(--n3-elevated)!important' in style
+    assert '[data-baseweb="select"]' not in style
+    assert "color:var(--n3-secondary)!important" in style
     assert "transform:translate(-50%,-50%)!important" in style
     assert "height:calc(var(--n3-field-height) - 2px)!important" in style
     assert "st-key-dashboard-tenure-control" in style
@@ -548,6 +551,7 @@ def test_tenure_css_matches_shared_field_tokens():
     assert "var(--n3-field-fill,#0e1013)" in _COMPONENT_CSS
     assert "var(--n3-field-action-fill,#0e1013)" in _COMPONENT_CSS
     assert "var(--n3-field-text-size,14px)" in _COMPONENT_CSS
+    assert "color:var(--n3-secondary,#d8d8d8)" in _COMPONENT_CSS
     assert "height:var(--n3-field-height,42px)" in _COMPONENT_CSS
     assert "outline:none;border-color:var(--n3-text,#f5f5f5)" in _COMPONENT_CSS
     assert "box-shadow:inset 0 0 0 1px" in _COMPONENT_CSS
