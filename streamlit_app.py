@@ -289,6 +289,47 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
  .st-key-dashboard-mobile-detail .churn-console-lines {max-height:210px!important;min-height:100px;}
  .st-key-dashboard-mobile-detail .churn-monitor-title {display:none;}
 }
+
+/* A seção do gráfico precisa preencher o trilho do grid. Os wrappers Markdown
+   do Streamlit usavam altura intrínseca, fazendo o SVG sobrepor as métricas. */
+.st-key-dashboard-analysis-section > [data-testid="stElementContainer"],
+.st-key-dashboard-analysis-section [data-testid="stMarkdown"],
+.st-key-dashboard-analysis-section [data-testid="stMarkdown"] > div,
+.st-key-dashboard-analysis-section [data-testid="stMarkdownContainer"] {
+  box-sizing:border-box!important;
+  height:100%!important;max-height:100%!important;min-height:0!important;
+  overflow:hidden!important;
+}
+.st-key-dashboard-analysis-section .churn-chart {
+  height:100%!important;max-height:100%!important;min-height:0!important;
+  overflow:hidden!important;
+}
+
+/* 1280x720 é o formato prioritário de projeção. Comprimir o gráfico e o
+   monitor na mesma coluna vertical reduz a leitura; a faixa inferior usa
+   seleção à esquerda e console à direita, ambos com altura própria. */
+@media (min-width:1000px) and (max-height:760px) {
+  .st-key-dashboard-desktop-detail {
+    grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)!important;
+    grid-template-rows:minmax(0,1fr) minmax(150px,23dvh)!important;
+    gap:8px 12px!important;
+  }
+  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section) {
+    grid-column:1 / -1!important;grid-row:1!important;
+  }
+  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-selection-section) {
+    grid-column:1!important;grid-row:2!important;
+  }
+  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {
+    grid-column:2!important;grid-row:2!important;
+  }
+  .st-key-dashboard-selection-section {
+    height:100%!important;max-height:100%!important;
+    min-height:0!important;display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:6px!important;overflow-y:auto!important;overflow-x:hidden!important;
+  }
+}
 </style>
 """,
     unsafe_allow_html=True,

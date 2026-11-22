@@ -44,6 +44,9 @@ async function geometry(page, stage, testInfo) {
       chart: bounds('.st-key-dashboard-desktop-detail .churn-chart'),
       technical: bounds('.st-key-dashboard-desktop-detail .churn-technical'),
       monitor: bounds('.st-key-dashboard-desktop-detail .churn-console'),
+      selection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-selection-section'),
+      monitorSection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-monitor-section'),
+      analysisSection: bounds('.st-key-dashboard-desktop-detail .st-key-dashboard-analysis-section'),
       mobileWrapper: bounds('.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail)'),
       desktopDetail: bounds('.st-key-dashboard-desktop-detail'),
     };
@@ -91,10 +94,25 @@ async function geometry(page, stage, testInfo) {
     expect(layout.mobileWrapper.display, `${stage}: wrapper móvel ocupa a grade desktop`).toBe('none');
     expect(layout.comparison.width, `${stage}: comparação usa pouco espaço horizontal`)
       .toBeGreaterThan(layout.workspace.width * 0.80);
-    for (const name of ['comparison', 'chart', 'technical', 'monitor']) {
+    for (const name of ['comparison', 'chart', 'technical', 'monitor', 'selection', 'monitorSection', 'analysisSection']) {
       expect(layout[name], `${stage}: ${name} ausente`).toBeTruthy();
       expect(layout[name].bottom, `${stage}: ${name} extrapola área analítica`)
         .toBeLessThanOrEqual(layout.workspace.bottom + 2);
+    }
+    // Validar se o conteúdo está dentro do trilho a que pertence, inclusive
+    // quando um overflow hidden poderia esconder uma sobreposição.
+    expect(layout.chart.bottom, `${stage}: gráfico invade a seleção`)
+      .toBeLessThanOrEqual(layout.selection.y + 2);
+    expect(layout.monitor.bottom, `${stage}: console fica oculto ou cortado`)
+      .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
+    if (layout.width >= 1000 && layout.height <= 760) {
+      expect(Math.abs(layout.selection.y - layout.monitorSection.y),
+        `${stage}: seleção e monitor devem compartilhar a faixa inferior`).toBeLessThanOrEqual(2);
+      expect(layout.chart.height, `${stage}: gráfico sem altura suficiente para projeção`)
+        .toBeGreaterThanOrEqual(130);
+    } else {
+      expect(layout.selection.bottom, `${stage}: seleção sobrepõe o monitor`)
+        .toBeLessThanOrEqual(layout.monitorSection.y + 2);
     }
   }
 }
