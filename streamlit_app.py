@@ -233,6 +233,44 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .churn-monitor-title {font-size:14px;}
   .churn-console-lines {font-size:12px;max-height:46px;min-height:24px;}
 }
+
+/* Duas apresentações do mesmo estado: grade completa no projetor, abas no celular. */
+.st-key-dashboard-workspace {grid-template-rows:auto auto minmax(0,1fr)!important;}
+.st-key-dashboard-desktop-detail {
+  display:grid!important;grid-template-rows:minmax(145px,1fr) auto minmax(115px,19dvh)!important;
+  gap:10px!important;height:100%!important;min-height:0!important;overflow:hidden!important;
+}
+.st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"] {min-height:0!important;overflow:hidden!important;}
+.st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section),
+.st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {height:100%!important;min-height:0!important;}
+.st-key-dashboard-mobile-detail {display:none!important;}
+@media(max-width:1150px) {
+ .st-key-dashboard-desktop-detail {grid-template-rows:minmax(120px,1fr) auto minmax(100px,17dvh)!important;gap:8px!important;}
+}
+@media(max-height:760px) and (min-width:621px) {
+ .st-key-dashboard-desktop-detail {grid-template-rows:minmax(105px,1fr) auto minmax(90px,16dvh)!important;gap:6px!important;}
+}
+@media(max-width:620px) {
+ .st-key-dashboard-workspace {grid-template-rows:auto auto minmax(0,1fr)!important;}
+ .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-desktop-detail) {display:none!important;}
+ .st-key-dashboard-desktop-detail {display:none!important;}
+ .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail) {height:100%!important;min-height:0!important;overflow:hidden!important;}
+ .st-key-dashboard-mobile-detail {display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important;}
+ .st-key-dashboard-mobile-detail [data-testid="stTabs"] {height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;}
+ .st-key-dashboard-mobile-detail [data-baseweb="tab-list"] {height:41px!important;min-height:41px!important;}
+ .st-key-dashboard-mobile-detail [role="tab"] {font-size:15px!important;color:var(--n3-secondary)!important;}
+ .st-key-dashboard-mobile-detail [role="tab"][aria-selected="true"] {color:var(--n3-text)!important;}
+ .st-key-dashboard-mobile-detail [data-baseweb="tab-panel"] {
+    height:calc(100% - 42px)!important;max-height:calc(100% - 42px)!important;
+    min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
+    scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;
+ }
+ .st-key-dashboard-mobile-detail .churn-chart {height:190px;}
+ .st-key-dashboard-mobile-detail .churn-technical {padding-top:12px;border-top:1px solid var(--n3-line);margin-top:10px;}
+ .st-key-dashboard-mobile-detail .churn-chromosome {padding-top:10px;border-top:1px solid var(--n3-line);margin-top:8px;}
+ .st-key-dashboard-mobile-detail .churn-console-lines {max-height:210px!important;min-height:100px;}
+ .st-key-dashboard-mobile-detail .churn-monitor-title {display:none;}
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -602,23 +640,62 @@ def _render_client_panel() -> bool:
     return clicked
 
 
+class _BroadcastSlot:
+    """Atualiza as saídas visíveis em desktop e as abas compactas do celular."""
+
+    def __init__(self, *targets):
+        self.targets = targets
+
+    def __getattr__(self, method):
+        def dispatch(*args, **kwargs):
+            output = None
+            for index, target in enumerate(self.targets):
+                options = dict(kwargs)
+                if index and method == "download_button" and "key" in options:
+                    options["key"] += "_mobile"
+                output = getattr(target, method)(*args, **options)
+            return output
+        return dispatch
+
+
 def _workspace_slots() -> dict:
     st.markdown('<h2 class="churn-panel-heading">Análise e execução</h2>', unsafe_allow_html=True)
     comparison = st.empty()
-    with st.container(key="dashboard-analysis-section", border=False):
-        chart = st.empty()
-    with st.container(key="dashboard-selection-section", border=False):
-        chromosome = st.empty()
-        technical = st.empty()
-    with st.container(key="dashboard-monitor-section", border=False):
-        st.markdown('<div class="churn-monitor-title">Monitor de execução</div>', unsafe_allow_html=True)
-        phase = st.empty()
-        progress = st.empty()
-        console = st.empty()
-        log = st.empty()
-    return {"comparison":comparison,"chart":chart,"chromosome":chromosome,
-            "technical":technical,"phase":phase,"progress":progress,
-            "console":console,"log":log}
+    with st.container(key="dashboard-desktop-detail", border=False):
+        with st.container(key="dashboard-analysis-section", border=False):
+            chart_desktop = st.empty()
+        with st.container(key="dashboard-selection-section", border=False):
+            chromosome_desktop = st.empty()
+            technical_desktop = st.empty()
+        with st.container(key="dashboard-monitor-section", border=False):
+            st.markdown('<div class="churn-monitor-title">Monitor de execução</div>', unsafe_allow_html=True)
+            phase_desktop = st.empty()
+            progress_desktop = st.empty()
+            console_desktop = st.empty()
+            log_desktop = st.empty()
+    # As duas abas pertencem à apresentação móvel. Em desktop a grade técnica
+    # acima é mostrada integralmente e o contêiner abaixo fica oculto por CSS.
+    with st.container(key="dashboard-mobile-detail", border=False):
+        analysis_tab, execution_tab = st.tabs(["Análise", "Execução"])
+        with analysis_tab:
+            chart_mobile = st.empty()
+            chromosome_mobile = st.empty()
+            technical_mobile = st.empty()
+        with execution_tab:
+            phase_mobile = st.empty()
+            progress_mobile = st.empty()
+            console_mobile = st.empty()
+            log_mobile = st.empty()
+    return {
+        "comparison": comparison,
+        "chart": _BroadcastSlot(chart_desktop, chart_mobile),
+        "chromosome": _BroadcastSlot(chromosome_desktop, chromosome_mobile),
+        "technical": _BroadcastSlot(technical_desktop, technical_mobile),
+        "phase": _BroadcastSlot(phase_desktop, phase_mobile),
+        "progress": _BroadcastSlot(progress_desktop, progress_mobile),
+        "console": _BroadcastSlot(console_desktop, console_mobile),
+        "log": _BroadcastSlot(log_desktop, log_mobile),
+    }
 
 
 def main() -> None:
