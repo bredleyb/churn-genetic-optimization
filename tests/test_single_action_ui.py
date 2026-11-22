@@ -156,6 +156,12 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert 'content:"meses"' not in style
     assert "st-key-dashboard-tenure-control" in style
     assert "churn-tenure-label" in style
+    assert "font-weight:400;margin:0 0 8px" in style
+    assert "height:42px!important;min-height:42px!important;" in style
+    assert "background:var(--n3-control)!important;" in style
+    assert "border:1px solid var(--n3-outline)!important;border-radius:4px!important;" in style
+    assert "border:0!important;border-radius:0!important;" in style
+    assert "font-size:13px!important;padding:7px 3px!important;" in style
     assert "border:2px solid var(--n3-text);border-radius:50%" in style
     assert ".st-key-dashboard-detail-tabs [role=\"tab\"]" in style
     assert "Painel técnico desktop: a área do console absorve o espaço restante" in style

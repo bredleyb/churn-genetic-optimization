@@ -275,7 +275,37 @@ for (const { width, height } of viewports) {
         const [tabBounds, listBounds] = await Promise.all([lastTab.boundingBox(), tabsBar.boundingBox()]);
         expect(tabBounds, 'A última aba deve existir').toBeTruthy();
         expect(listBounds, 'A navegação de abas deve existir').toBeTruthy();
-        expect(tabBounds.right, 'A última aba fica truncada').toBeLessThanOrEqual(listBounds.right + 2);
+        expect(tabBounds.x + tabBounds.width, 'A última aba fica truncada')
+          .toBeLessThanOrEqual(listBounds.x + listBounds.width + 2);
+        // O rótulo e o stepper de meses seguem o mesmo ritmo do campo numérico.
+        const tenureLabel = page.locator('.churn-tenure-label');
+        const tenureInput = page.getByRole('textbox', { name: 'Tempo como cliente' });
+        const tenureGroup = page.locator('.st-key-dashboard-tenure-control [data-testid="stHorizontalBlock"]').first();
+        const monthlyLabel = page.locator('[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-testid="stWidgetLabel"]');
+        const monthlyInput = page.locator('input[aria-label="Cobrança mensal"]');
+        const [tenureLabelBox, tenureInputBox, tenureGroupBox, monthlyLabelBox, monthlyInputBox] = await Promise.all([
+          tenureLabel.boundingBox(), tenureInput.boundingBox(), tenureGroup.boundingBox(),
+          monthlyLabel.boundingBox(), monthlyInput.boundingBox(),
+        ]);
+        for (const box of [tenureLabelBox, tenureInputBox, tenureGroupBox, monthlyLabelBox, monthlyInputBox]) {
+          expect(box, 'Rótulo ou campo numérico ausente').toBeTruthy();
+        }
+        const tenureGap = tenureGroupBox.y - (tenureLabelBox.y + tenureLabelBox.height);
+        const monthlyGap = monthlyInputBox.y - (monthlyLabelBox.y + monthlyLabelBox.height);
+        expect(Math.abs(tenureGap - monthlyGap), 'Espaçamentos dos rótulos diferentes')
+          .toBeLessThanOrEqual(6);
+        expect(Math.abs(tenureGroupBox.height - monthlyInputBox.height), 'Alturas dos campos diferentes')
+          .toBeLessThanOrEqual(3);
+        const [minusBox, plusBox] = await Promise.all([
+          page.getByRole('button', { name: 'Diminuir um mês', exact: true }).boundingBox(),
+          page.getByRole('button', { name: 'Aumentar um mês', exact: true }).boundingBox(),
+        ]);
+        expect(minusBox, 'Controle de diminuir meses ausente').toBeTruthy();
+        expect(plusBox, 'Controle de aumentar meses ausente').toBeTruthy();
+        expect(Math.abs(tenureInputBox.x + tenureInputBox.width - minusBox.x), 'Separação entre campo e botão')
+          .toBeLessThanOrEqual(3);
+        expect(Math.abs(minusBox.x + minusBox.width - plusBox.x), 'Separação entre botões')
+          .toBeLessThanOrEqual(3);
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
