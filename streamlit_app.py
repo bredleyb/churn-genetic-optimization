@@ -334,7 +334,15 @@ def _render_technical(run: dict | None, *, slot, stale: bool = False) -> None:
         f'<div class="churn-tech-item"><span>{escape(name)}</span><strong>{escape(value)}</strong></div>'
         for name, value in metrics
     )
-    foot = '<div class="churn-tech-foot">F1 calculado no teste reservado · 20% dos dados</div>'
+    if run is None:
+        note = "F1 calculado no teste reservado · 20% dos dados"
+    else:
+        base_f1 = run["summary"]["baseline"]["f1"]
+        genetic_f1 = run["summary"]["genetico"]["f1"]
+        delta = f"{genetic_f1 - base_f1:+.4f}".replace(".", ",")
+        reduction = f"{run['summary']['reduction_pct']:.2f}".replace(".", ",")
+        note = f"{reduction}% menos características · ΔF1 no teste: {delta}"
+    foot = f'<div class="churn-tech-foot">{escape(note)}</div>'
     warning = ('<div class="churn-stale">Os dados do cliente foram alterados. '
                'Clique em Calcular previsão para atualizar.</div>') if stale else ""
     slot.markdown(f'<section aria-label="Resumo técnico"><div class="churn-tech">{cells}'
@@ -361,6 +369,12 @@ def _render_finished_run(run: dict, slots: dict) -> None:
     _render_chromosome(run["chromosome"], "Melhor cromossomo", slot=slots["chromosome"])
     _history_chart(run["history"], slot=slots["chart"])
     _render_technical(run, slot=slots["technical"], stale=stale)
+    if run.get("events"):
+        slots["log"].download_button(
+            "Baixar log completo", "\n".join(run["events"]) + "\n",
+            file_name="execucao-genetica.log", mime="text/plain",
+            key="download_full_log", type="tertiary",
+        )
 
 
 def _execute_full_workflow(customer: dict, slots: dict) -> None:
