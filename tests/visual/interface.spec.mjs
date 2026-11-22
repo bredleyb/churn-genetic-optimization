@@ -32,8 +32,9 @@ async function checkDashboardGeometry(page, stage, width, testInfo) {
         const el = document.querySelector('[data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)');
         if (!el) return null;
         const style = getComputedStyle(el);
-        return {display: style.display, gridTemplateRows: style.gridTemplateRows,
-                height: style.height, minHeight: style.minHeight, overflowY: style.overflowY};
+        return {display: style.display, position: style.position, gridTemplateRows: style.gridTemplateRows,
+                top: style.top, bottom: style.bottom, height: style.height,
+                minHeight: style.minHeight, overflowY: style.overflowY};
       })(),
     };
   });
@@ -44,6 +45,7 @@ async function checkDashboardGeometry(page, stage, width, testInfo) {
     });
     expect(layout.mobileRow, `${stage}: linha principal do dashboard não localizada`).toBeTruthy();
     expect(layout.mobileRowStyles.display, `${stage}: linha móvel precisa usar grid`).toBe('grid');
+    expect(layout.mobileRowStyles.position, `${stage}: linha móvel deve ficar vinculada ao viewport`).toBe('fixed');
     expect(layout.mobileRow.bottom, `${stage}: grade principal ultrapassa a tela`).toBeLessThanOrEqual(layout.height + 2);
   }
   expect(layout.client, `${stage}: painel Cliente ausente`).toBeTruthy();

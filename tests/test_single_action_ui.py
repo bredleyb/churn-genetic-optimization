@@ -120,6 +120,8 @@ def test_css_is_dark_and_scoped_to_viewport(monkeypatch):
     # limitada; restringir somente os cartões internos não é suficiente.
     assert ':has(.st-key-dashboard-client):has(.st-key-dashboard-workspace)' in style
     assert 'grid-template-rows: minmax(0, 43fr) minmax(0, 57fr)' in style
+    assert 'position: fixed !important' in style
+    assert 'bottom: 8px !important' in style
 
 
 def test_result_is_invalidated_after_customer_changes(monkeypatch):

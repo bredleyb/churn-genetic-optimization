@@ -133,12 +133,24 @@ html, body, #root {overflow: hidden !important; background: #0B111B !important;}
      também a linha externa: controlar só os cartões internos deixa o tamanho
      natural das colunas ultrapassar a janela. */
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
+    /* A altura intrínseca dos wrappers do Streamlit pode ultrapassar o grid.
+       Tirar a linha do fluxo e prender seus limites ao viewport evita que
+       o conteúdo dos widgets expanda a área principal no modo móvel. */
+    position: fixed !important;
+    top: 60px !important;
+    right: 10px !important;
+    bottom: 8px !important;
+    left: 10px !important;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: minmax(0, 43fr) minmax(0, 57fr) !important;
     gap: 8px !important;
-    height: calc(100dvh - 82px) !important;
+    box-sizing: border-box !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: calc(100dvh - 68px) !important;
     min-height: 0 !important;
+    margin: 0 !important;
     overflow: hidden !important;
     align-content: stretch !important;
   }
