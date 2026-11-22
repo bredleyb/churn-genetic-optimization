@@ -35,6 +35,8 @@ async function geometry(page, stage, testInfo) {
       workspace: bounds('.st-key-dashboard-workspace'),
       clientTitle: bounds('.st-key-dashboard-client .churn-panel-heading'),
       workspaceTitle: bounds('.st-key-dashboard-workspace .churn-workspace-heading .churn-panel-heading'),
+      comparisonTop: bounds('.st-key-dashboard-workspace .churn-comparison'),
+      clientFieldsTop: bounds('.st-key-dashboard-client-fields'),
       tenureInput: bounds('.st-key-dashboard-tenure-control input[aria-label="Tempo como cliente"]'),
       tenureControl: bounds('.st-key-dashboard-tenure-control'),
       internetInput: bounds('.st-key-dashboard-quick-fields [aria-label="Serviço de internet"]'),
@@ -83,10 +85,27 @@ async function geometry(page, stage, testInfo) {
   expect(layout.workspace, `${stage}: Previsão ausente`).toBeTruthy();
   expect(layout.clientTitle, `${stage}: título Cliente ausente`).toBeTruthy();
   expect(layout.workspaceTitle, `${stage}: título Previsão ausente`).toBeTruthy();
+  expect(layout.clientFieldsTop, `${stage}: conteúdo Cliente ausente`).toBeTruthy();
+  expect(layout.comparisonTop, `${stage}: comparação abaixo de Previsão ausente`).toBeTruthy();
+  for (const [panel, heading, content] of [
+    ['Cliente', layout.clientTitle, layout.clientFieldsTop],
+    ['Previsão', layout.workspaceTitle, layout.comparisonTop],
+  ]) {
+    const gap = content.y - heading.bottom;
+    expect(gap, `${stage}: conteúdo invade a faixa de título em ${panel}`).toBeGreaterThanOrEqual(-2);
+    expect(gap, `${stage}: espaço excessivo entre título e conteúdo em ${panel}`)
+      .toBeLessThanOrEqual(18);
+  }
   expect(layout.clientTitle.y - layout.client.y, `${stage}: título Cliente muito distante do topo`)
     .toBeLessThanOrEqual(27);
   expect(layout.workspaceTitle.y - layout.workspace.y, `${stage}: título Previsão muito distante do topo`)
     .toBeLessThanOrEqual(27);
+  // O texto mantém o centro de cada painel independentemente do indicador de execução.
+  for (const [panelName, headingName] of [['client', 'clientTitle'], ['workspace', 'workspaceTitle']]) {
+    const panel = layout[panelName], heading = layout[headingName];
+    expect(Math.abs(heading.x + heading.width / 2 - panel.x - panel.width / 2),
+      `${stage}: título descentralizado em ${panelName}`).toBeLessThanOrEqual(2);
+  }
   expect(layout.scrollHeight, `${stage}: página com rolagem vertical`).toBeLessThanOrEqual(layout.clientHeight + 2);
   expect(layout.scrollWidth, `${stage}: página com rolagem horizontal`).toBeLessThanOrEqual(layout.clientWidth + 2);
   for (const name of ['client', 'workspace']) {
@@ -267,6 +286,25 @@ for (const { width, height } of viewports) {
             .toHaveCount(1);
         }
         await expect(page.locator('.churn-workspace-heading[data-run-state="idle"]')).toBeVisible();
+        // A faixa interna fica centralizada, discreta e imediatamente acima do conteúdo.
+        for (const name of ['Cliente', 'Previsão']) {
+          const heading = page.getByRole('heading', { name, exact: true });
+          const appearance = await heading.evaluate(el => {
+            const css = getComputedStyle(el);
+            const before = getComputedStyle(el, '::before');
+            const after = getComputedStyle(el, '::after');
+            return {
+              color:css.color, align:css.textAlign, height:el.getBoundingClientRect().height,
+              before:before.backgroundColor, after:after.backgroundColor,
+            };
+          });
+          expect(appearance.color, `${name}: cor do título difere do contorno`)
+            .toBe('rgb(85, 88, 93)');
+          expect(appearance.align).toBe('center');
+          expect(appearance.height).toBeLessThanOrEqual(21);
+          expect(appearance.before).toBe(appearance.color);
+          expect(appearance.after).toBe(appearance.color);
+        }
         await expect(page.locator('.churn-run-icon')).toHaveCount(0);
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
         await expect(page.getByRole('spinbutton', { name: 'Tempo como cliente' })).toHaveValue('3');

@@ -153,6 +153,14 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert ".st-key-dashboard-desktop-detail" in style
     assert "#30B6A7" not in style
     assert "churn-workspace-heading" in style
+    assert "grid-template-rows:20px minmax(0,1fr) auto" in style
+    assert "grid-template-rows:20px auto minmax(0,1fr)" in style
+    assert "color:var(--n3-outline)!important" in style
+    assert "text-align:center!important" in style
+    assert "content:\"\";flex:1 1 0" in style
+    assert "right:0;top:50%;transform:translateY(-50%)" in style
+    assert "padding:12px 16px 14px!important" in style
+    assert "padding:8px 10px 10px!important" in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
     assert "--n3-field-height:42px" in style
