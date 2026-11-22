@@ -1060,8 +1060,9 @@ def _render_client_panel() -> bool:
             with a:
                 with st.container(key="dashboard-tenure-control", border=False):
                     st.number_input(
-                        "Tempo como cliente (meses)",
+                        "Tempo como cliente",
                         min_value=0, max_value=999, step=1, format="%d",
+                        help="Informe o tempo de permanência em meses.",
                         key="field_tenure", on_change=_remember_field, args=("tenure",),
                     )
             with b:
