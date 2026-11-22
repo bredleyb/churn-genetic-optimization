@@ -182,11 +182,11 @@ e devem ser carregados apenas quando provenientes do próprio treinamento do pro
 A aplicação organiza a previsão do cliente e os resultados experimentais em um
 **dashboard preto/cinza/branco**, com fontes dimensionadas para projeção em sala,
 contornos neutros e verde/vermelho reservados aos estados semânticos
-**Permanência/Cancelamento**. O visual segue a especificação
-`ESPECIFICACAO_VISUAL_DASHBOARD_N3.md`, mantida na documentação de trabalho.
+**Permanência/Cancelamento**. A interface utiliza Familjen Grotesk nos
+controles e fonte monoespaçada no registro de execução.
 
-- **Cliente:** quatro campos principais, perfil de exemplo, seletor de
-  características adicionais e botão de cálculo acessível na base do painel;
+- **Cliente:** quatro campos principais, perfil de exemplo, abas Perfil, Conta,
+  Serviços e Suporte e entretenimento; botão de cálculo na base do painel;
 - **Comparação:** probabilidades individuais da regressão logística de
   referência (19 características) e da versão com seleção genética;
 - **Gráfico:** evolução do melhor F1-score em validação cruzada, linha branca,
@@ -219,7 +219,7 @@ python -m streamlit run streamlit_app.py
 
 O Playwright Test abre o Streamlit em uma porta isolada (`8517`) e percorre
 o fluxo completo em **1440×900, 1366×768, 1280×720, 1024×768,
-768×900 e 390×900**. Cada resolução é verificada nos estados inicial,
+768×900 e 390×900**, além da navegação pelas quatro abas do formulário. Cada resolução é verificada nos estados inicial,
 processamento, concluído e cliente editado. A auditoria inclui a geometria
 dos painéis, ausência de rolagem da página, botão principal acessível,
 a comparação individual, o gráfico, seleção de 19 bits e execução real.

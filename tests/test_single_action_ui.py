@@ -12,6 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class DummySlot:
+    def empty(self):
+        pass
+
     def markdown(self, *_args, **_kwargs):
         pass
 
@@ -33,6 +36,7 @@ class DummyUI(ModuleType):
         self.panel_settings = []
         self.styled_markup = []
         self.selectbox_labels = []
+        self.tab_groups = []
 
     def set_page_config(self, **kwargs):
         pass
@@ -52,6 +56,7 @@ class DummyUI(ModuleType):
         return (nullcontext(), nullcontext())
 
     def tabs(self, names, **kwargs):
+        self.tab_groups.append(list(names))
         return tuple(nullcontext() for _ in names)
 
     def selectbox(self, name, options, *, key, **kwargs):
@@ -102,8 +107,9 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
     assert ui.buttons == ["Restaurar", "Calcular previsão"]
-    assert "Características" in ui.selectbox_labels
+    assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
+    assert ["Perfil", "Conta", "Serviços", "Suporte e entretenimento"] in ui.tab_groups
     assert not any("churn-topbar" in markup for markup in ui.styled_markup)
     assert not any("Outras características" in markup for markup in ui.styled_markup)
     assert len(executed) == int(clicked)
@@ -140,6 +146,11 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert ".st-key-dashboard-mobile-detail" in style
     assert ".st-key-dashboard-desktop-detail" in style
     assert "#30B6A7" not in style
+    assert "churn-workspace-heading" in style
+    assert "churn-run-spinner" in style
+    assert "churn-run-check" in style
+    assert "content:\"meses\"" in style
+    assert ".st-key-dashboard-detail-tabs [role=\"tab\"]" in style
     assert "Painel técnico desktop: a área do console absorve o espaço restante" in style
     assert "Em desktop, a faixa inferior reúne as características e o monitor" in style
     assert "grid-template-rows:minmax(0,1fr) minmax(184px,24dvh)" in style
@@ -276,8 +287,6 @@ def test_phone_service_callback_keeps_values_from_hidden_tabs(monkeypatch):
 
     for feature in app.PROFILE_FEATURES:
         ui.session_state.pop(f"field_{feature}", None)
-    ui.session_state["detail_tab"] = "Telefonia"
-
     ui.session_state["field_PhoneService"] = "No"
     app._on_service_change("PhoneService")
     app._render_client_details()
@@ -327,3 +336,75 @@ def test_streamlit_theme_declares_familjen_font():
     assert font.startswith("'Familjen Grotesk':https://fonts.googleapis.com/css2?")
     assert "family=Familjen+Grotesk" in font
     assert font.endswith(", sans-serif")
+
+
+def test_client_tabs_cover_each_extra_feature_once(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_dashboard_tabs_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+
+    from src.data import FEATURE_COLUMNS
+    from src.ui_data import QUICK_FEATURES
+
+    features = [feature for group in app.DETAIL_TABS.values() for feature in group]
+    assert len(features) == len(set(features)) == 15
+    assert set(features).isdisjoint(QUICK_FEATURES)
+    assert set(features).union(QUICK_FEATURES) == set(FEATURE_COLUMNS)
+    assert app.DETAIL_TABS["Suporte e entretenimento"] == (
+        "TechSupport", "StreamingTV", "StreamingMovies",
+    )
+
+
+def test_prediction_heading_has_three_visible_states(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_dashboard_header_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+
+    class Capture:
+        def __init__(self):
+            self.content = ""
+        def markdown(self, content, **kwargs):
+            self.content = content
+
+    slot = Capture()
+    app._render_workspace_heading("idle", slot=slot)
+    assert "Previsão</h2>" in slot.content
+    assert "churn-run-icon" not in slot.content
+    assert "Pronto" not in slot.content
+
+    app._render_workspace_heading("running", slot=slot)
+    assert "churn-run-spinner" in slot.content
+    assert 'aria-label="Executando previsão"' in slot.content
+
+    app._render_workspace_heading("complete", slot=slot)
+    assert "churn-run-check" in slot.content
+    assert 'aria-label="Previsão concluída"' in slot.content
+
+    app._render_workspace_heading("stale", slot=slot)
+    assert "churn-run-check" not in slot.content
+
+
+def test_idle_comparison_has_no_redundant_heading_or_ready_status(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_dashboard_idle_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+
+    class Capture:
+        def __init__(self):
+            self.content = ""
+        def markdown(self, content, **kwargs):
+            self.content = content
+
+    slot = Capture()
+    app._render_prediction_comparison(None, "idle", slot=slot)
+    assert "Previsão do cliente" not in slot.content
+    assert "Pronto" not in slot.content
+    assert "churn-state" not in slot.content
+    assert "Referência" in slot.content
+    assert "Seleção genética" in slot.content

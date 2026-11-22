@@ -34,6 +34,7 @@ def test_all_model_features_have_ui_labels_and_groups():
     assert len(grouped) == len(FEATURE_COLUMNS) == 19
     assert len(set(grouped)) == 19
     assert set(LABELS) == set(FEATURE_COLUMNS)
+    assert LABELS["tenure"] == "Tempo como cliente"
     assert "Sim" == label_for("Yes")
     assert "Sem serviço de internet" == label_for("No internet service")
     assert options_for("Contract") == ("Month-to-month", "One year", "Two year")

@@ -95,7 +95,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-surface)!important;border:1px solid var(--n3-outline)!important;
   border-radius:6px!important;padding:16px!important;overflow:hidden!important;
 }
-.st-key-dashboard-client {display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:10px!important;align-content:stretch!important;}
+.st-key-dashboard-client {display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:6px!important;align-content:stretch!important;}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields) {height:100%!important;max-height:100%!important;overflow:hidden!important;}
 .st-key-dashboard-client-fields {height:100%!important;max-height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
@@ -119,7 +119,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 /* Área analítica: cinco seções com função definida, uma só superfície principal. */
 .st-key-dashboard-workspace {
   display:grid!important;grid-template-rows:auto auto minmax(150px,1fr) auto minmax(116px,19dvh)!important;
-  gap:10px!important;align-content:stretch!important;
+  gap:6px!important;align-content:stretch!important;
 }
 .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;overflow:hidden!important;}
 .st-key-dashboard-analysis-section {height:100%!important;min-height:0!important;overflow:hidden!important;}
@@ -495,6 +495,78 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   }
 }
 
+/* Espaçamento coerente entre títulos, conteúdo e bordas dos painéis. */
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading),
+.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.churn-workspace-heading) {
+  margin-bottom:0!important;padding-bottom:0!important;
+}
+.churn-panel-heading {line-height:1.2!important;}
+.churn-workspace-heading {
+  display:flex;align-items:center;justify-content:space-between;
+  min-height:24px;gap:12px;margin:0;
+}
+.churn-run-icon {
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;flex:0 0 20px;color:var(--n3-text);
+}
+.churn-run-spinner::before {
+  content:"";display:block;width:16px;height:16px;box-sizing:border-box;
+  border:2px solid var(--n3-secondary);border-right-color:transparent;
+  border-radius:50%;animation:n3-run-spin .75s linear infinite;
+}
+.churn-run-check::before {
+  content:"✓";font-size:20px;font-weight:600;line-height:1;
+  animation:n3-check-in .2s ease-out both;
+}
+.churn-run-error::before {
+  content:"×";font-size:21px;font-weight:600;color:var(--n3-negative);line-height:1;
+}
+@keyframes n3-run-spin {to {transform:rotate(360deg);}}
+@keyframes n3-check-in {from {opacity:0;transform:scale(.6);}to {opacity:1;transform:scale(1);}}
+@media(prefers-reduced-motion:reduce) {
+  .churn-run-spinner::before,.churn-run-check::before {animation:none!important;}
+}
+.churn-comparison .churn-state {
+  font-size:13px;margin:0 0 6px;text-align:right;color:var(--n3-muted);
+}
+.churn-comparison .churn-state.is-error {color:var(--n3-negative);}
+
+/* Quatro abas locais, com rolagem horizontal em painéis estreitos. */
+.st-key-dashboard-detail-tabs {min-width:0;}
+.st-key-dashboard-detail-tabs [data-baseweb="tab-list"] {
+  overflow-x:auto!important;overflow-y:hidden!important;
+  flex-wrap:nowrap!important;scrollbar-width:thin;
+  scrollbar-color:var(--n3-outline) transparent;
+}
+.st-key-dashboard-detail-tabs [role="tab"] {
+  flex:0 0 auto!important;white-space:nowrap!important;
+  padding:7px 9px!important;font-size:14px!important;
+  color:var(--n3-secondary)!important;
+}
+.st-key-dashboard-detail-tabs [role="tab"][aria-selected="true"] {
+  color:var(--n3-text)!important;font-weight:600!important;
+}
+.st-key-dashboard-detail-tabs [data-baseweb="tab-panel"] {
+  min-width:0!important;padding-top:8px!important;
+}
+
+/* O stepper numérico mantém + e -; a unidade acompanha visualmente os dígitos. */
+.st-key-dashboard-client [data-testid="stNumberInput"]:has(input[aria-label="Tempo como cliente"]) {
+  position:relative!important;
+}
+.st-key-dashboard-client [data-testid="stNumberInput"]:has(input[aria-label="Tempo como cliente"])::after {
+  content:"meses";position:absolute;bottom:11px;pointer-events:none;
+  font:400 16px/20px var(--n3-font-ui);color:var(--n3-secondary);
+}
+.st-key-dashboard-client input[aria-label="Tempo como cliente"] {
+  padding-right:74px!important;font-variant-numeric:tabular-nums!important;
+}
+@media(max-width:620px) {
+  .st-key-dashboard-detail-tabs [role="tab"] {
+    font-size:13px!important;padding:7px 8px!important;
+  }
+}
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -561,36 +633,55 @@ def _select_field(feature: str, *, disabled: bool = False, help_text: str | None
     )
 
 
+DETAIL_TABS = {
+    "Perfil": PROFILE_FEATURES,
+    "Conta": BILLING_FEATURES,
+    "Serviços": (
+        "PhoneService", "MultipleLines", "OnlineSecurity",
+        "OnlineBackup", "DeviceProtection",
+    ),
+    "Suporte e entretenimento": ("TechSupport", "StreamingTV", "StreamingMovies"),
+}
+
+
 def _render_client_details() -> None:
-    tab = st.selectbox("Características", ["Perfil", "Telefonia", "Internet", "Cobrança"],
-                       key="detail_tab")
-    if tab == "Perfil":
-        for feature in PROFILE_FEATURES:
-            _select_field(feature)
-    elif tab == "Telefonia":
-        _select_field("PhoneService")
-        _select_field(
-            "MultipleLines", disabled=st.session_state["field_PhoneService"] == "No",
-            help_text="Indisponível quando o cliente não possui telefone.",
-        )
-    elif tab == "Internet":
-        inactive = st.session_state["field_InternetService"] == "No"
-        for feature in INTERNET_FEATURES:
-            _select_field(feature, disabled=inactive,
-                          help_text="Indisponível sem serviço de internet.")
-    else:
-        for feature in BILLING_FEATURES:
-            _select_field(feature)
-        _ensure_widget_field("total_missing")
-        st.checkbox("Total cobrado indisponível", key="field_total_missing",
-                    on_change=_remember_field, args=("total_missing",))
-        _ensure_widget_field("TotalCharges")
-        st.number_input(
-            LABELS["TotalCharges"], min_value=0.0, step=1.0,
-            format="%.2f", key="field_TotalCharges",
-            on_change=_remember_field, args=("TotalCharges",),
-            disabled=st.session_state["field_total_missing"],
-        )
+    with st.container(key="dashboard-detail-tabs", border=False):
+        tabs = st.tabs(list(DETAIL_TABS))
+        for name, tab in zip(DETAIL_TABS, tabs):
+            with tab:
+                for feature in DETAIL_TABS[name]:
+                    if feature == "TotalCharges":
+                        # Campo numérico renderizado abaixo, com a opção de valor ausente.
+                        continue
+                    disabled = (
+                        feature == "MultipleLines"
+                        and st.session_state["customer_values"]["PhoneService"] == "No"
+                    ) or (
+                        feature in INTERNET_FEATURES
+                        and st.session_state["customer_values"]["InternetService"] == "No"
+                    )
+                    help_text = (
+                        "Indisponível quando o cliente não possui telefone."
+                        if feature == "MultipleLines" and disabled else
+                        "Indisponível sem serviço de internet."
+                        if feature in INTERNET_FEATURES and disabled else None
+                    )
+                    _select_field(feature, disabled=disabled, help_text=help_text)
+
+                if name == "Conta":
+                    _ensure_widget_field("total_missing")
+                    st.checkbox(
+                        "Total cobrado indisponível",
+                        key="field_total_missing",
+                        on_change=_remember_field, args=("total_missing",),
+                    )
+                    _ensure_widget_field("TotalCharges")
+                    st.number_input(
+                        LABELS["TotalCharges"], min_value=0.0, step=1.0,
+                        format="%.2f", key="field_TotalCharges",
+                        on_change=_remember_field, args=("TotalCharges",),
+                        disabled=st.session_state["field_total_missing"],
+                    )
 
 
 def _current_customer() -> dict | None:
@@ -611,25 +702,52 @@ def _format_probability(entry: dict) -> tuple[str, str, str]:
     return f"{probability:.2f}".replace(".", ",") + "%", label, semantics
 
 
+def _render_workspace_heading(status: str, *, slot) -> None:
+    """Indicador discreto: sem estado na espera, animação na busca e check final."""
+    variants = {
+        "running": ("churn-run-spinner", "Executando previsão"),
+        "complete": ("churn-run-check", "Previsão concluída"),
+        "error": ("churn-run-error", "Execução interrompida"),
+    }
+    if status in variants:
+        css_class, description = variants[status]
+        indicator = (
+            f'<span class="churn-run-icon {css_class}" role="status" '
+            f'aria-label="{description}"></span>'
+        )
+    else:
+        indicator = ""
+    slot.markdown(
+        f'<header class="churn-workspace-heading" data-run-state="{status}">'
+        '<h2 class="churn-panel-heading">Previsão</h2>'
+        f'{indicator}</header>',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> None:
-    """Comparação protagonista. A cor é aplicada apenas à classe prevista."""
+    """Comparação dos modelos, com aviso apenas em caso de erro ou dados alterados."""
     ready = run is not None and status == "complete"
     count = run["summary"]["genetic_count"] if run is not None else None
     reference = _format_probability(run["predictions"]["baseline"]) if ready else ("—", "Aguardando", "")
     genetic = _format_probability(run["predictions"]["genetico"]) if ready else ("—", "Aguardando", "")
-    states = {"idle":"Pronto", "running":"Processando", "complete":"Concluído",
-              "stale":"Dados alterados", "error":"Erro"}
-    def result(model: str, details: str, entry: tuple[str,str,str]) -> str:
+
+    def result(model: str, details: str, entry: tuple[str, str, str]) -> str:
         value, outcome, semantic = entry
         return (f'<div class="churn-model" aria-label="{escape(model)}">'
                 f'<div class="churn-model-name">{escape(model)}</div>'
                 f'<div class="churn-model-detail">{escape(details)}</div>'
                 f'<div class="churn-prediction-value">{escape(value)}</div>'
                 f'<div class="churn-outcome {semantic}">{escape(outcome)}</div></div>')
+
+    alert = (
+        '<div class="churn-state" role="status">Dados alterados</div>'
+        if status == "stale" else
+        '<div class="churn-state is-error" role="status">Erro</div>'
+        if status == "error" else ""
+    )
     markup = ('<section class="churn-comparison" aria-label="Comparação dos modelos">'
-              '<div class="churn-section-top"><h3>Previsão do cliente</h3>'
-              f'<span class="churn-state {"is-error" if status=="error" else ""}">{escape(states[status])}</span></div>'
-              '<div class="churn-models">'
+              f'{alert}<div class="churn-models">'
               + result("Referência", "19 características", reference)
               + result("Seleção genética", f"{count}/19 características" if count is not None else "Aguardando seleção", genetic)
               + '</div></section>')
@@ -721,10 +839,11 @@ def _render_technical(run: dict | None, *, slot) -> None:
 
 
 def _render_idle(slots: dict) -> None:
+    _render_workspace_heading("idle", slot=slots["heading"])
     _render_prediction_comparison(None, "idle", slot=slots["comparison"])
-    slots["phase"].markdown('<span class="churn-phase">Pronto para iniciar</span>', unsafe_allow_html=True)
-    slots["progress"].progress(0.0, text="Geração 0 de 15")
-    _render_console(["[PRONTO] Aguardando execução do experimento"], slot=slots["console"])
+    slots["phase"].markdown("", unsafe_allow_html=True)
+    slots["progress"].empty()
+    _render_console([], slot=slots["console"])
     _render_chromosome(tuple(0 for _ in FEATURE_COLUMNS), "Aguardando avaliação", slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
     _render_technical(None, slot=slots["technical"])
@@ -732,6 +851,7 @@ def _render_idle(slots: dict) -> None:
 
 def _render_finished_run(run: dict, slots: dict) -> None:
     stale = _is_stale(run)
+    _render_workspace_heading("stale" if stale else "complete", slot=slots["heading"])
     _render_prediction_comparison(run, "stale" if stale else "complete", slot=slots["comparison"])
     slots["phase"].markdown('<span class="churn-phase">15 gerações concluídas</span>', unsafe_allow_html=True)
     slots["progress"].progress(1.0, text="Geração 15 de 15")
@@ -749,6 +869,7 @@ def _render_finished_run(run: dict, slots: dict) -> None:
 
 def _execute_full_workflow(customer: dict, slots: dict) -> None:
     """Execução completa ao clicar em Calcular previsão; não altera arquivos salvos."""
+    _render_workspace_heading("running", slot=slots["heading"])
     config = GeneticConfig()
     started = perf_counter()
     events: list[str] = []
@@ -832,6 +953,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
             f"{genetic_result.evaluated_subsets} subconjuntos distintos")
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         st.session_state["workflow_run"] = None
+        _render_workspace_heading("error", slot=slots["heading"])
         _render_prediction_comparison(None, "error", slot=slots["comparison"])
         slots["phase"].error("Execução interrompida")
         slots["technical"].error(f"Não foi possível concluir: {exc}")
@@ -861,7 +983,16 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 
 
 def _render_client_panel() -> bool:
-    st.markdown('<h2 class="churn-panel-heading">Cliente</h2>', unsafe_allow_html=True)
+    # A unidade acompanha a quantidade de algarismos após cada edição.
+    # O valor enviado ao modelo permanece numérico.
+    months_digits = len(str(st.session_state.get("field_tenure", 0)))
+    st.markdown(
+        '<style>.st-key-dashboard-client [data-testid="stNumberInput"]'
+        ':has(input[aria-label="Tempo como cliente"])::after {'
+        f'left:calc(14px + {months_digits}ch + 4px);'
+        '}</style><h2 class="churn-panel-heading">Cliente</h2>',
+        unsafe_allow_html=True,
+    )
     with st.container(key="dashboard-client-fields", border=False):
         a, b = st.columns([0.72, 0.28], gap="small", wrap=False)
         with a:
@@ -909,7 +1040,7 @@ class _BroadcastSlot:
 
 
 def _workspace_slots() -> dict:
-    st.markdown('<h2 class="churn-panel-heading">Análise e execução</h2>', unsafe_allow_html=True)
+    heading = st.empty()
     comparison = st.empty()
     with st.container(key="dashboard-desktop-detail", border=False):
         with st.container(key="dashboard-analysis-section", border=False):
@@ -937,6 +1068,7 @@ def _workspace_slots() -> dict:
             console_mobile = st.empty()
             log_mobile = st.empty()
     return {
+        "heading": heading,
         "comparison": comparison,
         "chart": _BroadcastSlot(chart_desktop, chart_mobile),
         "chromosome": _BroadcastSlot(chromosome_desktop, chromosome_mobile),
@@ -973,6 +1105,7 @@ def main() -> None:
                     customer = _current_customer()
                     if customer is None:
                         _render_idle(slots)
+                        _render_workspace_heading("error", slot=slots["heading"])
                         slots["technical"].error("Dados do cliente inválidos. Revise os campos.")
                     else:
                         _execute_full_workflow(customer, slots)

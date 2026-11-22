@@ -17,7 +17,7 @@ LABELS = {
     "SeniorCitizen": "Pessoa idosa",
     "Partner": "Possui parceiro(a)",
     "Dependents": "Possui dependentes",
-    "tenure": "Tempo como cliente (meses)",
+    "tenure": "Tempo como cliente",
     "PhoneService": "Serviço de telefone",
     "MultipleLines": "Múltiplas linhas telefônicas",
     "InternetService": "Serviço de internet",

@@ -132,9 +132,11 @@ async function geometry(page, stage, testInfo) {
       .toBeLessThanOrEqual(layout.monitorSection.bottom + 2);
     expect(layout.monitorTitle.bottom, `${stage}: título do monitor sobrepõe console`)
       .toBeLessThanOrEqual(layout.monitor.y + 2);
-    expect(layout.monitorProgress, `${stage}: progresso do monitor ausente`).toBeTruthy();
-    expect(layout.monitorTitle.bottom + 2, `${stage}: título e progresso sobrepostos`)
-      .toBeLessThanOrEqual(layout.monitorProgress.y);
+    if (stage !== 'Inicial') {
+      expect(layout.monitorProgress, `${stage}: progresso do monitor ausente`).toBeTruthy();
+      expect(layout.monitorTitle.bottom + 2, `${stage}: título e progresso sobrepostos`)
+        .toBeLessThanOrEqual(layout.monitorProgress.y);
+    }
     expect(layout.monitorSection.scrollHeight, `${stage}: monitor excede sua seção`)
       .toBeLessThanOrEqual(layout.monitorSection.clientHeight + 2);
     expect(layout.technical.bottom, `${stage}: métricas saem da seleção`)
@@ -224,9 +226,22 @@ for (const { width, height } of viewports) {
           .toBe(true);
         await expect(page.locator('.churn-topbar')).toHaveCount(0);
         await expect(page.locator('.churn-chart-descriptor')).toHaveCount(0);
-        await expect(page.getByRole('combobox', { name: 'Características', exact: true })).toHaveCount(1);
+        await expect(page.getByRole('combobox', { name: 'Características', exact: true })).toHaveCount(0);
+        await expect(page.locator('.st-key-dashboard-detail-tabs [role="tab"]')).toHaveCount(4);
+        for (const name of ['Perfil', 'Conta', 'Serviços', 'Suporte e entretenimento']) {
+          await expect(page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name, exact: true }))
+            .toHaveCount(1);
+        }
+        await expect(page.locator('.churn-workspace-heading[data-run-state="idle"]')).toBeVisible();
+        await expect(page.locator('.churn-run-icon')).toHaveCount(0);
+        await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
+        await expect(page.getByRole('spinbutton', { name: 'Tempo como cliente' })).toHaveValue('3');
+        const monthSuffix = await page.getByRole('spinbutton', { name: 'Tempo como cliente' })
+          .evaluate(el => getComputedStyle(el.closest('[data-testid="stNumberInput"]'), '::after').content);
+        expect(monthSuffix).toContain('meses');
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'Análise e execução' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
         await expect(page.locator('.churn-comparison .churn-model')).toHaveCount(2);
         await expect(page.locator('.churn-prediction-value').first()).toHaveText('—');
@@ -247,6 +262,8 @@ for (const { width, height } of viewports) {
 
       await test.step('Avaliações genéticas reais e monitor atualizado', async () => {
         await page.getByRole('button', { name: 'Calcular previsão' }).click();
+        await expect(page.locator('.churn-workspace-heading[data-run-state="running"]')).toBeVisible();
+        await expect(page.getByRole('status', { name: 'Executando previsão' })).toBeVisible();
         await expect(page.locator('.churn-console').first()).toContainText(/\[G\d{2}\]/, { timeout: 120_000 });
         await expect(page.locator('.churn-bit')).toHaveCount(38);
         if (mobile) {
@@ -258,7 +275,9 @@ for (const { width, height } of viewports) {
       });
 
       await test.step('Comparação, gráfico e métricas da execução completa', async () => {
-        await expect(page.locator('.churn-comparison .churn-state')).toHaveText('Concluído', { timeout: 180_000 });
+        await expect(page.locator('.churn-workspace-heading[data-run-state="complete"]')).toBeVisible({ timeout: 180_000 });
+        await expect(page.getByRole('status', { name: 'Previsão concluída' })).toBeVisible();
+        await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
         await expect(page.locator('.churn-prediction-value').first()).toContainText(/\d+,\d{2}%/);
         await expect(page.locator('.churn-prediction-value').last()).toContainText(/\d+,\d{2}%/);
         await expect(page.locator('.churn-outcome')).toHaveCount(2);
@@ -276,10 +295,12 @@ for (const { width, height } of viewports) {
       });
 
       await test.step('Edição do cliente invalida a previsão, preservando o experimento', async () => {
-        const months = page.getByRole('spinbutton', { name: 'Tempo como cliente (meses)' });
+        const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
         await months.fill('4');
         await months.press('Tab');
         await expect(page.locator('.churn-comparison .churn-state')).toHaveText('Dados alterados');
+        await expect(page.locator('.churn-workspace-heading[data-run-state="stale"]')).toBeVisible();
+        await expect(page.locator('.churn-run-check')).toHaveCount(0);
         await expect(page.locator('.churn-prediction-value').first()).toHaveText('—');
         await expect(page.locator('.churn-technical').first()).toContainText('ΔF1');
         // O estado "Dados alterados" já aparece na comparação. O bloco técnico
@@ -307,8 +328,7 @@ test('1024x768 — telefonia mantém dados das abas anteriores', async ({ browse
   try {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
-    await page.getByRole('combobox', { name: 'Características' }).click();
-    await page.getByRole('option', { name: 'Telefonia', exact: true }).click();
+    await page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Serviços' }).click();
     await page.getByRole('combobox', { name: 'Serviço de telefone' }).click();
     await page.getByRole('option', { name: 'Não', exact: true }).click();
     await expect(page.locator('[data-testid="stException"]')).toHaveCount(0);
@@ -318,6 +338,39 @@ test('1024x768 — telefonia mantém dados das abas anteriores', async ({ browse
     await expect(multipleLines).toHaveValue('Sem serviço telefônico');
     await expect(multipleLines).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
+  } finally {
+    await context.close();
+  }
+});
+
+
+test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1024, height: 768 }, deviceScaleFactor: 1,
+    locale: 'pt-BR', colorScheme: 'dark',
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
+    const tabs = page.locator('.st-key-dashboard-detail-tabs');
+    await expect(tabs.getByRole('tab')).toHaveCount(4);
+    await tabs.getByRole('tab', { name: 'Conta', exact: true }).click();
+    await expect(page.getByRole('combobox', { name: 'Método de pagamento' })).toBeVisible();
+    await tabs.getByRole('tab', { name: 'Suporte e entretenimento', exact: true }).click();
+    await expect(page.getByRole('combobox', { name: 'Streaming de filmes' })).toBeVisible();
+    await tabs.getByRole('tab', { name: 'Perfil', exact: true }).click();
+    await expect(page.getByRole('combobox', { name: 'Gênero' })).toBeVisible();
+
+    const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
+    await months.fill('12');
+    await months.press('Tab');
+    await expect(months).toHaveValue('12');
+    const pseudo = await months.evaluate(el =>
+      getComputedStyle(el.closest('[data-testid="stNumberInput"]'), '::after').content);
+    expect(pseudo).toContain('meses');
+    await months.press('ArrowUp');
+    await expect(months).toHaveValue('13');
   } finally {
     await context.close();
   }
