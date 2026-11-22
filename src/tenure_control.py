@@ -46,7 +46,7 @@ _COMPONENT_CSS = """
   height:100%;padding:0;border:0;border-radius:0;
   display:flex;align-items:center;justify-content:center;
   font:500 17px/20px var(--n3-font-ui,"Familjen Grotesk",sans-serif);
-  background:var(--n3-field-action-fill,#0e1013);color:var(--n3-text,#f5f5f5);
+  background:var(--n3-field-action-fill,#0e1013);color:var(--n3-secondary,#d8d8d8);
   cursor:pointer;}
 .n3-tenure-field button:hover:not(:disabled) {background:var(--n3-elevated,#202124);}
 .n3-tenure-field button:disabled {opacity:.45;cursor:default;}

@@ -57,7 +57,7 @@ st.markdown(
   --n3-field-height:42px; --n3-field-radius:4px;
   --n3-field-fill:#0E1013; --n3-field-action-fill:#0E1013;
   --n3-field-text-size:14px; --n3-field-text-line:20px;
-  /* Familjen Grotesk tem centro ótico ligeiramente abaixo do line-box. */
+  /* Ajuste óptico uniforme; o controle selecionável usa seu input real. */
   --n3-field-text-shift:-1px;
   --n3-page-pad:12px; --n3-panel-pad:12px;
 }
@@ -116,10 +116,13 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   letter-spacing:0!important;white-space:nowrap!important;
   text-align:center!important;color:var(--n3-outline)!important;
 }
-/* Base visual compartilhada por seletores e entradas numéricas nativas. */
+/* Streamlit 1.67: st.selectbox usa React Aria Group/Input/Button.
+   O seletor antigo [data-baseweb="select"] não existe nesta versão.
+   Seletores e entradas numéricas compartilham geometria e tipografia. */
 .st-key-dashboard-client [data-testid="stWidgetLabel"] {
-  display:flex!important;align-items:center!important;
-  min-height:20px!important;margin-bottom:6px!important;
+  box-sizing:border-box!important;display:flex!important;align-items:center!important;
+  height:20px!important;min-height:20px!important;max-height:20px!important;
+  padding:0!important;margin:0 0 6px!important;
 }
 .st-key-dashboard-client [data-testid="stWidgetLabel"] p,
 .st-key-dashboard-client label p {
@@ -129,15 +132,24 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .st-key-dashboard-client [data-testid="stVerticalBlock"] {gap:.65rem;}
 .st-key-dashboard-client-fields [data-testid="stVerticalBlock"] {gap:.62rem;}
-.st-key-dashboard-client [data-baseweb="select"] > div,
+.st-key-dashboard-client [data-testid="stSelectbox"] [role="group"],
 .st-key-dashboard-client [data-testid="stNumberInput"] [data-baseweb="input"] {
-  box-sizing:border-box!important;height:var(--n3-field-height)!important;
-  min-height:var(--n3-field-height)!important;max-height:var(--n3-field-height)!important;
-  display:flex!important;align-items:center!important;
+  box-sizing:border-box!important;width:100%!important;
+  height:var(--n3-field-height)!important;min-height:var(--n3-field-height)!important;
+  max-height:var(--n3-field-height)!important;
+  display:flex!important;align-items:center!important;overflow:hidden!important;
   background:var(--n3-field-fill)!important;border:1px solid var(--n3-outline)!important;
   border-radius:var(--n3-field-radius)!important;
-  font-size:var(--n3-field-text-size)!important;
-  line-height:var(--n3-field-text-line)!important;
+}
+.st-key-dashboard-client [data-testid="stSelectbox"] input[role="combobox"] {
+  box-sizing:border-box!important;flex:1 1 auto!important;width:0!important;
+  min-width:0!important;height:calc(var(--n3-field-height) - 2px)!important;
+  min-height:0!important;max-height:none!important;
+  padding:0 10px!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;outline:0!important;background:transparent!important;
+  color:var(--n3-text)!important;font-family:var(--n3-font-ui)!important;
+  font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
+  transform:translateY(var(--n3-field-text-shift))!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] input {
   box-sizing:border-box!important;min-width:0!important;
@@ -148,50 +160,30 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
   transform:translateY(var(--n3-field-text-shift))!important;
 }
-/* O input do BaseWeb não pode conservar padding vertical próprio.
-   Todos os seletores compartilham centralização e faixa de ação com os números. */
-.st-key-dashboard-client [data-baseweb="select"] input {
-  box-sizing:border-box!important;min-height:0!important;
-  height:calc(var(--n3-field-height) - 2px)!important;
-  padding-top:0!important;padding-bottom:0!important;
-  font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
-  vertical-align:middle!important;
-}
-/* Ajuste ótico do conteúdo selecionado, sem mover borda ou área clicável. */
-.st-key-dashboard-client [data-baseweb="select"] > div > div:first-child {
-  transform:translateY(var(--n3-field-text-shift))!important;
-}
-/* O select inteiro abre as opções. A faixa da seta é desenhada sobre a
-   superfície clicável, independentemente dos wrappers internos do BaseWeb. */
-.st-key-dashboard-client [data-baseweb="select"] > div {
-  position:relative!important;isolation:isolate!important;
-}
-.st-key-dashboard-client [data-baseweb="select"] > div::before {
-  content:"";position:absolute;top:0;right:0;bottom:0;width:32px;
-  pointer-events:none;z-index:0;
-  background:var(--n3-field-action-fill);
-  border-radius:0 calc(var(--n3-field-radius) - 1px) calc(var(--n3-field-radius) - 1px) 0;
-  transition:background-color .12s ease;
-}
-.st-key-dashboard-client [data-baseweb="select"] > div:hover::before,
-.st-key-dashboard-client [data-baseweb="select"] > div:focus-within::before {
-  background:var(--n3-elevated);
-}
-.st-key-dashboard-client [data-baseweb="select"] > div > * {
-  position:relative!important;z-index:1;
-}
-.st-key-dashboard-client [data-baseweb="select"] > div > div:last-child {
-  box-sizing:border-box!important;
-  height:calc(var(--n3-field-height) - 2px)!important;min-width:32px!important;
+/* O botão real de expansão é o StyledOpenButton do Streamlit.
+   Estilizar o próprio botão garante que o hover seja visível. */
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] {
+  box-sizing:border-box!important;flex:0 0 32px!important;
+  width:32px!important;min-width:32px!important;
+  height:calc(var(--n3-field-height) - 2px)!important;min-height:0!important;
   display:flex!important;align-items:center!important;justify-content:center!important;
-  background:transparent!important;
+  padding:0!important;border:0!important;border-radius:0!important;
+  background:var(--n3-field-action-fill)!important;color:var(--n3-secondary)!important;
+  cursor:pointer!important;transition:background-color .12s ease!important;
+}
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"]:hover,
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"]:focus-visible {
+  background:var(--n3-elevated)!important;
+}
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] svg {
+  color:inherit!important;stroke:currentColor!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] button {
   box-sizing:border-box!important;min-width:32px!important;width:32px!important;
   height:calc(var(--n3-field-height) - 2px)!important;min-height:0!important;
   padding:0!important;display:flex!important;align-items:center!important;
   justify-content:center!important;background:var(--n3-field-action-fill)!important;
-  border:0!important;border-radius:0!important;color:var(--n3-text)!important;
+  border:0!important;border-radius:0!important;color:var(--n3-secondary)!important;
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] button:hover {
   background:var(--n3-elevated)!important;
