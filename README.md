@@ -186,8 +186,11 @@ contornos neutros e verde/vermelho reservados aos estados semânticos
 distribuída localmente (licença SIL Open Font License 1.1) nos controles
 e fonte monoespaçada no registro de execução.
 
-- **Cliente:** quatro campos principais, perfil de exemplo, abas Perfil, Conta,
-  Serviços e Extras; tempo de permanência editável em meses e botão de cálculo na base do painel;
+- **Cliente:** quatro campos principais, perfil de exemplo com restauro por ícone,
+  abas Perfil, Conta, Serviços e Extras e botão de cálculo na base do painel.
+  O tempo de permanência utiliza um componente Streamlit v2 local: o próprio
+  campo mostra `X mês`/`X meses`, protege a unidade durante a edição e envia
+  somente o número inteiro ao modelo (0 a 999 meses);
 - **Comparação:** probabilidades individuais da regressão logística de
   referência (19 características) e da versão com seleção genética;
 - **Gráfico:** evolução do melhor F1-score em validação cruzada, linha branca,

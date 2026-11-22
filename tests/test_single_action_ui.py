@@ -4,7 +4,7 @@ import importlib.util
 import sys
 from contextlib import nullcontext
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -37,6 +37,9 @@ class DummyUI(ModuleType):
         self.styled_markup = []
         self.selectbox_labels = []
         self.number_inputs = []
+        self.component_specs = []
+        self.component_values = {}
+        self.components = SimpleNamespace(v2=SimpleNamespace(component=self._component))
         self.tab_groups = []
 
     def set_page_config(self, **kwargs):
@@ -69,6 +72,16 @@ class DummyUI(ModuleType):
     def segmented_control(self, label, options, *, key, default, **kwargs):
         self.session_state.setdefault(key, default)
         return self.session_state[key]
+
+    def _component(self, name, **options):
+        self.component_specs.append({"name": name, **options})
+        def mount(*, key, data, default, on_value_change):
+            self.component_specs.append({
+                "key": key, "data": data, "default": default,
+                "on_value_change": on_value_change,
+            })
+            return SimpleNamespace(value=self.component_values.get(key, default["value"]))
+        return mount
 
     def text_input(self, label, *, key, **kwargs):
         return self.session_state[key]
@@ -112,7 +125,7 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
-    assert ui.buttons == ["Restaurar", "Calcular previsão"]
+    assert ui.buttons == ["Restaurar perfil", "Calcular previsão"]
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
     assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups
@@ -158,13 +171,16 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "churn-workspace-heading" in style
     assert "grid-template-rows:20px minmax(0,1fr) auto" in style
     assert "grid-template-rows:20px auto minmax(0,1fr)" in style
-    assert "color:var(--n3-muted)!important" in style
+    assert "color:var(--n3-outline)!important" in style
     assert "text-align:center!important" in style
     assert ".churn-panel-heading::before" not in style
     assert ".churn-panel-heading::after" not in style
     assert "gap:var(--n3-panel-pad)!important" in style
     assert "padding:var(--n3-panel-pad)!important" in style
     assert "position:absolute;right:0;top:0" in style
+    assert ".churn-run-check {\n  border:2px" in style
+    assert "st-key-dashboard-restore-action" in style
+    assert 'icon=":material/restart_alt:"' not in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
     assert "--n3-field-height:42px" in style
@@ -438,22 +454,24 @@ def test_idle_comparison_has_no_redundant_heading_or_ready_status(monkeypatch):
     assert "Seleção genética" in slot.content
 
 
-def test_time_and_monthly_use_native_number_inputs(monkeypatch):
+def test_tenure_component_protects_unit_and_preserves_monthly_widget(monkeypatch):
     ui = DummyUI(False)
     monkeypatch.setitem(sys.modules, "streamlit", ui)
-    spec = importlib.util.spec_from_file_location("n3_native_time_test", ROOT / "streamlit_app.py")
+    spec = importlib.util.spec_from_file_location("n3_tenure_component_test", ROOT / "streamlit_app.py")
     app = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(app)
     app.main()
+    assert ui.component_specs[0]["name"] == "n3_tenure_control"
+    assert 'type="text"' in ui.component_specs[0]["html"]
+    assert 'aria-label="Tempo como cliente"' in ui.component_specs[0]["html"]
+    assert "beforeinput" in ui.component_specs[0]["js"]
+    assert "setStateValue" in ui.component_specs[0]["js"]
+    assert ui.component_specs[1]["key"] == "n3-tenure-1"
+    assert ui.component_specs[1]["default"] == {"value": 3}
     inputs = {item["key"]: item for item in ui.number_inputs}
-    tenure = inputs["field_tenure"]
-    assert tenure["label"] == "Tempo como cliente"
-    assert "meses" in tenure["help"]
-    assert (tenure["min_value"], tenure["max_value"], tenure["step"], tenure["format"]) == (0, 999, 1, "%d")
-    assert (tenure["on_change"], tenure["args"]) == (app._remember_field, ("tenure",))
+    assert "field_tenure" not in inputs
     assert inputs["field_MonthlyCharges"]["format"] == "%.2f"
     assert ui.session_state["field_tenure"] == 3
-    assert "tenure_display" not in ui.session_state
 
 
 def test_time_change_and_profile_reset_preserve_state(monkeypatch):
@@ -468,5 +486,38 @@ def test_time_change_and_profile_reset_preserve_state(monkeypatch):
     app._remember_field("tenure")
     assert ui.session_state["customer_values"]["tenure"] == 24
     assert app._is_stale({"customer": original})
+    previous_revision = ui.session_state["tenure_revision"]
     app._apply_profile("Exemplo 2")
+    assert ui.session_state["tenure_revision"] == previous_revision + 1
     assert ui.session_state["field_tenure"] == app.load_profile(ROOT, "Exemplo 2")["tenure"]
+
+
+def test_tenure_component_updates_customer_without_exposing_suffix(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_tenure_component_state_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    monkeypatch.setattr(app, "DATASET", Path(__file__))
+    ui.component_values["n3-tenure-1"] = 24
+    app.main()
+    assert ui.session_state["field_tenure"] == 24
+    assert ui.session_state["customer_values"]["tenure"] == 24
+    assert ui.session_state["tenure_revision"] == 1
+
+
+def test_tenure_component_callback_updates_state_before_rerun(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_tenure_callback_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    ui.session_state["n3-tenure-1"] = {"value": 42}
+    app._on_tenure_component_change()
+    assert ui.session_state["field_tenure"] == 42
+    assert ui.session_state["customer_values"]["tenure"] == 42
+    # Também é seguro receber uma notificação sem estado inicializado.
+    ui.session_state["n3-tenure-1"] = {}
+    app._on_tenure_component_change()
+    assert ui.session_state["field_tenure"] == 42

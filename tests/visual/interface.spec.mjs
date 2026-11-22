@@ -37,7 +37,7 @@ async function geometry(page, stage, testInfo) {
       workspaceTitle: bounds('.st-key-dashboard-workspace .churn-workspace-heading .churn-panel-heading'),
       comparisonTop: bounds('.st-key-dashboard-workspace .churn-comparison'),
       clientFieldsTop: bounds('.st-key-dashboard-client-fields'),
-      tenureInput: bounds('.st-key-dashboard-tenure-control input[aria-label="Tempo como cliente"]'),
+      tenureInput: null, // Campo encapsulado no Shadow DOM do componente v2.
       tenureControl: bounds('.st-key-dashboard-tenure-control'),
       internetInput: bounds('.st-key-dashboard-quick-fields [aria-label="Serviço de internet"]'),
       contractInput: bounds('.st-key-dashboard-quick-fields [aria-label="Tipo de contrato"]'),
@@ -73,6 +73,12 @@ async function geometry(page, stage, testInfo) {
       desktopDetail: bounds('.st-key-dashboard-desktop-detail'),
     };
   });
+  // Os locators do Playwright atravessam Shadow DOM, document.querySelector não.
+  const tenureBox = await page.getByRole('textbox', { name: 'Tempo como cliente' }).boundingBox();
+  layout.tenureInput = tenureBox && {
+    x:tenureBox.x, y:tenureBox.y, width:tenureBox.width, height:tenureBox.height,
+    right:tenureBox.x + tenureBox.width, bottom:tenureBox.y + tenureBox.height,
+  };
   await testInfo.attach(`geometria-${stage}-${layout.width}x${layout.height}.json`, {
     body: JSON.stringify(layout, null, 2), contentType: 'application/json',
   });
@@ -312,8 +318,8 @@ for (const { width, height } of viewports) {
             after:getComputedStyle(el,'::after').content,
           };
         });
-          expect(appearance.color, `${name}: título deve usar cinza mais claro`)
-            .toBe('rgb(183, 183, 183)');
+          expect(appearance.color, `${name}: título deve usar a cor do contorno`)
+            .toBe('rgb(85, 88, 93)');
           expect(appearance.align).toBe('center');
           expect(appearance.height).toBeLessThanOrEqual(21);
           expect(Math.abs(appearance.textCenter - appearance.headingCenter),
@@ -323,7 +329,14 @@ for (const { width, height } of viewports) {
         }
         await expect(page.locator('.churn-run-icon')).toHaveCount(0);
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
-        await expect(page.getByRole('spinbutton', { name: 'Tempo como cliente' })).toHaveValue('3');
+        await expect(page.getByRole('textbox', { name: 'Tempo como cliente' })).toHaveValue('3 meses');
+        const restore = page.getByRole('button', { name: 'Restaurar perfil' });
+        await expect(restore).toBeVisible();
+        const [restoreBox, profileBox] = await Promise.all([
+          restore.boundingBox(), page.getByRole('combobox', { name: 'Perfil de exemplo' }).boundingBox(),
+        ]);
+        expect(Math.abs(restoreBox.y - profileBox.y), 'Ícone de restauro fora do alinhamento').toBeLessThanOrEqual(3);
+        expect(Math.abs(restoreBox.height - profileBox.height), 'Ícone de restauro com altura diferente').toBeLessThanOrEqual(3);
         const tabsBar = page.locator('.st-key-dashboard-detail-tabs [role="tablist"]');
         const lastTab = page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Extras' });
         const [tabBounds, listBounds] = await Promise.all([lastTab.boundingBox(), tabsBar.boundingBox()]);
@@ -331,55 +344,53 @@ for (const { width, height } of viewports) {
         expect(listBounds, 'A navegação de abas deve existir').toBeTruthy();
         expect(tabBounds.x + tabBounds.width, 'A última aba fica truncada')
           .toBeLessThanOrEqual(listBounds.x + listBounds.width + 2);
-        // Tempo e Cobrança usam o mesmo componente e parâmetros de layout.
-        const numbers = [
-          page.locator('.st-key-dashboard-tenure-control [data-testid="stNumberInput"]'),
-          page.locator('[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"])'),
-        ];
-        const metrics = await Promise.all(numbers.map(widget => widget.evaluate(root => {
-          const field = root.querySelector('[data-baseweb="input"]');
-          const label = root.querySelector('[data-testid="stWidgetLabel"]');
-          const input = root.querySelector('input');
-          if (!field || !label || !input) return null;
-          const rect = el => {
-            const r = el.getBoundingClientRect();
-            return {y:r.y,width:r.width,height:r.height};
-          };
-          const buttons = [...root.querySelectorAll('button')];
+        // O campo de meses é um input único; a faixa de botões replica Cobrança.
+        const time = await page.locator('.n3-tenure-field').evaluate(field => {
+          const input = field.querySelector('input');
+          const buttons = [...field.querySelectorAll('button')];
+          const bounds = el => { const r = el.getBoundingClientRect(); return {y:r.y,height:r.height,width:r.width}; };
           return {
-            field:rect(field), label:rect(label), input:rect(input),
-            buttons:buttons.map(rect),
+            field:bounds(field), input:bounds(input), buttons:buttons.map(bounds),
             radius:getComputedStyle(field).borderTopLeftRadius,
             font:getComputedStyle(input).fontSize,
             line:getComputedStyle(input).lineHeight,
             backgrounds:buttons.map(button => getComputedStyle(button).backgroundColor),
+            value:input.value,
           };
-        })));
-        for (const field of metrics) {
-          expect(field, 'Campo numérico incompleto').toBeTruthy();
-          expect(field.buttons, 'Stepper nativo deve ter dois botões').toHaveLength(2);
-          expect(Math.abs(field.field.height - 42), 'Altura do campo incorreta')
-            .toBeLessThanOrEqual(2);
-          expect(Math.abs(field.input.y + field.input.height / 2 -
-                          field.field.y - field.field.height / 2), 'Texto fora do centro vertical')
-            .toBeLessThanOrEqual(2);
-          expect(parseFloat(field.radius), 'Raio externo incorreto').toBeCloseTo(4, 0);
-          expect(Math.abs(field.buttons[0].width - field.buttons[1].width)).toBeLessThanOrEqual(1);
-          expect(field.backgrounds).toEqual(['rgb(14, 16, 19)', 'rgb(14, 16, 19)']);
+        });
+        const charge = await page.locator('[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"])')
+          .evaluate(root => {
+            const field = root.querySelector('[data-baseweb="input"]');
+            const input = root.querySelector('input');
+            const buttons = [...root.querySelectorAll('button')];
+            const bounds = el => { const r = el.getBoundingClientRect(); return {y:r.y,height:r.height,width:r.width}; };
+            return {
+              field:bounds(field), input:bounds(input), buttons:buttons.map(bounds),
+              radius:getComputedStyle(field).borderTopLeftRadius,
+              font:getComputedStyle(input).fontSize,
+              line:getComputedStyle(input).lineHeight,
+              backgrounds:buttons.map(b => getComputedStyle(b).backgroundColor),
+            };
+          });
+        expect(time.value).toBe('3 meses');
+        for (const item of [time, charge]) {
+          expect(item.buttons).toHaveLength(2);
+          expect(Math.abs(item.field.height - 42)).toBeLessThanOrEqual(2);
+          expect(Math.abs(item.input.y + item.input.height / 2 - item.field.y - item.field.height / 2),
+            'Valor verticalmente deslocado').toBeLessThanOrEqual(2);
+          expect(parseFloat(item.radius)).toBeCloseTo(4, 0);
+          expect(Math.abs(item.buttons[0].width - item.buttons[1].width)).toBeLessThanOrEqual(1);
+          expect(item.backgrounds).toEqual(['rgb(14, 16, 19)', 'rgb(14, 16, 19)']);
         }
-        const [tenure, monthly] = metrics;
-        const gap = field => field.field.y - (field.label.y + field.label.height);
-        expect(Math.abs(gap(tenure) - gap(monthly)), 'Distância entre rótulo e campo diverge')
-          .toBeLessThanOrEqual(2);
-        expect(Math.abs(tenure.field.height - monthly.field.height)).toBeLessThanOrEqual(1);
-        expect(tenure.font).toBe(monthly.font);
-        expect(tenure.line).toBe(monthly.line);
-        expect(tenure.buttons.map(b => b.width)).toEqual(monthly.buttons.map(b => b.width));
-        const select = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div')
+        expect(Math.abs(time.field.height - charge.field.height)).toBeLessThanOrEqual(1);
+        expect(time.font).toBe(charge.font);
+        expect(time.line).toBe(charge.line);
+        expect(time.buttons.map(button => button.width)).toEqual(charge.buttons.map(button => button.width));
+        const selector = await page.locator('.st-key-dashboard-quick-fields [data-baseweb="select"] > div')
           .first().evaluate(el => ({height:el.getBoundingClientRect().height,
                                     radius:getComputedStyle(el).borderTopLeftRadius}));
-        expect(Math.abs(select.height - tenure.field.height)).toBeLessThanOrEqual(2);
-        expect(parseFloat(select.radius)).toBeCloseTo(4, 0);
+        expect(Math.abs(selector.height - time.field.height)).toBeLessThanOrEqual(2);
+        expect(parseFloat(selector.radius)).toBeCloseTo(4, 0);
         await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
@@ -401,10 +412,15 @@ for (const { width, height } of viewports) {
         await expect(page).toHaveScreenshot(`mono-01-inicial-${suffix}.png`, { fullPage: false });
       });
 
+      let runningIconX = null;
       await test.step('Avaliações genéticas reais e monitor atualizado', async () => {
         await page.getByRole('button', { name: 'Calcular previsão' }).click();
         await expect(page.locator('.churn-workspace-heading[data-run-state="running"]')).toBeVisible();
         await expect(page.getByRole('status', { name: 'Executando previsão' })).toBeVisible();
+        runningIconX = await page.locator('.churn-run-spinner').evaluate(el => {
+          const box = el.getBoundingClientRect();
+          return box.x + box.width / 2;
+        });
         await expect(page.locator('.churn-console').first()).toContainText(/\[G\d{2}\]/, { timeout: 120_000 });
         await expect(page.locator('.churn-bit')).toHaveCount(38);
         if (mobile) {
@@ -426,6 +442,12 @@ for (const { width, height } of viewports) {
         expect(runMarkAlignment, 'Indicador final não está alinhado ao título').not.toBeNull();
         expect(runMarkAlignment).toBeLessThanOrEqual(2);
         await expect(page.getByRole('status', { name: 'Previsão concluída' })).toBeVisible();
+        const completedIconX = await page.locator('.churn-run-check').evaluate(el => {
+          const box = el.getBoundingClientRect();
+          return box.x + box.width / 2;
+        });
+        expect(Math.abs(completedIconX - runningIconX), 'Check mudou de posição horizontal')
+          .toBeLessThanOrEqual(2);
         const checkStyle = await page.locator('.churn-run-check').first().evaluate(el => ({
           radius: getComputedStyle(el).borderRadius,
           border: getComputedStyle(el).borderWidth,
@@ -452,24 +474,50 @@ for (const { width, height } of viewports) {
       });
 
       await test.step('Edição do cliente invalida a previsão, preservando o experimento', async () => {
-        const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
-    for (const value of ['1', '9', '10', '24', '120']) {
-      await months.fill(value);
-      await months.press('Tab');
-      await expect(months).toHaveValue(value);
+        const months = page.getByRole('textbox', { name: 'Tempo como cliente' });
+        await months.click();
+        await months.press('ControlOrMeta+A');
+        await months.press('4');
+        await expect(months).toHaveValue('4 meses');
+        await expect(page.locator('.churn-comparison .churn-state')).toHaveText('Dados alterados');
+        await expect(page.locator('.churn-workspace-heading[data-run-state="stale"]')).toBeVisible();
+        await expect(page.locator('.churn-run-check')).toHaveCount(0);
+        await expect(page.locator('.churn-prediction-value').first()).toHaveText('—');
+        await expect(page.locator('.churn-technical').first()).toContainText('ΔF1');
+        await expect(page.locator('.churn-technical').first())
+          .not.toContainText('Os dados do cliente foram alterados');
+        await expect(page.locator('.churn-console').first()).toContainText('[FIM]');
+        await geometry(page, 'Editado', testInfo);
+        await page.mouse.move(0, 0);
+        await expect(page).toHaveScreenshot(`mono-04-editado-${suffix}.png`, { fullPage: false });
+      });
+    } finally {
+      await context.close();
     }
-    const buttons = page.locator('.st-key-dashboard-tenure-control [data-testid="stNumberInput"] button');
-    await expect(buttons).toHaveCount(2);
-    await buttons.nth(1).click();
-    await expect(months).toHaveValue('121');
-    await buttons.nth(0).click();
-    await expect(months).toHaveValue('120');
+  });
+}
+
+test('1024x768 — telefonia mantém dados das abas anteriores', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1024, height: 768 }, deviceScaleFactor: 1,
+    locale: 'pt-BR', colorScheme: 'dark',
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Cliente', exact: true })).toBeVisible();
+    await page.locator('.st-key-dashboard-detail-tabs').getByRole('tab', { name: 'Serviços' }).click();
+    await page.getByRole('combobox', { name: 'Serviço de telefone' }).click();
+    await page.getByRole('option', { name: 'Não', exact: true }).click();
+    await expect(page.locator('[data-testid="stException"]')).toHaveCount(0);
+    const lines = page.getByRole('combobox', { name: 'Múltiplas linhas telefônicas' });
+    await expect(lines).toHaveValue('Sem serviço telefônico');
+    await expect(lines).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
   } finally {
     await context.close();
   }
 });
-
 
 test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }) => {
   const context = await browser.newContext({
@@ -489,37 +537,50 @@ test('1024x768 — abas do formulário e unidade do stepper', async ({ browser }
     await tabs.getByRole('tab', { name: 'Perfil', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Gênero' })).toBeVisible();
 
-    const months = page.getByRole('spinbutton', { name: 'Tempo como cliente' });
-    for (const [typed, expected] of [
+    const months = page.getByRole('textbox', { name: 'Tempo como cliente' });
+    await expect(months).toHaveValue('3 meses');
+    await months.click();
+    const caret = () => months.evaluate(input => ({
+      start:input.selectionStart, end:input.selectionEnd,
+      digits:input.value.match(/^\d+/)[0].length,
+    }));
+    let cursor = await caret();
+    expect(cursor.start).toBe(cursor.digits);
+    await months.press('End');
+    cursor = await caret();
+    expect(cursor.start).toBe(cursor.digits);
+    await months.press('Delete');
+    await expect(months).toHaveValue('3 meses');
+    for (const [digits, formatted] of [
       ['1', '1 mês'], ['9', '9 meses'], ['10', '10 meses'],
       ['24', '24 meses'], ['120', '120 meses'],
     ]) {
-      await months.fill(typed);
-      await months.press('Tab');
-      await expect(months).toHaveValue(expected);
-      const sizes = await months.evaluate(el => {
-        const cs = getComputedStyle(el);
+      await months.click();
+      await months.press('ControlOrMeta+A');
+      await months.press('Backspace');
+      for (const digit of digits) await months.press(digit);
+      await expect(months).toHaveValue(formatted);
+      const size = await months.evaluate(input => {
+        const cs = getComputedStyle(input);
         const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        context.font = cs.font;
+        canvas.getContext('2d').font = cs.font;
         return {
-          rendered: context.measureText(el.value).width,
-          available: el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+          rendered:canvas.getContext('2d').measureText(input.value).width,
+          available:input.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
         };
       });
-      expect(sizes.rendered, `Texto cortado: ${expected}`)
-        .toBeLessThanOrEqual(sizes.available + 1);
+      expect(size.rendered).toBeLessThanOrEqual(size.available + 1);
     }
-    await page.getByRole('button', { name: 'Aumentar um mês', exact: true }).click();
+    const plus = page.getByRole('button', { name: 'Aumentar um mês' });
+    const minus = page.getByRole('button', { name: 'Diminuir um mês' });
+    await plus.click();
     await expect(months).toHaveValue('121 meses');
-    await page.getByRole('button', { name: 'Diminuir um mês', exact: true }).click();
+    await minus.click();
     await expect(months).toHaveValue('120 meses');
     await months.fill('abc');
-    await months.press('Tab');
-    await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeDisabled();
-    await expect(page.getByText('Informe um número inteiro de meses.')).toBeVisible();
-    await months.fill('24 meses');
-    await months.press('Tab');
+    await expect(months).toHaveValue('120 meses');
+    await page.getByRole('button', { name: 'Restaurar perfil' }).click();
+    await expect(months).toHaveValue('3 meses');
     await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
   } finally {
     await context.close();
