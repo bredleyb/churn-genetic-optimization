@@ -222,8 +222,11 @@ for (const { width, height } of viewports) {
         await months.press('Tab');
         await expect(page.locator('.churn-comparison .churn-state')).toHaveText('Dados alterados');
         await expect(page.locator('.churn-prediction-value').first()).toHaveText('—');
+        await expect(page.locator('.churn-technical').first()).toContainText('ΔF1');
+        // O estado "Dados alterados" já aparece na comparação. O bloco técnico
+        // conserva apenas os valores F1, sem adicionar uma segunda mensagem.
         await expect(page.locator('.churn-technical').first())
-          .toContainText('Os dados do cliente foram alterados');
+          .not.toContainText('Os dados do cliente foram alterados');
         await expect(page.locator('.churn-console').first()).toContainText('[FIM]');
         await geometry(page, 'Editado', testInfo);
         await page.mouse.move(0, 0);

@@ -191,3 +191,47 @@ def test_result_is_invalidated_after_customer_changes(monkeypatch):
     assert not app._is_stale(run)
     ui.session_state["field_tenure"] = 4
     assert app._is_stale(run)
+
+
+
+def test_stale_result_uses_one_message_and_preserves_test_metrics(monkeypatch):
+    """Editar cliente mantém o F1 anterior e informa o estado só na comparação."""
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_stale_summary_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+
+    class Capture:
+        def __init__(self):
+            self.content = ""
+
+        def markdown(self, content, **kwargs):
+            self.content = content
+
+    run = {
+        "summary": {
+            "genetic_count": 9,
+            "baseline": {"f1": 0.6040},
+            "genetico": {"f1": 0.5869},
+            "reduction_pct": 52.6,
+            "test_count": 1409,
+        },
+        "evaluated_subsets": 121,
+        "predictions": {
+            "baseline": {"classe": 1, "probabilidade_cancelamento": 0.8204},
+            "genetico": {"classe": 1, "probabilidade_cancelamento": 0.7666},
+        },
+    }
+    comparison, technical = Capture(), Capture()
+    app._render_prediction_comparison(run, "stale", slot=comparison)
+    app._render_technical(run, slot=technical)
+
+    assert "Dados alterados" in comparison.content
+    assert "82,04%" not in comparison.content
+    assert "76,66%" not in comparison.content
+    assert "0,6040" in technical.content
+    assert "0,5869" in technical.content
+    assert "ΔF1" in technical.content
+    assert "Dados alterados" not in technical.content
+    assert "Os dados do cliente foram alterados" not in technical.content

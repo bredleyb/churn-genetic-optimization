@@ -155,7 +155,6 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .churn-metric dt {font-size:13px;color:var(--n3-secondary);white-space:nowrap;}
 .churn-metric dd {font-size:20px;color:var(--n3-text);font-weight:600;margin:3px 0 0;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .churn-technical-note {font-size:12px;line-height:1.4;color:var(--n3-muted);margin-top:7px;}
-.churn-stale {font-size:13px;line-height:1.4;color:var(--n3-secondary);border-top:1px solid var(--n3-line);margin-top:6px;padding-top:6px;}
 /* Monitor: monoespaçada, conteúdo mais recente primeiro, largura estável. */
 .churn-monitor-title {font-size:16px;font-weight:600;color:var(--n3-text);line-height:1.4;}
 .churn-phase {font-size:13px;color:var(--n3-secondary);}
@@ -544,7 +543,7 @@ def _history_chart(history: list[dict], *, slot) -> None:
     slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _render_technical(run: dict | None, *, slot, stale: bool = False) -> None:
+def _render_technical(run: dict | None, *, slot) -> None:
     if run is None:
         metrics = (("Referência", "—"), ("Genético", "—"), ("ΔF1", "—"))
         summary = "F1 no teste reservado · 20% dos dados"
@@ -559,12 +558,10 @@ def _render_technical(run: dict | None, *, slot, stale: bool = False) -> None:
                    f'{data["test_count"]} clientes no teste')
     rows = "".join(f'<div class="churn-metric"><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>'
                    for label,value in metrics)
-    warning = ('<div class="churn-stale">Os dados do cliente foram alterados. '
-               'Clique em Calcular previsão para atualizar.</div>') if stale else ""
     slot.markdown('<section class="churn-technical" aria-label="Métricas de teste">'
                   '<div class="churn-section-top"><h3>Desempenho no teste reservado</h3></div>'
                   f'<dl class="churn-metrics">{rows}</dl><div class="churn-technical-note">{escape(summary)}</div>'
-                  f'{warning}</section>', unsafe_allow_html=True)
+                  '</section>', unsafe_allow_html=True)
 
 
 def _render_idle(slots: dict) -> None:
@@ -585,7 +582,7 @@ def _render_finished_run(run: dict, slots: dict) -> None:
     _render_console(run["events"], slot=slots["console"], complete=True)
     _render_chromosome(run["chromosome"], "Melhor cromossomo", slot=slots["chromosome"])
     _history_chart(run["history"], slot=slots["chart"])
-    _render_technical(run, slot=slots["technical"], stale=stale)
+    _render_technical(run, slot=slots["technical"])
     if run.get("events"):
         slots["log"].download_button(
             "Baixar log completo", "\n".join(run["events"]) + "\n",
