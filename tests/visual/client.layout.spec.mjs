@@ -54,6 +54,18 @@ for(const size of VIEWPORTS){
     const internet=await measure(fieldGroup(page,'Serviço de internet'));
     const charge=await measure(page.locator(
       '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-testid="stNumberInputContainer"]'));
+    const clientContentWidth=await client(page).evaluate(el=>{
+      const css=getComputedStyle(el);
+      return el.clientWidth-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight);
+    });
+    if(clientContentWidth<=335){
+      near(tenure.left,contract.left,'Campo rápido empilhado posição',2);
+      near(tenure.width,contract.width,'Campo rápido empilhado largura',2);
+    }else{
+      expect(contract.left,
+        'Em largura suficiente, campos rápidos devem ocupar duas colunas')
+        .toBeGreaterThan(tenure.right+2);
+    }
     near(tenure.left,internet.left,'Tempo/Serviço posição',2);
     near(tenure.width,internet.width,'Tempo/Serviço largura',2);
     near(contract.left,charge.left,'Contrato/Cobrança posição',2);

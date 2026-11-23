@@ -110,9 +110,14 @@ test('CL-F05 campos de cobrança e total indisponível conservam tipos',async({p
   const missing=page.getByRole('checkbox',{name:'Total cobrado indisponível'});
   const total=page.getByRole('spinbutton',{name:'Total cobrado'});
   await expect(total).toBeEnabled();
-  await missing.check();
+  // O checkbox React Aria recebe o clique no rótulo associado. Clicar no
+  // input interno faz o Playwright enfrentar a sobreposição esperada do label.
+  await page.getByText('Total cobrado indisponível',{exact:true}).click();
+  await expect(missing).toBeChecked();
   await expect(total).toBeDisabled();
-  await missing.uncheck();
+  await missing.focus();
+  await missing.press('Space');
+  await expect(missing).not.toBeChecked();
   await expect(total).toBeEnabled();
   await tabs(page).getByRole('tab',{name:'Perfil'}).click();
   await expect(charge).toHaveValue('101.50');
@@ -160,22 +165,31 @@ test('CL-F06 cores, raios, tipografia e hover dos steppers são compartilhados',
     }
   });
 
-test('CL-F07 Cobrança mensal mantém ações visíveis − e + com hover',async({page})=>{
-  await openClient(page,{width:1024,height:768});
-  const numberWidget=page.locator(
-    '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"])');
-  const stepButtons=numberWidget.locator('button:visible');
-  await expect(stepButtons,
-    'O widget numérico atual não exibe os botões − e + previstos no Cliente')
-    .toHaveCount(2,{timeout:5000});
-  for(const control of await stepButtons.all()){
-    await expect(control).toHaveCSS('color','rgb(216, 216, 216)');
-    await control.hover();
-    await expect(control).toHaveCSS('background-color','rgb(32, 33, 36)');
-    await page.mouse.move(0,0);
-    await expect(control).toHaveCSS('background-color','rgb(14, 16, 19)');
-  }
-});
+for(const size of [
+  {width:1440,height:900},{width:1366,height:768},
+  {width:1280,height:720},{width:1024,height:768},
+  {width:768,height:900},{width:390,height:900},
+]){
+  test('CL-F07 Cobrança exibe − e + em '+size.width+'x'+size.height,
+    async({page})=>{
+      await openClient(page,size);
+      const numberWidget=page.locator(
+        '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"])');
+      const stepButtons=numberWidget.locator('button:visible');
+      await expect(stepButtons,
+        'Cobrança sem controles − e + em '+size.width+'px')
+        .toHaveCount(2,{timeout:6000});
+      const colors=await Promise.all((await stepButtons.all()).map(control=>
+        control.evaluate(el=>getComputedStyle(el).color)));
+      expect(colors).toEqual(['rgb(216, 216, 216)','rgb(216, 216, 216)']);
+      for(const control of await stepButtons.all()){
+        await control.hover();
+        await expect(control).toHaveCSS('background-color','rgb(32, 33, 36)');
+        await page.mouse.move(0,0);
+        await expect(control).toHaveCSS('background-color','rgb(14, 16, 19)');
+      }
+    });
+}
 
 test('CL-F08 edição imediata após stepper não perde seleção por reposicionamento do caret',
   async({page})=>{

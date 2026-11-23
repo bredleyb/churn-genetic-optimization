@@ -113,6 +113,7 @@ def test_tenure_component_contract_has_one_input_and_protected_suffix(client_app
     assert 'data-step="-1"' in html and 'data-step="1"' in html
     assert "beforeinput" in js and "paste" in js and "placeCaret" in js
     assert "setStateValue" in js
+    assert "requestAnimationFrame(placeCaret)" not in js
     for token in ("--n3-field-height", "--n3-field-fill", "--n3-field-radius",
                   "--n3-field-text-size", "--n3-field-text-shift"):
         assert token in _COMPONENT_CSS
@@ -126,7 +127,8 @@ def test_shared_css_tokens_and_scroll_contract(client_app):
         "--n3-outline:#55585D", "--n3-text:#F5F5F5",
         "--n3-secondary:#D8D8D8", "--n3-field-height:42px",
         "--n3-field-radius:4px", "--n3-field-text-size:14px",
-        "--n3-client-content-inset:10px", "--n3-profile-button-size:32px",
+        "--n3-client-content-inset:10px", "--n3-client-action-height:48px",
+        "--n3-client-action-height:44px", "--n3-profile-button-size:32px",
         "--n3-profile-button-size:28px", "--n3-profile-button-size:26px",
         "scrollbar-gutter:stable both-edges",
         "padding-inline:var(--n3-client-content-inset)",
@@ -139,6 +141,10 @@ def test_shared_css_tokens_and_scroll_contract(client_app):
     assert "border-top:0!important" in css
     assert "border-radius:50%!important" in css
     assert "border-radius:var(--n3-field-radius)!important" in css
+    assert "container-name:n3-client;container-type:inline-size" in css
+    assert "@container n3-client (max-width:335px)" in css
+    assert '[data-testid="stNumberInputContainer"]' in css
+    assert "height:var(--n3-client-action-height)!important" in css
     assert "@keyframes n3-calculating-ellipsis" in css
     assert "prefers-reduced-motion:reduce" in css
 

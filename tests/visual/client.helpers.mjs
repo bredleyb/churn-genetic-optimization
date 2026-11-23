@@ -57,10 +57,8 @@ export async function clickOption(page,label,name) {
 export async function replaceMonths(page,digits) {
   const input=page.getByRole('textbox',{name:'Tempo como cliente'});
   await input.click();
-  // O componente v2 remete o caret ao limite dos dígitos no próximo frame
-  // após o clique. Selecionar antes desse frame causa inserção no final (31).
-  await input.evaluate(() => new Promise(resolve =>
-    requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  // A seleção deve resistir imediatamente ao foco/clique; o componente
+  // não pode reprogramar o caret para um frame posterior.
   const previous = (await input.inputValue()).match(/^\d+/)?.[0];
   expect(previous,'O controle perdeu a parte numérica').toBeTruthy();
   await input.press('ControlOrMeta+A');
