@@ -220,13 +220,12 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   border-radius:var(--n3-field-radius)!important;
   outline:none!important;box-shadow:none!important;
 }
-/* Um único estado ativo compartilhado entre todos os campos nativos.
-   A borda existente permanece com 1 px, idêntica à dos perfis selecionados.
-   O seletor mantém essa borda enquanto a lista está aberta, inclusive se
-   o foco passar temporariamente ao menu em um portal externo. */
-.st-key-dashboard-client [data-testid="stSelectbox"] [role="group"]:is(
-  :focus-within,:has([aria-expanded="true"]),[data-focus-within="true"]
-),
+/* Os seletores só recebem borda clara enquanto a lista está expandida.
+   Após escolher uma opção ou fechar com Esc, aria-expanded volta a false
+   mesmo que o Streamlit mantenha foco DOM no combobox.
+   Campos numéricos preservam o contrato separado de :focus-within. */
+.st-key-dashboard-client [data-testid="stSelectbox"]
+  [role="group"]:has([aria-expanded="true"]),
 .st-key-dashboard-client [data-testid="stNumberInput"]
   :is([data-testid="stNumberInputContainer"],[data-baseweb="input"]):focus-within {
   border-color:var(--n3-text)!important;
@@ -270,8 +269,21 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client [data-testid="stNumberInput"] button:focus-visible {
   outline:none!important;box-shadow:none!important;
 }
+/* Orientação da seta compartilha o estado real de expansão do combobox. */
 .st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] svg {
   color:inherit!important;
+  transform-origin:center center!important;
+  transform:rotate(0deg)!important;
+  transition:transform .16s ease-in-out!important;
+}
+.st-key-dashboard-client [data-testid="stSelectbox"]
+  [role="group"]:has([aria-expanded="true"]) button[aria-label="Open"] svg {
+  transform:rotate(180deg)!important;
+}
+@media(prefers-reduced-motion:reduce) {
+  .st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] svg {
+    transition:none!important;
+  }
 }
 .st-key-dashboard-client [data-testid="stNumberInput"] button {
   box-sizing:border-box!important;min-width:32px!important;width:32px!important;
