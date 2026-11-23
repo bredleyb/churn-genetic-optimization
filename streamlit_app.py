@@ -64,8 +64,11 @@ st.markdown(
   --n3-field-text-shift:-1px;
   --n3-page-pad:12px; --n3-panel-pad:12px;
   --n3-client-shadow-top:0; --n3-client-shadow-bottom:0;
-  --n3-client-shadow-top-length:60px;
-  --n3-client-shadow-bottom-length:52px;
+  /* Uma intensidade e extensão compartilhadas pelas duas extremidades. */
+  --n3-client-shadow-length:52px;
+  --n3-client-shadow-strong:rgba(0,0,0,.48);
+  --n3-client-shadow-soft:rgba(0,0,0,.20);
+  --n3-profile-button-size:32px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
 .stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
@@ -131,9 +134,9 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
    espaçamento do título, para cobrir os campos que passam por baixo dele. */
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields)::before {
   content:"";position:absolute;top:0;left:0;right:0;
-  height:var(--n3-client-shadow-top-length);z-index:2;pointer-events:none;
+  height:var(--n3-client-shadow-length);z-index:2;pointer-events:none;
   background:linear-gradient(to bottom,
-    rgba(0,0,0,.72) 0%,rgba(0,0,0,.34) 44%,rgba(0,0,0,0) 100%);
+    var(--n3-client-shadow-strong) 0%,var(--n3-client-shadow-soft) 48%,rgba(0,0,0,0) 100%);
   opacity:var(--n3-client-shadow-top,0);transition:opacity .16s ease-out;
 }
 .st-key-dashboard-client-footer {
@@ -142,9 +145,9 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .st-key-dashboard-client-footer::before {
   content:"";position:absolute;bottom:100%;left:0;right:0;
-  height:var(--n3-client-shadow-bottom-length);pointer-events:none;
+  height:var(--n3-client-shadow-length);pointer-events:none;
   background:linear-gradient(to top,
-    rgba(0,0,0,.48) 0%,rgba(0,0,0,.20) 48%,rgba(0,0,0,0) 100%);
+    var(--n3-client-shadow-strong) 0%,var(--n3-client-shadow-soft) 48%,rgba(0,0,0,0) 100%);
   opacity:var(--n3-client-shadow-bottom,0);transition:opacity .16s ease-out;
 }
 @media(prefers-reduced-motion:reduce) {
@@ -268,11 +271,17 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   flex:0 0 32px!important;min-width:32px!important;max-width:32px!important;
   width:32px!important;
 }
-.st-key-dashboard-profile-choices [data-testid="stButton"] button {
-  box-sizing:border-box!important;width:32px!important;min-width:32px!important;
-  height:32px!important;min-height:32px!important;max-height:32px!important;
+.st-key-dashboard-profile-choices [data-testid="stButton"] button,
+.st-key-dashboard-restore-action [data-testid="stButton"] button {
+  box-sizing:border-box!important;
+  width:var(--n3-profile-button-size)!important;min-width:var(--n3-profile-button-size)!important;
+  max-width:var(--n3-profile-button-size)!important;
+  height:var(--n3-profile-button-size)!important;min-height:var(--n3-profile-button-size)!important;
+  max-height:var(--n3-profile-button-size)!important;
   padding:0!important;border:1px solid var(--n3-outline)!important;
   border-radius:50%!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stButton"] button {
   background:var(--n3-field-fill)!important;color:var(--n3-secondary)!important;
   font-size:14px!important;font-weight:600!important;line-height:1!important;
   display:flex!important;align-items:center!important;justify-content:center!important;
@@ -289,37 +298,31 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   outline:2px solid var(--n3-text)!important;outline-offset:2px!important;
 }
 @media(max-width:1150px) {
+  :root {--n3-profile-button-size:28px;}
   .st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {gap:3px!important;}
   .st-key-dashboard-profile-choices [data-testid="stColumn"] {
-    flex-basis:28px!important;min-width:28px!important;max-width:28px!important;width:28px!important;
-  }
-  .st-key-dashboard-profile-choices [data-testid="stButton"] button {
-    width:28px!important;min-width:28px!important;height:28px!important;
-    min-height:28px!important;max-height:28px!important;
+    flex-basis:var(--n3-profile-button-size)!important;
+    min-width:var(--n3-profile-button-size)!important;
+    max-width:var(--n3-profile-button-size)!important;
+    width:var(--n3-profile-button-size)!important;
   }
 }
 @media(max-width:900px) {
+  :root {--n3-profile-button-size:26px;}
   .st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {gap:2px!important;}
-  .st-key-dashboard-profile-choices [data-testid="stColumn"] {
-    flex-basis:26px!important;min-width:26px!important;max-width:26px!important;width:26px!important;
-  }
-  .st-key-dashboard-profile-choices [data-testid="stButton"] button {
-    width:26px!important;min-width:26px!important;height:26px!important;
-    min-height:26px!important;max-height:26px!important;
-  }
 }
-/* Restauro: posição fixa à direita; o estado original desativa e escurece a ação. */
-.st-key-dashboard-restore-action {
-  margin-top:0!important;
+/* Restauro herda o diâmetro dos exemplos e fica centralizado na mesma linha.
+   O círculo mantém o alinhamento à direita da linha de perfis. */
+.st-key-dashboard-restore-action {margin-top:0!important;}
+.st-key-dashboard-restore-action [data-testid="stButton"] {
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;
+  height:42px!important;min-height:42px!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button {
-  box-sizing:border-box!important;width:42px!important;min-width:42px!important;
-  height:var(--n3-field-height)!important;min-height:var(--n3-field-height)!important;
   position:relative!important;
   display:flex!important;justify-content:center!important;align-items:center!important;
-  padding:0!important;margin-left:auto!important;
+  margin-left:auto!important;
   color:var(--n3-secondary)!important;background:var(--n3-field-fill)!important;
-  border:1px solid var(--n3-outline)!important;border-radius:var(--n3-field-radius)!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button:hover:not(:disabled) {
   background:var(--n3-elevated)!important;color:var(--n3-text)!important;
@@ -333,11 +336,15 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 /* Independente da árvore interna que Streamlit utiliza para ícone e rótulo. */
 .st-key-dashboard-restore-action [data-testid="stButton"] [data-testid="stIconMaterial"] {
-  position:absolute!important;left:50%!important;top:calc(50% + var(--n3-field-text-shift))!important;
+  position:absolute!important;left:50%!important;top:50%!important;
   transform:translate(-50%,-50%)!important;
-  box-sizing:border-box!important;display:block!important;
-  width:20px!important;height:20px!important;margin:0!important;padding:0!important;
-  line-height:20px!important;font-size:20px!important;text-align:center!important;
+  box-sizing:border-box!important;display:flex!important;
+  align-items:center!important;justify-content:center!important;
+  width:calc(var(--n3-profile-button-size) * .64)!important;
+  height:calc(var(--n3-profile-button-size) * .64)!important;
+  margin:0!important;padding:0!important;
+  line-height:1!important;font-size:calc(var(--n3-profile-button-size) * .64)!important;
+  text-align:center!important;
 }
 .st-key-dashboard-restore-action [data-testid="stButton"] button p {
   position:absolute!important;width:1px!important;height:1px!important;
@@ -1330,7 +1337,7 @@ def _render_client_panel() -> bool:
         with st.container(key="dashboard-profile-picker", border=False):
             st.markdown('<div class="churn-profile-label">Perfil de exemplo</div>',
                         unsafe_allow_html=True)
-            a, b = st.columns([0.75, 0.25], gap="small", wrap=False)
+            a, b = st.columns([0.75, 0.25], gap="small", vertical_alignment="center", wrap=False)
             with a:
                 with st.container(key="dashboard-profile-choices", border=False):
                     names = tuple(st.session_state["example_profiles"])
@@ -1357,7 +1364,7 @@ def _render_client_panel() -> bool:
             with b:
                 with st.container(key="dashboard-restore-action", border=False):
                     st.button(
-                        "Restaurar perfil", icon=":material/refresh:",
+                        "Restaurar perfil", icon=":material/history:",
                         help="Restaurar os dados do exemplo selecionado.",
                         key="restore_profile", type="tertiary",
                         disabled=_is_profile_pristine(),
