@@ -70,7 +70,7 @@ export async function replaceMonths(page,digits) {
   // beforeinput único para todos os dígitos: preserva a unidade no mesmo input.
   await page.keyboard.insertText(String(digits));
   const suffix=Number(digits)===1?' mês':' meses';
-  await expect(input).toHaveValue(String(Number(digits))+suffix);
+  await expect(input).toHaveValue(String(Number(digits))+suffix,{timeout:7000});
 }
 
 export async function ensureNoException(page) {

@@ -228,11 +228,10 @@ test('CL-F09 componente v2 mantém seleção quando chega um rerun antigo',async
       'return ('+src.renderer+');',
     ].join('\n');
     const mount = new Function(js)();
-    const root=document.querySelector('.n3-tenure');
     window.n3Mount = value => {
       window.n3Cleanup?.();
       window.n3Cleanup=mount({
-        parentElement:root.parentElement,
+        parentElement:document.querySelector('.n3-tenure').parentElement,
         data:{value},setStateValue:()=>{},
       });
     };
@@ -252,12 +251,37 @@ test('CL-F09 componente v2 mantém seleção quando chega um rerun antigo',async
   await expect(input).toHaveValue('3 meses');
   await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
     .toEqual([0,1]);
+  await expect(input).toHaveAttribute('data-select-all-digits','true');
+  // Reproduz a falha observada no Streamlit real: a seleção pode colapsar
+  // entre Ctrl+A e beforeinput embora a intenção do usuário permaneça.
+  await input.evaluate(el=>el.setSelectionRange(1,1));
+  await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
+    .toEqual([1,1]);
   await input.press('1');
   await expect(input).toHaveValue('1 mês');
+  await expect(input).not.toHaveAttribute('data-select-all-digits','true');
   await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
     .toEqual([1,1]);
   // Fora da edição, uma atualização externa legítima deve voltar a prevalecer.
   await page.getByRole('button',{name:'Aumentar um mês'}).click();
   await page.evaluate(()=>window.n3Mount(7));
   await expect(input).toHaveValue('7 meses');
+
+  // O Streamlit também pode trocar o nó DOM inteiro enquanto o usuário
+  // mantém Ctrl+A ativo. O host deve preservar a intenção entre montagens.
+  await input.click();
+  await input.press('ControlOrMeta+A');
+  await expect(input).toHaveAttribute('data-select-all-digits','true');
+  await page.evaluate(()=>{
+    const old=document.querySelector('.n3-tenure');
+    const replacement=old.cloneNode(true);
+    // O novo input perde seu estado local, como numa remontagem real.
+    replacement.querySelector('input').removeAttribute('data-select-all-digits');
+    old.replaceWith(replacement);
+    window.n3Mount(7);
+  });
+  await expect(input).toHaveValue('7 meses');
+  await input.press('1');
+  await expect(input).toHaveValue('1 mês');
+  await expect(input).not.toHaveAttribute('data-select-all-digits','true');
 });

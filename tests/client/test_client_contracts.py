@@ -116,6 +116,11 @@ def test_tenure_component_contract_has_one_input_and_protected_suffix(client_app
     assert "requestAnimationFrame(placeCaret)" not in js
     assert "editing && currentText" in js
     assert "if (input.value !== text) input.value = text" in js
+    assert 'selectionStore.n3SelectAllDigits = "true"' in js
+    assert 'input.dataset.selectAllDigits = "true"' in js
+    assert "const numericSelection = () =>" in js
+    assert "input.addEventListener(\"blur\"" in js
+    assert "queueMicrotask(" in js
     # Atualizações de state v2 não podem desfazer uma seleção (Ctrl+A)
     # entre duas teclas. O caret só se move durante edição/foco.
     render_code = js.split("const render = () => {", 1)[1].split("const commit = next =>", 1)[0]

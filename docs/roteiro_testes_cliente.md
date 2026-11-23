@@ -29,7 +29,7 @@ responsividade, rolagem, sombras e cálculo. Os resultados científicos
 | CL-U04 | Grade rápida | Mesma definição (0,55 / 0,45) nas duas linhas |
 | CL-U05 | Serviços | Telefonia e internet sincronizam campos dependentes e reversão |
 | CL-U06 | Validação | Ausência de TotalCharges, valores negativos e combinações inválidas |
-| CL-U07 | Meses | Um único texto, sufixo protegido, limites e revisão do componente |
+| CL-U07 | Meses | Um único texto, sufixo protegido, limites, seleção Ctrl+A e estado transitório mantido no host durante remontagens |
 | CL-U08 | CSS compartilhado | Cores, tipografia, dimensões, recuo do footer, scroll e sombras |
 | CL-U09 | Criação | 3 a 5 copiam valores atuais, limite máximo de 5 |
 | CL-U10 | Restauração | Snapshot próprio, sem efeito sobre outros exemplos |
@@ -64,7 +64,7 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F06 | Consistência visual | Fundo, raios, fontes, cor e hover do Tempo, Cobrança e seletores; wrapper real React Aria |
 | CL-F07 | Ações da Cobrança | Dois botões −/+ visíveis nas seis resoluções, com a mesma paleta e hover do Tempo |
 | CL-F08 | Edição rápida de Tempo | Ctrl+A e digitação após o stepper preservam seleção numérica inclusive durante reexecução do componente v2 |
-| CL-F09 | Montagem v2 com atualização tardia | Input focado mantém seleção apesar de props antigas; sem foco aceita atualização externa legítima |
+| CL-F09 | Montagem v2 com atualização tardia | Remontagem com props antigas, seleção colapsada e substituição física do input ainda permitem Ctrl+A substituir todos os dígitos; fora de edição aceita atualização externa |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
