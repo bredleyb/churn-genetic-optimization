@@ -1,0 +1,142 @@
+import {test,expect} from '@playwright/test';
+import {VIEWPORTS,openClient,client,fields,footer,action,tabs,profileCircles,profileActions,fieldGroup,measure,near,screenshot,ensureNoException} from './client.helpers.mjs';
+
+for(const size of VIEWPORTS){
+  test('CL-L01 geometria e capturas '+size.width+'x'+size.height,async({page},info)=>{
+    await openClient(page,size);
+    const panel=await measure(client(page)),scroll=await measure(fields(page));
+    const foot=await measure(footer(page)),btn=await measure(action(page));
+    const edge = size.width<=620?8:(size.width<=900?10:12);
+    near(panel.left,edge,'padding externo esquerdo',2);
+    near(size.width-panel.right,edge,'padding externo direito',2);
+    expect(panel.bottom).toBeLessThanOrEqual(size.height+1);
+    const pageOverflow=await page.evaluate(()=>({
+      x:document.documentElement.scrollWidth-window.innerWidth,
+      y:document.documentElement.scrollHeight-window.innerHeight,
+    }));
+    expect(pageOverflow.x,'overflow horizontal da página').toBeLessThanOrEqual(2);
+    expect(pageOverflow.y,'overflow vertical da página').toBeLessThanOrEqual(2);
+    expect(foot.bottom).toBeLessThanOrEqual(panel.bottom+1);
+    expect(btn.left).toBeGreaterThan(scroll.left+7);
+    expect(btn.right).toBeLessThan(scroll.right-7);
+    expect(btn.height).toBe(size.width<=620?44:48);
+    await expect(profileCircles(page)).toHaveCount(3);
+    await expect(profileActions(page)).toHaveCount(2);
+    const label=await measure(page.locator('.churn-profile-label'));
+    const first=await measure(profileCircles(page).first());
+    near(label.left,btn.left,'rótulo do perfil',2);
+    near(first.left,btn.left,'círculos',2);
+    const acts=await Promise.all((await profileActions(page).all()).map(measure));
+    for(const [i,rect] of acts.entries()){
+      near(rect.width,first.width,'dimensão ação '+i,1);
+      near(rect.height,first.height,'altura ação '+i,1);
+      near(rect.cy,first.cy,'eixo ação '+i,2);
+    }
+    expect(acts[0].left).toBeLessThan(acts[1].left);
+    const radii=await Promise.all([profileCircles(page).first(),...await profileActions(page).all()]
+      .map(el=>el.evaluate(node=>parseFloat(getComputedStyle(node).borderTopLeftRadius))));
+    expect(radii[0]).toBeGreaterThan(radii[1]+3);
+    near(radii[1],4,'restaurar quadrado',1);near(radii[2],4,'excluir quadrado',1);
+
+    const tenure=await measure(page.locator('.n3-tenure-field'));
+    const contract=await measure(fieldGroup(page,'Tipo de contrato'));
+    const internet=await measure(fieldGroup(page,'Serviço de internet'));
+    const charge=await measure(page.locator(
+      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-baseweb="input"]'));
+    near(tenure.left,internet.left,'Tempo/Serviço posição',2);
+    near(tenure.width,internet.width,'Tempo/Serviço largura',2);
+    near(contract.left,charge.left,'Contrato/Cobrança posição',2);
+    near(contract.width,charge.width,'Contrato/Cobrança largura',2);
+    near(tenure.left,btn.left,'início dos campos',2);
+    near(charge.right,btn.right,'fim dos campos',2);
+    for(const rect of [tenure,contract,internet,charge]){
+      near(rect.height,42,'altura padronizada',2);
+      expect(rect.right).toBeLessThanOrEqual(scroll.right-6);
+    }
+    if(size.width>620&&size.width<=900)for(const rect of [tenure,contract,internet,charge]){
+      near(rect.left,btn.left,'layout tablet',2);
+      near(rect.width,btn.width,'layout tablet largura',2);
+    }
+    const heading=await measure(page.getByRole('heading',{name:'Cliente',exact:true}));
+    near(heading.cx,panel.cx,'título centralizado',2);
+    const colors=await client(page).evaluate(el=>({
+      surface:getComputedStyle(el).backgroundColor,
+      border:getComputedStyle(el).borderColor,
+      title:getComputedStyle(el.querySelector('.churn-panel-heading')).color,
+    }));
+    expect(colors).toEqual({
+      surface:'rgb(14, 16, 19)',border:'rgb(85, 88, 93)',title:'rgb(85, 88, 93)'});
+    await ensureNoException(page);
+    await screenshot(page,info,'CL-L01-inicial-'+size.width+'x'+size.height);
+  });
+  test('CL-L02 abas e área útil '+size.width+'x'+size.height,async({page},info)=>{
+    await openClient(page,size);
+    const btn=await measure(action(page));
+    const labels={'Perfil':'Gênero','Conta':'Método de pagamento',
+      'Serviços':'Serviço de telefone','Extras':'Streaming de filmes'};
+    await expect(tabs(page).getByRole('tab')).toHaveCount(4);
+    for(const [name,label] of Object.entries(labels)){
+      await tabs(page).getByRole('tab',{name,exact:true}).click();
+      await expect(tabs(page).getByRole('tab',{name,exact:true}))
+        .toHaveAttribute('aria-selected','true');
+      const group=fieldGroup(page,label);
+      await expect(group).toBeVisible();
+      const rect=await measure(group);
+      near(rect.left,btn.left,name+' margem esquerda',2);
+      near(rect.right,btn.right,name+' margem direita',2);
+      near(rect.height,42,name+' altura',2);
+      expect(await fields(page).evaluate(el=>el.scrollWidth-el.clientWidth),
+        name+' overflow horizontal').toBeLessThanOrEqual(2);
+      await expect(action(page)).toBeVisible();
+      await ensureNoException(page);
+      if(name==='Perfil'||name==='Serviços')
+        await screenshot(page,info,'CL-L02-'+name+'-'+size.width+'x'+size.height);
+    }
+  });
+}
+test('CL-L03 tipografia, alinhamento vertical e hover dos seletores',async({page})=>{
+  await openClient(page,{width:1024,height:768});
+  const loaded=await page.evaluate(async()=>{
+    await document.fonts.load('400 14px "Familjen Grotesk"');
+    return Array.from(document.fonts).some(f=>
+      f.family.replace(/["']/g,'').trim()==='Familjen Grotesk'&&f.status==='loaded');
+  });
+  expect(loaded,'Fonte Familjen Grotesk não carregada').toBe(true);
+  const selects=page.locator('.st-key-dashboard-client [data-testid="stSelectbox"]:visible');
+  expect(await selects.count()).toBeGreaterThanOrEqual(5);
+  for(const el of await selects.all()){
+    const geom=await el.evaluate(root=>{
+      const lab=root.querySelector('[data-testid="stWidgetLabel"]');
+      const title=lab?.querySelector('p'),input=root.querySelector('input[role="combobox"]');
+      const group=root.querySelector('[role="group"]');
+      if(!lab||!title||!input||!group)return null;
+      const a=lab.getBoundingClientRect(),b=title.getBoundingClientRect();
+      const c=input.getBoundingClientRect(),d=group.getBoundingClientRect();
+      return {labelFont:getComputedStyle(title).fontSize,valueFont:getComputedStyle(input).fontSize,
+        labelCenter:b.y+b.height/2-a.y-a.height/2,
+        valueCenter:c.y+c.height/2-d.y-d.height/2};
+    });
+    expect(geom).toBeTruthy();
+    expect(geom.labelFont).toBe('15px');expect(geom.valueFont).toBe('14px');
+    expect(Math.abs(geom.labelCenter)).toBeLessThanOrEqual(2);
+    expect(Math.abs(geom.valueCenter)).toBeLessThanOrEqual(2);
+  }
+  const arrow=page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"]')
+    .first().getByRole('button',{name:'Open'});
+  await expect(arrow).toHaveCSS('background-color','rgb(14, 16, 19)');
+  await arrow.hover();
+  await expect(arrow).toHaveCSS('background-color','rgb(32, 33, 36)');
+  await page.mouse.move(0,0);
+  await expect(arrow).toHaveCSS('background-color','rgb(14, 16, 19)');
+});
+test('CL-L04 abas mantém navegação por teclado e foco visível',async({page})=>{
+  await openClient(page,{width:1024,height:768});
+  const tab=tabs(page).getByRole('tab',{name:'Serviços'});
+  await tab.focus();await expect(tab).toBeFocused();
+  const style=await tab.evaluate(el=>({
+    outline:getComputedStyle(el).outlineStyle,shadow:getComputedStyle(el).boxShadow}));
+  expect(style.outline).toBe('none');
+  expect(style.shadow).not.toMatch(/2px 0px 0px/);
+  await tab.press('Enter');
+  await expect(tab).toHaveAttribute('aria-selected','true');
+});
