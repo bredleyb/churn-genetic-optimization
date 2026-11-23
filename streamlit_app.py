@@ -269,14 +269,17 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client [data-testid="stNumberInput"] button:focus-visible {
   outline:none!important;box-shadow:none!important;
 }
-/* Orientação da seta compartilha o estado real de expansão do combobox. */
+/* A lista do st.selectbox é um Popover do React Aria, inserido em um
+   portal separado do botão. A seta só inicia a transição DEPOIS que esse
+   popover é montado; o clique e a abertura nativa não aguardam a rotação. */
 .st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] svg {
   color:inherit!important;
   transform-origin:center center!important;
   transform:rotate(0deg)!important;
   transition:transform .16s ease-in-out!important;
 }
-.st-key-dashboard-client [data-testid="stSelectbox"]
+body:has([data-testid="stSelectboxVirtualDropdown"])
+  .st-key-dashboard-client [data-testid="stSelectbox"]
   [role="group"]:has([aria-expanded="true"]) button[aria-label="Open"] svg {
   transform:rotate(180deg)!important;
 }
