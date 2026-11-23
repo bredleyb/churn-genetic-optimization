@@ -56,21 +56,25 @@ export async function clickOption(page,label,name) {
   await expect(input).toHaveValue(name);
 }
 
+export async function expectMonths(page,value) {
+  const input=page.getByRole('textbox',{name:'Tempo como cliente'});
+  await expect(input).toHaveValue(String(Number(value)),{timeout:7000});
+  await expect(page.locator('.n3-tenure-unit'))
+    .toHaveText(Number(value)===1?'mês':'meses');
+}
+
 export async function replaceMonths(page,digits) {
   const input=page.getByRole('textbox',{name:'Tempo como cliente'});
   await input.click();
-  // A seleção deve resistir imediatamente ao foco/clique; o componente
-  // não pode reprogramar o caret para um frame posterior.
-  const previous = (await input.inputValue()).match(/^\d+/)?.[0];
-  expect(previous,'O controle perdeu a parte numérica').toBeTruthy();
+  // Agora Ctrl+A é nativo e só seleciona os dígitos. A unidade é um span.
+  const previous=await input.inputValue();
+  expect(previous,'O valor editável deve ser numérico').toMatch(/^\d{1,3}$/);
   await input.press('ControlOrMeta+A');
   await expect.poll(() => input.evaluate(el => [
     el.selectionStart,el.selectionEnd,
   ])).toEqual([0,previous.length]);
-  // beforeinput único para todos os dígitos: preserva a unidade no mesmo input.
   await page.keyboard.insertText(String(digits));
-  const suffix=Number(digits)===1?' mês':' meses';
-  await expect(input).toHaveValue(String(Number(digits))+suffix,{timeout:7000});
+  await expectMonths(page,digits);
 }
 
 export async function ensureNoException(page) {

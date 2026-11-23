@@ -1,11 +1,10 @@
 import {test,expect} from '@playwright/test';
-import {openClient,profileCircles,profileActions,measure,near,screenshot,replaceMonths,ensureNoException} from './client.helpers.mjs';
+import {openClient,profileCircles,profileActions,measure,near,screenshot,replaceMonths,expectMonths,ensureNoException} from './client.helpers.mjs';
 
 test('CL-P01 seleção, cópia, edições isoladas, restauração e exclusão sem modal',async({page},info)=>{
   await openClient(page,{width:1024,height:768});
   const button=name=>page.getByRole('button',{name,exact:true});
   const restore=button('Restaurar perfil'),remove=button('Excluir perfil'),add=button('+');
-  const tenure=page.getByRole('textbox',{name:'Tempo como cliente'});
   await expect(button('1')).toHaveAttribute('kind','primary');
   await expect(button('2')).toBeVisible();
   await expect(add).toBeVisible();
@@ -19,18 +18,18 @@ test('CL-P01 seleção, cópia, edições isoladas, restauração e exclusão se
   await page.mouse.move(0,0);
   await add.click();
   await expect(button('3')).toHaveAttribute('kind','primary');
-  await expect(tenure).toHaveValue('24 meses');
+  await expectMonths(page,24);
   await expect(restore).toBeDisabled();
   await expect(remove).toBeEnabled();
   await replaceMonths(page,25);
   await button('1').click();
-  await expect(tenure).toHaveValue('24 meses');
+  await expectMonths(page,24);
   await button('2').click();
   await expect(remove).toBeDisabled();
   await button('3').click();
-  await expect(tenure).toHaveValue('25 meses');
+  await expectMonths(page,25);
   await restore.click();
-  await expect(tenure).toHaveValue('24 meses');
+  await expectMonths(page,24);
   await expect(restore).toBeDisabled();
 
   await add.click();
@@ -44,16 +43,16 @@ test('CL-P01 seleção, cópia, edições isoladas, restauração e exclusão se
   await screenshot(page,info,'CL-P01-limite-cinco');
 
   await button('4').click();
-  await expect(tenure).toHaveValue('40 meses');
+  await expectMonths(page,40);
   await remove.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(button('5')).toHaveCount(0);
   await expect(button('3')).toHaveAttribute('kind','primary');
   await expect(add).toBeVisible();
   await button('4').click();
-  await expect(tenure).toHaveValue('50 meses');
+  await expectMonths(page,50);
   await restore.click();
-  await expect(tenure).toHaveValue('40 meses');
+  await expectMonths(page,40);
   await add.click();
   await expect(button('5')).toBeVisible();
   await ensureNoException(page);

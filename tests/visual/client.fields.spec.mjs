@@ -1,15 +1,17 @@
 import {test,expect} from '@playwright/test';
-import {openClient,tabs,fieldGroup,clickOption,replaceMonths,measure,near,screenshot,ensureNoException} from './client.helpers.mjs';
-import tenureRenderer,{clampMonths,displayMonths,replaceMonthDigits} from '../../src/tenure_control.mjs';
+import {openClient,tabs,fieldGroup,clickOption,replaceMonths,expectMonths,measure,near,screenshot,ensureNoException} from './client.helpers.mjs';
+import tenureRenderer,{clampMonths,displayMonths,parseMonthInput} from '../../src/tenure_control.mjs';
 
-test('CL-F01 mês singular/plural, limites e substituição numérica sem afetar unidade',()=>{
+test('CL-F01 números, limites e unidade não editável',()=>{
   expect([0,1,2,999].map(displayMonths)).toEqual(['0 meses','1 mês','2 meses','999 meses']);
   expect(clampMonths(-1)).toBe(0);
   expect(clampMonths(1000)).toBe(999);
   expect(clampMonths(1.8)).toBe(1);
-  expect(replaceMonthDigits(24,0,2,'5')).toBe(5);
-  expect(replaceMonthDigits(24,2,2,'abc')).toBe(24);
-  expect(replaceMonthDigits(2,1,1,'9999')).toBe(999);
+  expect(parseMonthInput('24')).toBe(24);
+  expect(parseMonthInput('001')).toBe(1);
+  expect(parseMonthInput('999')).toBe(999);
+  for(const bad of ['','24 meses','-1','abc','1000'])
+    expect(parseMonthInput(bad)).toBeNull();
 });
 
 test('CL-F02 editor de meses tem um único texto protegido e stepper correto',async({page},info)=>{
@@ -18,18 +20,18 @@ test('CL-F02 editor de meses tem um único texto protegido e stepper correto',as
   const field=page.locator('.n3-tenure-field');
   const minus=page.getByRole('button',{name:'Diminuir um mês'});
   const plus=page.getByRole('button',{name:'Aumentar um mês'});
-  await expect(months).toHaveValue('3 meses');
+  await expectMonths(page,3);
   await plus.click();
-  await expect(months).toHaveValue('4 meses');
+  await expectMonths(page,4);
   await minus.click();
-  await expect(months).toHaveValue('3 meses');
+  await expectMonths(page,3);
   await replaceMonths(page,1);
-  await expect(months).toHaveValue('1 mês');
+  await expectMonths(page,1);
   await months.click();
   await months.press('End');
   await expect.poll(async()=>months.evaluate(el=>el.selectionStart)).toBe(1);
   await months.press('Delete');
-  await expect(months).toHaveValue('1 mês');
+  await expectMonths(page,1);
   await months.press('ArrowRight');
   await expect.poll(async()=>months.evaluate(el=>el.selectionStart)).toBe(1);
   await replaceMonths(page,0);
@@ -204,84 +206,131 @@ test('CL-F08 edição imediata após stepper não perde seleção por reposicion
     await value.press('ControlOrMeta+A');
     await value.press('1');
     await expect(value,
-      'O caret voltou ao fim dos dígitos antes da substituição, produzindo 31 meses')
-      .toHaveValue('1 mês',{timeout:1500});
+      'Ctrl+A seguido de 1 deve substituir o número, sem concatenar dígitos')
+      .toHaveValue('1',{timeout:1500});
+    await expect(page.locator('.n3-tenure-unit')).toHaveText('mês');
 });
 
 
-test('CL-F09 componente v2 mantém seleção quando chega um rerun antigo',async({page})=>{
-  // O componente recebe código REAL importado do módulo, com callbacks v2
-  // simulados apenas para reproduzir a ordem de eventos sem treinar modelos.
-  const source = {
+test('CL-F09 componente v2 preserva edição nativa durante reruns e revisões',async({page})=>{
+  // Integra a implementação real com um host v2 mínimo, sem algoritmo genético.
+  const source={
     clamp:clampMonths.toString(),display:displayMonths.toString(),
-    replace:replaceMonthDigits.toString(),renderer:tenureRenderer.toString(),
+    parse:parseMonthInput.toString(),renderer:tenureRenderer.toString(),
   };
   await page.setContent(
-    '<div class="n3-tenure"><input type="text" aria-label="Tempo como cliente" />'+
+    '<div class="n3-tenure"><label for="n3-tenure-value">Tempo como cliente</label>'+
+    '<div class="n3-tenure-field">'+
+    '<input id="n3-tenure-value" type="text" inputmode="numeric" maxlength="3" '+
+    'aria-label="Tempo como cliente" aria-describedby="n3-tenure-unit"/>'+
+    '<span id="n3-tenure-unit" class="n3-tenure-unit"> meses</span>'+
+    '<span class="n3-tenure-spacer"></span>'+
     '<button data-step="-1" aria-label="Diminuir um mês">−</button>'+
-    '<button data-step="1" aria-label="Aumentar um mês">+</button></div>');
+    '<button data-step="1" aria-label="Aumentar um mês">+</button></div></div>');
   await page.evaluate(src=>{
     const js=[
       'const clampMonths = ('+src.clamp+');',
       'const displayMonths = ('+src.display+');',
-      'const replaceMonthDigits = ('+src.replace+');',
+      'const parseMonthInput = ('+src.parse+');',
       'return ('+src.renderer+');',
     ].join('\n');
     const mount = new Function(js)();
-    window.n3Mount = value => {
+    window.received=[];
+    window.n3Mount=value=>{
       window.n3Cleanup?.();
       window.n3Cleanup=mount({
-        parentElement:document.querySelector('.n3-tenure').parentElement,
-        data:{value},setStateValue:()=>{},
+        parentElement:document.body,data:{value},
+        setStateValue:(name,val)=>window.received.push([name,val]),
       });
     };
     window.n3Mount(3);
   },source);
   const input=page.getByRole('textbox',{name:'Tempo como cliente'});
+  await expectMonths(page,3);
   await page.getByRole('button',{name:'Aumentar um mês'}).click();
   await page.getByRole('button',{name:'Diminuir um mês'}).click();
+  await expectMonths(page,3);
   await input.click();
   await input.press('ControlOrMeta+A');
   await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
     .toEqual([0,1]);
-
-  // Resposta atrasada do Streamlit sobre o mesmo elemento montado com key:
-  // o Python ainda contém 4 meses, mas o editor já está em 3 selecionado.
+  // O backend ainda devolve 4 meses, enquanto o usuário edita 3.
   await page.evaluate(()=>window.n3Mount(4));
-  await expect(input).toHaveValue('3 meses');
+  await expectMonths(page,3);
   await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
     .toEqual([0,1]);
-  await expect(input).toHaveAttribute('data-select-all-digits','true');
-  // Reproduz a falha observada no Streamlit real: a seleção pode colapsar
-  // entre Ctrl+A e beforeinput embora a intenção do usuário permaneça.
-  await input.evaluate(el=>el.setSelectionRange(1,1));
-  await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
-    .toEqual([1,1]);
   await input.press('1');
-  await expect(input).toHaveValue('1 mês');
-  await expect(input).not.toHaveAttribute('data-select-all-digits','true');
+  await expectMonths(page,1);
   await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
     .toEqual([1,1]);
-  // Fora da edição, uma atualização externa legítima deve voltar a prevalecer.
+  await expect.poll(()=>page.evaluate(()=>window.received.at(-1)))
+    .toEqual(['value',1]);
+
+  // Fora do foco, uma atualização externa legítima deve prevalecer.
   await page.getByRole('button',{name:'Aumentar um mês'}).click();
   await page.evaluate(()=>window.n3Mount(7));
-  await expect(input).toHaveValue('7 meses');
-
-  // O Streamlit também pode trocar o nó DOM inteiro enquanto o usuário
-  // mantém Ctrl+A ativo. O host deve preservar a intenção entre montagens.
-  await input.click();
-  await input.press('ControlOrMeta+A');
-  await expect(input).toHaveAttribute('data-select-all-digits','true');
+  await expectMonths(page,7);
+  // Nova revisão pode trocar o nó: edição posterior continua nativa.
   await page.evaluate(()=>{
-    const old=document.querySelector('.n3-tenure');
-    const replacement=old.cloneNode(true);
-    // O novo input perde seu estado local, como numa remontagem real.
-    replacement.querySelector('input').removeAttribute('data-select-all-digits');
-    old.replaceWith(replacement);
+    const previous=document.querySelector('.n3-tenure');
+    previous.replaceWith(previous.cloneNode(true));
     window.n3Mount(7);
   });
-  await expect(input).toHaveValue('7 meses');
+  await expectMonths(page,7);
+  await input.click();
+  await input.press('ControlOrMeta+A');
   await input.press('1');
-  await expect(input).toHaveValue('1 mês');
-  await expect(input).not.toHaveAttribute('data-select-all-digits','true');
+  await expectMonths(page,1);
 });
+
+for(const width of [1440,390]){
+  test('CL-F10 número e unidade compartilham caixa sem compartilhar seleção '+width,
+    async({page})=>{
+      await openClient(page,{width,height:900});
+      const input=page.getByRole('textbox',{name:'Tempo como cliente'});
+      const unit=page.locator('.n3-tenure-unit');
+      const field=page.locator('.n3-tenure-field');
+      await expectMonths(page,3);
+      await expect(input).toHaveAttribute('maxlength','3');
+      await expect(input).toHaveAttribute('inputmode','numeric');
+      await expect(field.locator('input')).toHaveCount(1);
+      const numberBox=await measure(input),unitBox=await measure(unit),
+        fieldBox=await measure(field);
+      near(numberBox.right,unitBox.left,'sufixo junto ao número',2);
+      expect(numberBox.left).toBeGreaterThan(fieldBox.left);
+      expect(unitBox.right).toBeLessThan(fieldBox.right-60);
+      await input.click();
+      await input.press('ControlOrMeta+A');
+      await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
+        .toEqual([0,1]);
+      await input.press('1');
+      await expectMonths(page,1);
+      const suffixAfter=await measure(unit);
+      near(suffixAfter.left,unitBox.left,'unidade não desloca o campo',2);
+    });
+}
+
+
+test('CL-F11 colagem, caracteres inválidos e rascunho vazio usam edição nativa',
+  async({page})=>{
+    await openClient(page,{width:1024,height:768});
+    const input=page.getByRole('textbox',{name:'Tempo como cliente'});
+    await replaceMonths(page,8);
+    await input.press('a');
+    await expectMonths(page,8); // caractere não numérico bloqueado
+    await input.press('ControlOrMeta+A');
+    await input.evaluate(el=>{
+      const clipboard=new DataTransfer();
+      clipboard.setData('text/plain','24 meses');
+      el.dispatchEvent(new ClipboardEvent('paste',{
+        bubbles:true,cancelable:true,clipboardData:clipboard,
+      }));
+    });
+    await expectMonths(page,24);
+    await input.press('ControlOrMeta+A');
+    await input.press('Backspace');
+    await expect(input).toHaveValue('');
+    await page.getByRole('button',{name:'Aumentar um mês'}).focus();
+    await expectMonths(page,0);
+    await expect(page.getByRole('button',{name:'Diminuir um mês'})).toBeDisabled();
+  });

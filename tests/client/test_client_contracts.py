@@ -102,7 +102,7 @@ def test_missing_total_and_invalid_data_use_the_same_model_validator(client_app)
         model_input(form)
 
 
-def test_tenure_component_contract_has_one_input_and_protected_suffix(client_app):
+def test_tenure_component_contract_separates_numeric_value_and_visual_unit(client_app):
     app, ui = client_app
     app.main()
     html = next(spec["html"] for name, spec in ui.component_defs if name == "n3_tenure_control")
@@ -110,27 +110,28 @@ def test_tenure_component_contract_has_one_input_and_protected_suffix(client_app
     assert html == _COMPONENT_HTML
     assert html.count('<input ') == 1
     assert 'aria-label="Tempo como cliente"' in html
+    assert 'aria-describedby="n3-tenure-unit"' in html
+    assert 'maxlength="3"' in html and 'inputmode="numeric"' in html
+    assert '<span id="n3-tenure-unit" class="n3-tenure-unit">' in html
     assert 'data-step="-1"' in html and 'data-step="1"' in html
-    assert "beforeinput" in js and "paste" in js and "placeCaret" in js
-    assert "setStateValue" in js
-    assert "requestAnimationFrame(placeCaret)" not in js
-    assert "editing && currentText" in js
-    assert "if (input.value !== text) input.value = text" in js
-    assert 'selectionStore.n3SelectAllDigits = "true"' in js
-    assert 'input.dataset.selectAllDigits = "true"' in js
-    assert "const numericSelection = () =>" in js
-    assert "input.addEventListener(\"blur\"" in js
-    assert "queueMicrotask(" in js
-    # Atualizações de state v2 não podem desfazer uma seleção (Ctrl+A)
-    # entre duas teclas. O caret só se move durante edição/foco.
-    render_code = js.split("const render = () => {", 1)[1].split("const commit = next =>", 1)[0]
-    commit_code = js.split("const commit = next => {", 1)[1].split("const bounds = () =>", 1)[0]
-    assert "placeCaret()" not in render_code
-    assert "placeCaret()" in commit_code
+    assert ".n3-tenure-unit {" in _COMPONENT_CSS
+    assert ".n3-tenure-spacer {" in _COMPONENT_CSS
+    assert "--n3-tenure-digit-count" in _COMPONENT_CSS
+    assert 'unit.textContent = value === 1 ? " mês" : " meses"' in js
+    assert 'input.addEventListener("input"' in js
+    assert 'input.addEventListener("beforeinput"' in js
+    assert 'input.addEventListener("paste"' in js
+    assert 'setStateValue("value", value)' in js
+    # Ctrl+A e o caret pertencem ao browser. Não recriar a complexidade
+    # que causava 31 meses durante a substituição da seleção.
+    assert "selectAllPending" not in js
+    assert "selectAllDigits" not in js
+    assert "placeCaret" not in js
+    assert 'event.preventDefault();\n      commit(value +' in js
+    assert "isFocused()" in js
     for token in ("--n3-field-height", "--n3-field-fill", "--n3-field-radius",
                   "--n3-field-text-size", "--n3-field-text-shift"):
         assert token in _COMPONENT_CSS
-
 
 def test_shared_css_tokens_and_scroll_contract(client_app):
     _, ui = client_app
