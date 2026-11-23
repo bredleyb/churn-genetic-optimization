@@ -46,6 +46,15 @@ test('CL-P01 seleção, cópia, edições isoladas, restauração e exclusão se
   const first=await measure(buttons.first()),last=await measure(buttons.last());
   expect(first.left,'Primeiro perfil recortado à esquerda').toBeGreaterThanOrEqual(strip.left-1);
   expect(last.right,'Último perfil recortado à direita').toBeLessThanOrEqual(strip.right+1);
+  const actions=profileActions(page);
+  await expect(actions).toHaveCount(2);
+  const restoreBounds=await measure(actions.first());
+  const deleteBounds=await measure(actions.last());
+  const picker=await measure(page.locator('.st-key-dashboard-profile-picker'));
+  expect(restoreBounds.left,'Perfis encostam nas ações')
+    .toBeGreaterThanOrEqual(last.right+1);
+  expect(deleteBounds.right,'Botão Excluir recortado à direita')
+    .toBeLessThanOrEqual(picker.right+1);
   await screenshot(page,info,'CL-P01-limite-cinco');
 
   await button('4').click();

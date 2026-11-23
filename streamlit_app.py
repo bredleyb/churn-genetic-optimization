@@ -361,8 +361,17 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .st-key-dashboard-profile-picker [data-testid="stMarkdownContainer"]:has(.churn-profile-label) {
   margin:0!important;padding:0!important;
 }
+/* Ações ocupam duas células fixas; os cinco perfis usam o espaço restante.
+   As proporções padrão de st.columns deixam o quinto perfil fora da coluna
+   e recortam o botão Excluir em painéis de 300px. */
 .st-key-dashboard-profile-picker [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-profile-choices):has(.st-key-dashboard-profile-actions) {
-  display:flex!important;align-items:center!important;gap:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) calc(2 * var(--n3-profile-button-size) + var(--n3-profile-button-gap))!important;
+  align-items:center!important;column-gap:var(--n3-profile-button-gap)!important;
+}
+.st-key-dashboard-profile-picker [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-profile-choices):has(.st-key-dashboard-profile-actions) > [data-testid="stColumn"] {
+  box-sizing:border-box!important;min-width:0!important;width:100%!important;
+  max-width:none!important;flex:none!important;
 }
 .st-key-dashboard-profile-choices,
 .st-key-dashboard-profile-actions {
