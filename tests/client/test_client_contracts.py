@@ -141,3 +141,17 @@ def test_shared_css_tokens_and_scroll_contract(client_app):
     assert "border-radius:var(--n3-field-radius)!important" in css
     assert "@keyframes n3-calculating-ellipsis" in css
     assert "prefers-reduced-motion:reduce" in css
+
+
+def test_profile_actions_have_expected_icons_and_are_not_confusable(client_app):
+    app, ui = client_app
+    app.main()
+    restore = ui.button_options("Restaurar perfil")
+    delete = ui.button_options("Excluir perfil")
+    assert restore["icon"] == ":material/history:"
+    assert delete["icon"] == ":material/delete_outline:"
+    assert restore["type"] == delete["type"] == "tertiary"
+    assert restore["disabled"] is True
+    assert delete["disabled"] is True
+    assert restore["on_click"] == app._reset_profile
+    assert delete["on_click"] == app._delete_active_example

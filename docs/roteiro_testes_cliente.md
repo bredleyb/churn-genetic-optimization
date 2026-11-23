@@ -39,6 +39,7 @@ responsividade, rolagem, sombras e cálculo. Os resultados científicos
 | CL-U14 | Botão | Calcular, Calculando, Recalcular, um processamento por clique |
 | CL-U15 | Exceções | Erro de entrada, liberação do botão e previsão obsoleta após edição |
 | CL-U16 | Observador | Sombras e hover atualizados somente no navegador |
+| CL-U17 | Ícones de perfil | Restaurar com seta de retorno e Excluir com lixeira, estados inativos e callbacks corretos |
 
 Arquivos: tests/client/test_client_contracts.py, test_client_profiles.py e
 test_client_prediction.py; fixture isolada em tests/client/conftest.py.
@@ -60,6 +61,7 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F03 | Categorias | Gênero limitado aos dados originais, campos Perfil e Extras persistentes |
 | CL-F04 | Dependências | Telefone e Internet desabilitam e restauram dependentes |
 | CL-F05 | Cobrança | Número decimal e Total cobrado indisponível |
+| CL-F06 | Consistência visual | Fundo, raios, fontes, cor e hover de −, +, Cobrança e setas dos seletores |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |

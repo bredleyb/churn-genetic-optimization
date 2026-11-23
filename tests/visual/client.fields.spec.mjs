@@ -116,3 +116,45 @@ test('CL-F05 campos de cobrança e total indisponível conservam tipos',async({p
   await tabs(page).getByRole('tab',{name:'Perfil'}).click();
   await expect(charge).toHaveValue('101,50');
 });
+
+
+test('CL-F06 cores, raios, tipografia e hover dos steppers são compartilhados',
+  async({page})=>{
+    await openClient(page,{width:1024,height:768});
+    const tenure=page.locator('.n3-tenure-field');
+    const internet=fieldGroup(page,'Serviço de internet');
+    const charges=page.locator(
+      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-baseweb="input"]');
+    for(const [label,element] of [['Tempo',tenure],['Internet',internet],['Cobrança',charges]]){
+      const v=await element.evaluate(el=>{
+        const style=getComputedStyle(el);
+        return {background:style.backgroundColor,radius:style.borderTopLeftRadius,
+          height:el.getBoundingClientRect().height};
+      });
+      expect(v.background,label+' tem fundo divergente').toBe('rgb(14, 16, 19)');
+      expect(v.radius,label+' tem arredondamento divergente').toBe('4px');
+      near(v.height,42,label+' altura',2);
+    }
+    const timeInput=page.getByRole('textbox',{name:'Tempo como cliente'});
+    const monthlyInput=page.getByRole('spinbutton',{name:'Cobrança mensal'});
+    const values=await Promise.all([timeInput,monthlyInput].map(el=>el.evaluate(node=>({
+      font:getComputedStyle(node).fontSize,color:getComputedStyle(node).color,
+    }))));
+    for(const v of values){
+      expect(v.font).toBe('14px');
+      expect(v.color).toBe('rgb(245, 245, 245)');
+    }
+    const plus=page.locator('.n3-tenure-field button[data-step="1"]');
+    const minus=page.locator('.n3-tenure-field button[data-step="-1"]');
+    const chargePlus=page.locator(
+      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) button').last();
+    const arrow=page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"]')
+      .first().getByRole('button',{name:'Open'});
+    for(const [name,control] of [['mais',plus],['menos',minus],['cobrança',chargePlus],['seletor',arrow]]){
+      await expect(control,name+' cor do ícone').toHaveCSS('color','rgb(216, 216, 216)');
+      await control.hover();
+      await expect(control,name+' hover').toHaveCSS('background-color','rgb(32, 33, 36)');
+      await page.mouse.move(0,0);
+      await expect(control,name+' retorno').toHaveCSS('background-color','rgb(14, 16, 19)');
+    }
+  });
