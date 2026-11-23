@@ -150,7 +150,7 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
 }
 
 
-test('exclusão pede confirmação e preserva os exemplos protegidos', async ({page}) => {
+test('exclusão direta preserva os exemplos protegidos', async ({page}) => {
   await page.setViewportSize({width:1024,height:768});
   await page.goto('/', {waitUntil:'domcontentloaded'});
   const first = page.getByRole('button',{name:'1',exact:true});
@@ -164,17 +164,7 @@ test('exclusão pede confirmação e preserva os exemplos protegidos', async ({p
   await add.click();
   await expect(remove).toBeEnabled();
   await remove.click();
-
-  const modal = page.getByRole('dialog',{name:'Excluir exemplo'});
-  await expect(modal).toBeVisible();
-  await expect(modal).toContainText('Excluir Exemplo 3?');
-  await modal.getByRole('button',{name:'Cancelar'}).click();
-  await expect(modal).toHaveCount(0);
-  await expect(page.getByRole('button',{name:'3',exact:true})).toBeVisible();
-
-  await remove.click();
-  await modal.getByRole('button',{name:'Excluir Exemplo 3'}).click();
-  await expect(modal).toHaveCount(0);
+  await expect(page.getByRole('dialog',{name:'Excluir exemplo'})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'3',exact:true})).toHaveCount(0);
   await expect(second).toHaveAttribute('kind','primary');
   await expect(remove).toBeDisabled();
@@ -205,10 +195,7 @@ test('exclusão intermediária renumera sem perder dados e reabre a criação', 
   await page.getByRole('button',{name:'4',exact:true}).click();
   await expect(tenure).toHaveValue('40 meses');
   await remove.click();
-  const modal=page.getByRole('dialog',{name:'Excluir exemplo'});
-  await expect(modal).toContainText('Excluir Exemplo 4?');
-  await modal.getByRole('button',{name:'Excluir Exemplo 4'}).click();
-  await expect(modal).toHaveCount(0);
+  await expect(page.getByRole('dialog',{name:'Excluir exemplo'})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'3',exact:true})).toHaveAttribute('kind','primary');
   await expect(tenure).toHaveValue('30 meses');
   await expect(page.getByRole('button',{name:'5',exact:true})).toHaveCount(0);

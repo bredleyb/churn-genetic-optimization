@@ -557,6 +557,9 @@ for (const { width, height } of viewports) {
         await expect(page.getByRole('heading', { name: 'Previsão', exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Previsão do cliente' })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Calcular previsão' })).toBeEnabled();
+        const footerDivider = await page.locator('.st-key-dashboard-client-footer')
+          .evaluate(el => getComputedStyle(el).borderTopWidth);
+        expect(footerDivider, 'O rodapé não deve ter linha divisória').toBe('0px');
         await expect(page.locator('.churn-comparison .churn-model')).toHaveCount(2);
         await expect(page.locator('.churn-prediction-value').first()).toHaveText('—');
         await expect(page.locator('.churn-bit')).toHaveCount(38); // desktop + abas móveis
@@ -565,6 +568,12 @@ for (const { width, height } of viewports) {
         const whiteButton = await page.getByRole('button', { name: 'Calcular previsão' })
           .evaluate(el => getComputedStyle(el).backgroundColor);
         expect(whiteButton, 'O botão de cálculo deve ser branco').toBe('rgb(245, 245, 245)');
+        const initialTypography = await page.getByRole('button', { name: 'Calcular previsão' })
+          .evaluate(el => ({
+            font:getComputedStyle(el).fontSize,
+            inner:getComputedStyle(el.querySelector('p')).fontSize,
+          }));
+        expect(initialTypography).toEqual({font:'14px',inner:'14px'});
         if (mobile) {
           await expect(page.getByRole('tab', { name: 'Análise' })).toBeVisible();
           await expect(page.getByRole('tab', { name: 'Execução' })).toBeVisible();
@@ -579,6 +588,18 @@ for (const { width, height } of viewports) {
         await page.getByRole('button', { name: 'Calcular previsão' }).click();
         await expect(page.locator('.churn-workspace-heading[data-run-state="running"]')).toBeVisible();
         await expect(page.getByRole('status', { name: 'Executando previsão' })).toBeVisible();
+        const calculating = page.getByRole('button', { name: 'Calculando...', exact: true });
+        await expect(calculating).toBeVisible();
+        await expect(calculating).toBeDisabled();
+        await expect(calculating).toHaveCSS('font-size','14px');
+        const processingAppearance = await calculating.evaluate(el => ({
+          background:getComputedStyle(el).backgroundColor,
+          text:getComputedStyle(el).color,
+        }));
+        expect(processingAppearance).toEqual({
+          background:'rgb(216, 216, 216)',
+          text:'rgb(14, 16, 19)',
+        });
         runningIconX = await page.locator('.churn-run-spinner').evaluate(el => {
           const box = el.getBoundingClientRect();
           return box.x + box.width / 2;
@@ -595,6 +616,9 @@ for (const { width, height } of viewports) {
 
       await test.step('Comparação, gráfico e métricas da execução completa', async () => {
         await expect(page.locator('.churn-workspace-heading[data-run-state="complete"]')).toBeVisible({ timeout: 180_000 });
+        const recalculate = page.getByRole('button', { name: 'Recalcular previsão', exact: true });
+        await expect(recalculate).toBeEnabled();
+        await expect(recalculate).toHaveCSS('font-size','14px');
         const runMarkAlignment = await page.locator('.churn-workspace-heading').evaluate(header => {
           const icon = header.querySelector('.churn-run-icon');
           const a = header.getBoundingClientRect();
@@ -643,6 +667,9 @@ for (const { width, height } of viewports) {
         await expect(months).toHaveValue('4 meses');
         await expect(page.locator('.churn-comparison .churn-state')).toHaveText('Dados alterados');
         await expect(page.locator('.churn-workspace-heading[data-run-state="stale"]')).toBeVisible();
+        const recalculate = page.getByRole('button', { name: 'Recalcular previsão', exact: true });
+        await expect(recalculate).toBeEnabled();
+        await expect(recalculate).toHaveCSS('font-size','14px');
         await expect(page.locator('.churn-run-check')).toHaveCount(0);
         await expect(page.locator('.churn-prediction-value').first()).toHaveText('—');
         await expect(page.locator('.churn-technical').first()).toContainText('ΔF1');

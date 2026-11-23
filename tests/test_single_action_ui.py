@@ -21,6 +21,8 @@ class DummySlot:
     def progress(self, *_args, **_kwargs):
         pass
 
+    def error(self, *_args, **_kwargs):
+        pass
 
     def download_button(self, *_args, **_kwargs):
         pass
@@ -33,7 +35,6 @@ class DummyUI(ModuleType):
         self.clicked = clicked
         self.clicked_label = None
         self.rerun_count = 0
-        self.dialog_specs = []
         self.buttons = []
         self.button_options = []
         self.panel_keys = []
@@ -48,10 +49,6 @@ class DummyUI(ModuleType):
 
     def set_page_config(self, **kwargs):
         pass
-
-    def dialog(self, title, **kwargs):
-        self.dialog_specs.append({"title": title, **kwargs})
-        return lambda function: function
 
     def rerun(self):
         self.rerun_count += 1
@@ -108,7 +105,13 @@ class DummyUI(ModuleType):
     def button(self, label, **kwargs):
         self.buttons.append(label)
         self.button_options.append((label, kwargs))
-        return (self.clicked and label == "Calcular previsão") or label == self.clicked_label
+        clicked = not kwargs.get("disabled", False) and (
+            (self.clicked and label in ("Calcular previsão", "Recalcular previsão"))
+            or label == self.clicked_label
+        )
+        if clicked and kwargs.get("on_click"):
+            kwargs["on_click"](*kwargs.get("args", ()), **kwargs.get("kwargs", {}))
+        return clicked
 
     def caption(self, *args, **kwargs):
         pass
@@ -152,7 +155,11 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     assert options["Excluir perfil"]["icon"] == ":material/delete_outline:"
     assert options["Excluir perfil"]["disabled"] is True
     assert options["Excluir perfil"]["type"] == "tertiary"
-    assert any(spec["title"] == "Excluir exemplo" for spec in ui.dialog_specs)
+    assert options["Excluir perfil"]["on_click"] == app._delete_active_example
+    assert options["Calcular previsão"]["on_click"] == app._request_prediction
+    assert options["Calcular previsão"]["key"] == "run_prediction"
+    assert options["Calcular previsão"]["disabled"] is False
+    assert ui.rerun_count == int(clicked)
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
     assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups
@@ -207,6 +214,12 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "position:absolute;right:0;top:0" in style
     assert ".churn-run-check {\n  border:2px" in style
     assert "st-key-dashboard-restore-action" in style
+    assert "border-top:0!important" in style
+    assert ".st-key-dashboard-client-footer button:disabled" in style
+    assert 'button[kind="primary"]:disabled' in style
+    assert "font-size:var(--n3-field-text-size)!important" in style
+    assert "font-size:inherit!important" in style
+    assert 'font-size:16px!important;font-weight:600!important;' not in style
     assert "st-key-dashboard-profile-choices" in style
     assert "st-key-dashboard-profile-actions" in style
     assert "st-key-dashboard-delete-action" not in style
@@ -813,20 +826,94 @@ def test_delete_active_example_preserves_snapshots_and_invalidates_run(monkeypat
     assert ui.session_state["profile_choice"] == "Exemplo 5"
 
 
-def test_delete_dialog_requires_confirmation_and_allows_cancellation(monkeypatch):
+def test_delete_click_is_immediate_without_confirmation(monkeypatch):
     ui = DummyUI(False)
     monkeypatch.setitem(sys.modules, "streamlit", ui)
-    spec = importlib.util.spec_from_file_location("n3_delete_dialog_test", ROOT / "streamlit_app.py")
+    spec = importlib.util.spec_from_file_location("n3_delete_immediate_test", ROOT / "streamlit_app.py")
     app = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(app)
     app._apply_profile("Exemplo 1")
     app._create_example()
-    ui.clicked_label = "Cancelar"
-    app._confirm_delete_example()
-    assert "Exemplo 3" in ui.session_state["example_profiles"]
-    assert ui.session_state["profile_choice"] == "Exemplo 3"
-    ui.clicked_label = "Excluir Exemplo 3"
-    app._confirm_delete_example()
+    ui.clicked_label = "Excluir perfil"
+    app.main()
     assert "Exemplo 3" not in ui.session_state["example_profiles"]
     assert ui.session_state["profile_choice"] == "Exemplo 2"
-    assert ui.rerun_count == 2
+    assert ui.rerun_count == 0
+    assert "Excluir exemplo" not in "\n".join(ui.styled_markup)
+    assert not hasattr(app, "_confirm_delete_example")
+
+
+def test_prediction_button_has_three_states_and_stable_key(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_prediction_button_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    monkeypatch.setattr(app, "DATASET", Path(__file__))
+    app._apply_profile("Exemplo 1")
+    assert app._prediction_button_label() == "Calcular previsão"
+    app._request_prediction()
+    assert app._prediction_button_label() == "Calculando..."
+    assert ui.session_state["prediction_requested"]
+    ui.button_options.clear()
+    ui.buttons.clear()
+    calls = []
+    monkeypatch.setattr(app, "_execute_full_workflow",
+                        lambda customer, slots: calls.append(customer))
+    app.main()
+    assert len(calls) == 1
+    assert "Calculando..." in ui.buttons
+    assert dict(ui.button_options)["Calculando..."]["disabled"] is True
+    assert ui.session_state["prediction_running"] is False
+    assert ui.rerun_count == 1
+    assert ui.session_state.get("prediction_requested") is None
+
+    ui.session_state["workflow_run"] = {"customer": calls[0]}
+    assert app._prediction_button_label() == "Recalcular previsão"
+    # Um novo clique registra outra execução sem reutilizar o clique anterior.
+    app._request_prediction()
+    assert app._prediction_button_label() == "Calculando..."
+    assert ui.session_state["prediction_requested"] is True
+
+
+def test_recalculate_does_not_reexecute_without_new_click(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_recalculate_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    monkeypatch.setattr(app, "DATASET", Path(__file__))
+    app._apply_profile("Exemplo 1")
+    ui.session_state["form_initialized"] = True
+    original = app._current_customer()
+    run = {"customer": original, "predictions": {}, "events": []}
+    ui.session_state["workflow_run"] = run
+    calls = []
+    monkeypatch.setattr(app, "_execute_full_workflow", lambda customer, slots: calls.append(customer))
+    monkeypatch.setattr(app, "_render_finished_run", lambda run, slots: None)
+    app.main()
+    assert "Recalcular previsão" in ui.buttons
+    assert calls == []
+    ui.buttons.clear()
+    ui.button_options.clear()
+    ui.clicked_label = "Recalcular previsão"
+    app.main()
+    assert len(calls) == 1
+    assert ui.rerun_count == 1
+
+
+def test_prediction_failure_resets_state_and_renders_error(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_prediction_failure_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    monkeypatch.setattr(app, "DATASET", Path(__file__))
+    app._request_prediction()
+    monkeypatch.setattr(app, "_current_customer", lambda: None)
+    app.main()
+    assert ui.session_state["prediction_running"] is False
+    assert ui.rerun_count == 1
+    assert ui.session_state["workflow_run"] is None
+    assert "Dados do cliente inválidos" in ui.session_state["prediction_error"]
+    assert app._prediction_button_label() == "Calcular previsão"
