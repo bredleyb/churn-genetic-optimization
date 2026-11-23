@@ -76,6 +76,7 @@ def test_category_translation_and_service_dependencies(client_app):
     changed["PhoneService"] = "Yes"
     assert align_services(changed, changed="PhoneService")["MultipleLines"] == "No"
 
+    source = load_profile(app.ROOT, "Exemplo 1")
     source["InternetService"] = "No"
     changed = align_services(source, changed="InternetService")
     assert all(changed[name] == "No internet service" for name in INTERNET_FEATURES)
