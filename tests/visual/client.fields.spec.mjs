@@ -102,8 +102,9 @@ test('CL-F04 telefonia e internet sincronizam campos dependentes',async({page})=
 test('CL-F05 campos de cobrança e total indisponível conservam tipos',async({page})=>{
   await openClient(page,{width:1024,height:768});
   const charge=page.getByRole('spinbutton',{name:'Cobrança mensal'});
-  await expect(charge).toHaveValue('95,50');
-  await charge.fill('101,50');
+  // type=number guarda o ponto no DOM; a apresentação visual pode usar vírgula.
+  await expect(charge).toHaveValue('95.50');
+  await charge.fill('101.50');
   await charge.press('Tab');
   await tabs(page).getByRole('tab',{name:'Conta'}).click();
   const missing=page.getByRole('checkbox',{name:'Total cobrado indisponível'});
@@ -114,7 +115,7 @@ test('CL-F05 campos de cobrança e total indisponível conservam tipos',async({p
   await missing.uncheck();
   await expect(total).toBeEnabled();
   await tabs(page).getByRole('tab',{name:'Perfil'}).click();
-  await expect(charge).toHaveValue('101,50');
+  await expect(charge).toHaveValue('101.50');
 });
 
 
@@ -123,8 +124,10 @@ test('CL-F06 cores, raios, tipografia e hover dos steppers são compartilhados',
     await openClient(page,{width:1024,height:768});
     const tenure=page.locator('.n3-tenure-field');
     const internet=fieldGroup(page,'Serviço de internet');
+    // No Streamlit instalado, o wrapper real é stNumberInputContainer
+    // (React Aria). O seletor antigo data-baseweb=input inexiste.
     const charges=page.locator(
-      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-baseweb="input"]');
+      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-testid="stNumberInputContainer"]');
     for(const [label,element] of [['Tempo',tenure],['Internet',internet],['Cobrança',charges]]){
       const v=await element.evaluate(el=>{
         const style=getComputedStyle(el);
@@ -146,11 +149,9 @@ test('CL-F06 cores, raios, tipografia e hover dos steppers são compartilhados',
     }
     const plus=page.locator('.n3-tenure-field button[data-step="1"]');
     const minus=page.locator('.n3-tenure-field button[data-step="-1"]');
-    const chargePlus=page.locator(
-      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) button').last();
     const arrow=page.locator('.st-key-dashboard-quick-fields [data-testid="stSelectbox"]')
       .first().getByRole('button',{name:'Open'});
-    for(const [name,control] of [['mais',plus],['menos',minus],['cobrança',chargePlus],['seletor',arrow]]){
+    for(const [name,control] of [['mais',plus],['menos',minus],['seletor',arrow]]){
       await expect(control,name+' cor do ícone').toHaveCSS('color','rgb(216, 216, 216)');
       await control.hover();
       await expect(control,name+' hover').toHaveCSS('background-color','rgb(32, 33, 36)');
@@ -158,3 +159,34 @@ test('CL-F06 cores, raios, tipografia e hover dos steppers são compartilhados',
       await expect(control,name+' retorno').toHaveCSS('background-color','rgb(14, 16, 19)');
     }
   });
+
+test('CL-F07 Cobrança mensal mantém ações visíveis − e + com hover',async({page})=>{
+  await openClient(page,{width:1024,height:768});
+  const numberWidget=page.locator(
+    '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"])');
+  const stepButtons=numberWidget.locator('button:visible');
+  await expect(stepButtons,
+    'O widget numérico atual não exibe os botões − e + previstos no Cliente')
+    .toHaveCount(2,{timeout:5000});
+  for(const control of await stepButtons.all()){
+    await expect(control).toHaveCSS('color','rgb(216, 216, 216)');
+    await control.hover();
+    await expect(control).toHaveCSS('background-color','rgb(32, 33, 36)');
+    await page.mouse.move(0,0);
+    await expect(control).toHaveCSS('background-color','rgb(14, 16, 19)');
+  }
+});
+
+test('CL-F08 edição imediata após stepper não perde seleção por reposicionamento do caret',
+  async({page})=>{
+    await openClient(page,{width:1024,height:768});
+    const value=page.getByRole('textbox',{name:'Tempo como cliente'});
+    await page.getByRole('button',{name:'Aumentar um mês'}).click();
+    await page.getByRole('button',{name:'Diminuir um mês'}).click();
+    await value.click();
+    await value.press('ControlOrMeta+A');
+    await value.press('1');
+    await expect(value,
+      'O caret voltou ao fim dos dígitos antes da substituição, produzindo 31 meses')
+      .toHaveValue('1 mês',{timeout:1500});
+});

@@ -13,9 +13,9 @@ export const footer = page => page.locator('.st-key-dashboard-client-footer');
 export const action = page => footer(page).locator('[data-testid="stButton"] button');
 export const tabs = page => page.locator('.st-key-dashboard-detail-tabs');
 export const profileCircles = page =>
-  page.locator('.st-key-dashboard-profile-choices [data-testid="stButton"] button');
+  page.locator('.st-key-dashboard-profile-choices [data-testid="stButton"] button:visible');
 export const profileActions = page =>
-  page.locator('.st-key-dashboard-profile-actions [data-testid="stButton"] button');
+  page.locator('.st-key-dashboard-profile-actions [data-testid="stButton"] button:visible');
 
 export const fieldGroup = (page,name) =>
   page.locator('[data-testid="stSelectbox"]')
@@ -57,8 +57,18 @@ export async function clickOption(page,label,name) {
 export async function replaceMonths(page,digits) {
   const input=page.getByRole('textbox',{name:'Tempo como cliente'});
   await input.click();
+  // O componente v2 remete o caret ao limite dos dígitos no próximo frame
+  // após o clique. Selecionar antes desse frame causa inserção no final (31).
+  await input.evaluate(() => new Promise(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const previous = (await input.inputValue()).match(/^\d+/)?.[0];
+  expect(previous,'O controle perdeu a parte numérica').toBeTruthy();
   await input.press('ControlOrMeta+A');
-  for(const digit of String(digits)) await input.press(digit);
+  await expect.poll(() => input.evaluate(el => [
+    el.selectionStart,el.selectionEnd,
+  ])).toEqual([0,previous.length]);
+  // beforeinput único para todos os dígitos: preserva a unidade no mesmo input.
+  await page.keyboard.insertText(String(digits));
   const suffix=Number(digits)===1?' mês':' meses';
   await expect(input).toHaveValue(String(Number(digits))+suffix);
 }

@@ -7,8 +7,19 @@ for(const size of VIEWPORTS){
     const panel=await measure(client(page)),scroll=await measure(fields(page));
     const foot=await measure(footer(page)),btn=await measure(action(page));
     const edge = size.width<=620?8:(size.width<=900?10:12);
+    const workspace = await measure(page.locator('.st-key-dashboard-workspace'));
     near(panel.left,edge,'padding externo esquerdo',2);
-    near(size.width-panel.right,edge,'padding externo direito',2);
+    near(size.width-workspace.right,edge,'padding externo direito do dashboard',2);
+    near(panel.top,edge,'padding superior do dashboard',2);
+    near(size.height-workspace.bottom,edge,'padding inferior do dashboard',2);
+    if(size.width<=620){
+      near(size.width-panel.right,edge,'largura do Cliente móvel',2);
+      expect(workspace.top).toBeGreaterThan(panel.bottom+2);
+    }else{
+      near(panel.top,workspace.top,'painéis compartilham o topo',2);
+      near(panel.bottom,workspace.bottom,'painéis compartilham a base',2);
+      expect(workspace.left-panel.right).toBeGreaterThanOrEqual(7);
+    }
     expect(panel.bottom).toBeLessThanOrEqual(size.height+1);
     const pageOverflow=await page.evaluate(()=>({
       x:document.documentElement.scrollWidth-window.innerWidth,
@@ -42,7 +53,7 @@ for(const size of VIEWPORTS){
     const contract=await measure(fieldGroup(page,'Tipo de contrato'));
     const internet=await measure(fieldGroup(page,'Serviço de internet'));
     const charge=await measure(page.locator(
-      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-baseweb="input"]'));
+      '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"]) [data-testid="stNumberInputContainer"]'));
     near(tenure.left,internet.left,'Tempo/Serviço posição',2);
     near(tenure.width,internet.width,'Tempo/Serviço largura',2);
     near(contract.left,charge.left,'Contrato/Cobrança posição',2);
@@ -59,6 +70,15 @@ for(const size of VIEWPORTS){
     }
     const heading=await measure(page.getByRole('heading',{name:'Cliente',exact:true}));
     near(heading.cx,panel.cx,'título centralizado',2);
+    // Rótulos devem manter uma linha: se quebrarem, os campos rápidos
+    // deixam de formar duas linhas horizontalmente alinhadas.
+    for(const label of ['Tipo de contrato','Cobrança mensal']){
+      const node=page.locator('.st-key-dashboard-quick-fields [data-testid="stWidgetLabel"] p')
+        .filter({hasText:label}).first();
+      const rectangle=await measure(node);
+      expect(rectangle.height,label+' quebrou em múltiplas linhas')
+        .toBeLessThanOrEqual(21);
+    }
     const colors=await client(page).evaluate(el=>({
       surface:getComputedStyle(el).backgroundColor,
       border:getComputedStyle(el).borderColor,
@@ -136,7 +156,11 @@ test('CL-L04 abas mantém navegação por teclado e foco visível',async({page})
   const style=await tab.evaluate(el=>({
     outline:getComputedStyle(el).outlineStyle,shadow:getComputedStyle(el).boxShadow}));
   expect(style.outline).toBe('none');
-  expect(style.shadow).not.toMatch(/2px 0px 0px/);
+  // A marca de aba selecionada é um sublinhado interno (0px -2px).
+  // Procurar "2px 0px 0px" também acusa esse sublinhado legítimo.
+  expect(style.shadow).toContain('0px -2px 0px 0px inset');
+  expect(style.shadow).not.toContain(' 2px 0px 0px 0px inset');
+  expect(style.shadow).not.toContain(' -2px 0px 0px 0px inset');
   await tab.press('Enter');
   await expect(tab).toHaveAttribute('aria-selected','true');
 });
