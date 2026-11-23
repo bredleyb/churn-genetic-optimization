@@ -9,7 +9,7 @@ const results = join(root, 'results');
 const logPath = join(results, 'playwright-console.log');
 const playwrightCli = join(root, 'node_modules', 'playwright', 'cli.js');
 const argumentsFromNpm = process.argv.slice(2);
-const mode = argumentsFromNpm.includes('--update-snapshots') ? 'atualizacao-referencias' : 'comparacao';
+const mode = 'auditoria-requisitos';
 
 mkdirSync(results, { recursive: true });
 for (const artifact of ['playwright-report', 'playwright-artifacts', 'playwright-results.json']) {

@@ -20,8 +20,14 @@ SOURCES = (
     ("results/playwright-console.log", "execucao.log"),
     ("tests/visual", "referencias-visuais"),
     ("playwright.config.mjs", "configuracao/playwright.config.mjs"),
-    ("tests/visual/interface.spec.mjs", "configuracao/interface.spec.mjs"),
     ("package.json", "configuracao/package.json"),
+    ("docs/roteiro_testes_cliente.md", "configuracao/roteiro_testes_cliente.md"),
+    ("tests/visual/client.helpers.mjs", "configuracao/client.helpers.mjs"),
+    ("tests/visual/client.layout.spec.mjs", "configuracao/client.layout.spec.mjs"),
+    ("tests/visual/client.profiles.spec.mjs", "configuracao/client.profiles.spec.mjs"),
+    ("tests/visual/client.fields.spec.mjs", "configuracao/client.fields.spec.mjs"),
+    ("tests/visual/client.scroll.spec.mjs", "configuracao/client.scroll.spec.mjs"),
+    ("tests/visual/client.prediction.spec.mjs", "configuracao/client.prediction.spec.mjs"),
 )
 
 
@@ -70,10 +76,11 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
             if relative is not None:
                 # A pasta tests/visual contém specs, mas aqui só interessam baselines.
                 if source == "tests/visual":
-                    # Apenas referências da interface atual; bases antigas permanecem
-                    # no computador, mas não poluem o ZIP de revisão monocromático.
+                    # Não distribuir snapshots herdados da suíte antiga.
+                    # Capturas desta auditoria são anexadas ao relatório Playwright;
+                    # baselines opcionais devem começar com client-.
                     if (not any(part.endswith("-snapshots") for part in relative.parts)
-                            or not relative.name.startswith("mono-")
+                            or not relative.name.startswith("client-")
                             or relative.suffix.lower() != ".png"):
                         continue
                 name = f"{destination}/{relative.as_posix()}"
@@ -90,7 +97,10 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
         "codigo_saida_testes": exit_code,
         "larguras_previstas_px": [1440, 1366, 1280, 1024, 768, 390],
         "resolucoes_previstas": ["1440x900", "1366x768", "1280x720", "1024x768", "768x900", "390x900"],
-        "estados_previstos": ["inicial", "processamento", "concluido", "editado"],
+        "estados_previstos": ["inicial", "processamento", "concluido", "alterado",
+                              "perfil_editado", "rolagem_inicio", "rolagem_meio", "rolagem_fim"],
+        "roteiro": "configuracao/roteiro_testes_cliente.md",
+        "escopo": "auditoria do painel Cliente; resultados de ML têm suíte Python separada",
         "resumo_playwright": _summary(root / "results" / "playwright-results.json"),
         "arquivos": [name for _, name in candidates],
     }
@@ -102,8 +112,9 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
         "resultados.json: resultados estruturados de cada teste.\n"
         "relatorio-html/: relatório navegável, screenshots e anexos.\n"
         "artefatos/: traces, vídeos e imagens de diferença, quando gerados.\n"
-        "referencias-visuais/: imagens de referência, quando disponíveis.\n"
-        "configuracao/: scripts e parâmetros para diagnosticar divergências.\n\n"
+        "referencias-visuais/: baselines opcionais da suíte Client.\n"
+        "configuracao/: roteiro, specs e parâmetros para reproduzir cada desvio.\n"
+        "As capturas CL-* são anexadas aos testes, consultáveis no relatório HTML.\n\n"
         "Se houver falhas, o ZIP continua sendo produzido para diagnóstico.\n"
         "Dados CSV, modelos .joblib e arquivos pessoais não são incluídos.\n"
     )

@@ -240,48 +240,43 @@ Para executar (com o CSV original em `data/raw/`):
 python -m streamlit run streamlit_app.py
 ```
 
-## Testes visuais automatizados
+## Auditoria automatizada do painel Cliente
 
-O Playwright Test abre o Streamlit em uma porta isolada (`8517`) e percorre
-o fluxo completo em **1440×900, 1366×768, 1280×720, 1024×768,
-768×900 e 390×900**, além da navegação pelas quatro abas do formulário. Cada resolução é verificada nos estados inicial,
-processamento, concluído e cliente editado. A auditoria inclui a geometria
-dos painéis, ausência de rolagem da página, botão principal acessível,
-a comparação individual, o gráfico, seleção de 19 bits e execução real.
-No celular, verifica as abas **Análise** e **Execução**.
+Os testes do painel Cliente foram reorganizados em uma suíte nova e rastreável.
+A matriz de requisitos, os critérios mensuráveis e o roteiro de aceite estão
+em [docs/roteiro_testes_cliente.md](docs/roteiro_testes_cliente.md).
 
-Para instalar o navegador e executar:
+- **pytest:** testes de contratos dos 19 campos, dependências, perfis
+  independentes (1–5), restauração, exclusão, componente de meses e ciclo da
+  previsão. Os testes científicos do restante do projeto continuam preservados.
+- **Playwright:** testes de geometria e tipografia, foco, paleta, rolagem,
+  responsividade em seis resoluções, interação real e execução E2E do algoritmo
+  quando o CSV original estiver disponível.
 
-```powershell
+Para executar:
+
+~~~powershell
+python -m pytest -q
+python -m pytest -q tests/client
 npm install
 npx playwright install chromium
-npm run test:visual:update
 npm run test:visual
-```
+~~~
 
-O primeiro comando `test:visual:update` recria as referências do layout
-monocromático com prefixo `mono-`. **Revise essas imagens antes de utilizá-las
-como referência permanente**, pois a atualização também aceita mudanças
-visuais indesejadas.
+O runner inicia o Streamlit em porta independente (8517) e salva imagens
+CL-* como anexos ao relatório HTML. **Não utiliza os snapshots monocromáticos
+anteriores.** O teste de execução integral CL-B03 depende do CSV original;
+caso o arquivo esteja ausente, ele será marcado como skipped e a validação
+end-to-end ficará pendente.
 
-Cada rodada — inclusive com falhas — produz automaticamente:
+Cada rodada gera o ZIP de evidências em
+results/testes-visuais-para-revisao.zip, inclusive em caso de falha.
+Para regenerar o pacote sem executar os testes ou abrir o relatório:
 
-```text
-results/testes-visuais-para-revisao.zip
-```
-
-Envie esse ZIP para auditoria. Ele reúne capturas, referências monocromáticas,
-diferenças, relatório HTML, eventos, geometria e traces em caso de erro.
-Referências antigas com prefixos de layouts anteriores ficam fora do pacote;
-CSV bruto e modelos `.joblib` também são excluídos. Para reempacotar resultados
-sem executar novamente o algoritmo:
-
-```powershell
+~~~powershell
 npm run test:visual:package
-```
-
-Relatório no navegador: `npm run test:visual:report`.
-Testes Python: `python -m pytest -q`.
+npm run test:visual:report
+~~~
 
 ## Artigo
 

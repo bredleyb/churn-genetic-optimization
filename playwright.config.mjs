@@ -10,14 +10,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1, // Cada previsão executa o experimento inteiro; evitar buscas concorrentes.
   timeout: 240_000,
-  expect: {
-    timeout: 30_000,
-    toHaveScreenshot: {
-      animations: 'disabled',
-      threshold: 0.15,
-      maxDiffPixelRatio: 0.01,
-    },
-  },
+  // Capturas CL-* são anexadas aos testes; a aprovação usa medidas e estados
+  // do DOM. A suíte antiga de screenshots comparativos foi substituída.
+  expect: { timeout: 30_000 },
   reporter: [
     ['list'],
     ['html', { outputFolder: 'results/playwright-report', open: 'never' }],
