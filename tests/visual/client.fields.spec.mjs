@@ -318,15 +318,19 @@ test('CL-F11 colagem, caracteres inválidos e rascunho vazio usam edição nativ
     await replaceMonths(page,8);
     await input.press('a');
     await expectMonths(page,8); // caractere não numérico bloqueado
-    await input.press('ControlOrMeta+A');
-    await input.evaluate(el=>{
+    const paste=text=>input.evaluate((el,source)=>{
       const clipboard=new DataTransfer();
-      clipboard.setData('text/plain','24 meses');
+      clipboard.setData('text/plain',source);
       el.dispatchEvent(new ClipboardEvent('paste',{
         bubbles:true,cancelable:true,clipboardData:clipboard,
       }));
-    });
+    },text);
+    await input.press('ControlOrMeta+A');
+    await paste('24 meses');
     await expectMonths(page,24);
+    await input.press('ControlOrMeta+A');
+    await paste('1 mês');
+    await expectMonths(page,1);
     await input.press('ControlOrMeta+A');
     await input.press('Backspace');
     await expect(input).toHaveValue('');

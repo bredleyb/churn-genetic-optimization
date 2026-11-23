@@ -80,7 +80,7 @@ export default function({ parentElement, data, setStateValue }) {
   }, { signal });
   input.addEventListener("paste", event => {
     const text = (event.clipboardData?.getData("text") ?? "").trim();
-    const match = /^(\d+)(?:\s+meses?)?$/i.exec(text);
+    const match = /^(\d+)(?:\s+(?:mês|meses))?$/i.exec(text);
     event.preventDefault();
     if (!match) return;
     const start = input.selectionStart ?? input.value.length;
