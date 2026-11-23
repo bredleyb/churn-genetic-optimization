@@ -1069,7 +1069,10 @@ DETAIL_TABS = {
 
 def _render_client_details() -> None:
     with st.container(key="dashboard-detail-tabs", border=False):
-        tabs = st.tabs(list(DETAIL_TABS))
+        # A seleção da aba pertence ao estado do widget: reruns provocados
+        # pelos campos não podem devolver o usuário automaticamente a Perfil.
+        tabs = st.tabs(list(DETAIL_TABS), key="dashboard_client_active_tab",
+                       on_change="rerun")
         for name, tab in zip(DETAIL_TABS, tabs):
             with tab:
                 for feature in DETAIL_TABS[name]:

@@ -26,7 +26,14 @@ export default function({ parentElement, data, setStateValue }) {
   const plus = root.querySelector('[data-step="1"]');
   const controller = new AbortController();
   const signal = controller.signal;
-  let value = clampMonths(data?.value ?? 0);
+  // Componentes v2 com key fixo atualizam o mesmo elemento durante reruns.
+  // A entrada em foco prevalece sobre props antigas que chegam da execução
+  // anterior; isso preserva Ctrl+A entre a seleção e a próxima digitação.
+  const currentText = /^(\d{1,3}) (?:mês|meses)$/.exec(input.value);
+  const editing = input.getRootNode().activeElement === input ||
+    document.activeElement === input;
+  let value = editing && currentText
+    ? clampMonths(currentText[1]) : clampMonths(data?.value ?? 0);
   const digitsLength = () => String(value).length;
   // Em componentes v2, o foco real está no ShadowRoot, e document.activeElement
   // aponta para o host. Usar a raiz correta antes de reposicionar o cursor.
@@ -39,7 +46,9 @@ export default function({ parentElement, data, setStateValue }) {
   // desfazia seleções legítimas feitas imediatamente com Ctrl+A.
   const settleCaret = () => placeCaret();
   const render = () => {
-    input.value = displayMonths(value);
+    const text = displayMonths(value);
+    // Reatribuir value, sobretudo com props antigas, pode cancelar a seleção.
+    if (input.value !== text) input.value = text;
     minus.disabled = value <= 0;
     plus.disabled = value >= 999;
   };
