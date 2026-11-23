@@ -216,6 +216,12 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "st-key-dashboard-restore-action" in style
     assert "border-top:0!important" in style
     assert ".st-key-dashboard-client-footer button:disabled" in style
+    assert 'button:hover:not(:disabled):not([data-n3-hover-ready="false"])' in style
+    assert 'background:var(--n3-outline)!important' in style
+    assert '@keyframes n3-calculating-ellipsis' in style
+    assert 'data-n3-prediction-state="running"' in style
+    assert 'animation:n3-calculating-ellipsis 1.35s' in style
+    assert 'prefers-reduced-motion:reduce' in style
     assert 'button[kind="primary"]:disabled' in style
     assert "font-size:var(--n3-field-text-size)!important" in style
     assert "font-size:inherit!important" in style
@@ -853,7 +859,7 @@ def test_prediction_button_has_three_states_and_stable_key(monkeypatch):
     app._apply_profile("Exemplo 1")
     assert app._prediction_button_label() == "Calcular previsão"
     app._request_prediction()
-    assert app._prediction_button_label() == "Calculando..."
+    assert app._prediction_button_label() == "Calculando"
     assert ui.session_state["prediction_requested"]
     ui.button_options.clear()
     ui.buttons.clear()
@@ -862,8 +868,8 @@ def test_prediction_button_has_three_states_and_stable_key(monkeypatch):
                         lambda customer, slots: calls.append(customer))
     app.main()
     assert len(calls) == 1
-    assert "Calculando..." in ui.buttons
-    assert dict(ui.button_options)["Calculando..."]["disabled"] is True
+    assert "Calculando" in ui.buttons
+    assert dict(ui.button_options)["Calculando"]["disabled"] is True
     assert ui.session_state["prediction_running"] is False
     assert ui.rerun_count == 1
     assert ui.session_state.get("prediction_requested") is None
@@ -872,7 +878,7 @@ def test_prediction_button_has_three_states_and_stable_key(monkeypatch):
     assert app._prediction_button_label() == "Recalcular previsão"
     # Um novo clique registra outra execução sem reutilizar o clique anterior.
     app._request_prediction()
-    assert app._prediction_button_label() == "Calculando..."
+    assert app._prediction_button_label() == "Calculando"
     assert ui.session_state["prediction_requested"] is True
 
 

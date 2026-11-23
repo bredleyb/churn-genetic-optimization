@@ -588,7 +588,8 @@ for (const { width, height } of viewports) {
         await page.getByRole('button', { name: 'Calcular previsão' }).click();
         await expect(page.locator('.churn-workspace-heading[data-run-state="running"]')).toBeVisible();
         await expect(page.getByRole('status', { name: 'Executando previsão' })).toBeVisible();
-        const calculating = page.getByRole('button', { name: 'Calculando...', exact: true });
+        const calculating = page.locator('.st-key-dashboard-client-footer button')
+          .filter({hasText:/^Calculando/});
         await expect(calculating).toBeVisible();
         await expect(calculating).toBeDisabled();
         await expect(calculating).toHaveCSS('font-size','14px');
@@ -597,9 +598,13 @@ for (const { width, height } of viewports) {
           text:getComputedStyle(el).color,
         }));
         expect(processingAppearance).toEqual({
-          background:'rgb(216, 216, 216)',
-          text:'rgb(14, 16, 19)',
+          background:'rgb(85, 88, 93)',
+          text:'rgb(245, 245, 245)',
         });
+        await expect(calculating).toHaveAttribute('data-n3-prediction-state','running');
+        const dots = calculating.locator('p');
+        await expect.poll(() => dots.evaluate(el =>
+          getComputedStyle(el, '::after').animationName)).toBe('n3-calculating-ellipsis');
         runningIconX = await page.locator('.churn-run-spinner').evaluate(el => {
           const box = el.getBoundingClientRect();
           return box.x + box.width / 2;
@@ -619,6 +624,8 @@ for (const { width, height } of viewports) {
         const recalculate = page.getByRole('button', { name: 'Recalcular previsão', exact: true });
         await expect(recalculate).toBeEnabled();
         await expect(recalculate).toHaveCSS('font-size','14px');
+        await expect(recalculate).toHaveAttribute('data-n3-prediction-state','complete');
+        await expect(recalculate).toHaveCSS('background-color','rgb(245, 245, 245)');
         const runMarkAlignment = await page.locator('.churn-workspace-heading').evaluate(header => {
           const icon = header.querySelector('.churn-run-icon');
           const a = header.getBoundingClientRect();
