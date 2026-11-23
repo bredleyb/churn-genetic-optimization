@@ -68,6 +68,8 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F10 | Geometria da unidade | Dígitos e sufixo contíguos na mesma caixa, seleção restrita ao número, em 1440 e 390 px |
 | CL-F11 | Entrada inválida e colagem | Rejeita letras, aceita colagem numérica com unidade e normaliza campo vazio no blur |
 | CL-F12 | Montagem única | Montagens sem cleanup anterior não acumulam listeners; colagem dispara uma única alteração e cleanup atrasado preserva a instância atual |
+| CL-F13 | Foco e hover de Tempo | Ring branco em camada superior com raio de 4 px; clique limpa o destaque de ambos steppers; movimento real ativa somente o botão apontado, em 1440 e 390 px |
+| CL-F14 | Foco e hover de Cobrança | Mesmo recorte e ring superior do Tempo no componente nativo, sem hover residual no botão vizinho após clicar, em 1440 e 390 px |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
@@ -78,6 +80,10 @@ Esta camada não substitui verificações reais de renderização.
 As screenshots anexadas no relatório são CL-L01, CL-L02, CL-P01, CL-P02,
 CL-F02, CL-S02, CL-B02 e CL-B03. Os valores cromáticos e as posições são
 medidos no DOM, e as capturas complementam a revisão humana.
+
+A oitava auditoria está documentada em
+[auditoria_cliente_2026-11-23_rodada8.md](auditoria_cliente_2026-11-23_rodada8.md),
+com a regressão visual descoberta após a execução 45/45.
 
 ## Procedimento
 
