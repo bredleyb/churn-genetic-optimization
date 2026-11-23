@@ -207,9 +207,11 @@ e fonte monoespaçada no registro de execução.
   O tempo de permanência utiliza um componente Streamlit v2 local: o próprio
   campo mostra `X mês`/`X meses`, protege a unidade durante a edição e envia
   somente o número inteiro ao modelo (0 a 999 meses). A rolagem do formulário
-  reserva espaço para a barra e apresenta duas sombras progressivas, no topo
-  e acima do botão, que desaparecem nas respectivas extremidades. Um componente
-  v2 sem interface mede o scroll no navegador sem rerodar o Python;
+  reserva calhas simétricas para a scrollbar e compartilha o mesmo recuo
+  horizontal com o rodapé, mantendo o botão de cálculo alinhado às bordas
+  dos campos, mesmo quando a barra está oculta. Duas sombras progressivas,
+  no topo e acima do botão, desaparecem nas respectivas extremidades.
+  Um componente v2 sem interface mede o scroll no navegador sem rerodar o Python;
 - **Comparação:** probabilidades individuais da regressão logística de
   referência (19 características) e da versão com seleção genética;
 - **Gráfico:** evolução do melhor F1-score em validação cruzada, linha branca,
