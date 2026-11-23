@@ -230,3 +230,21 @@ def test_native_numeric_steppers_use_same_hover_and_focus_model(client_app):
     assert "setNumberStepperHover(null)" in cues
     assert 'data-n3-pointer-hover' in cues
     assert "setStateValue(" not in cues
+
+
+
+def test_selectbox_border_and_arrow_follow_expanded_state_only(client_app):
+    app, ui = client_app
+    app.main()
+    css = ui.markup[0]
+    # Não reutilizar :focus-within: o combobox permanece focado quando fecha.
+    assert '[role="group"]:has([aria-expanded="true"]),' in css
+    assert ':focus-within,:has([aria-expanded="true"])' not in css
+    assert '[data-focus-within="true"]' not in css
+    assert '[role="group"]:has([aria-expanded="true"]) button[aria-label="Open"] svg' in css
+    assert "transform:rotate(0deg)!important" in css
+    assert "transform:rotate(180deg)!important" in css
+    assert "transition:transform .16s ease-in-out!important" in css
+    assert "@media(prefers-reduced-motion:reduce)" in css
+    assert "transition:none!important" in css
+    assert '[data-testid="stNumberInputContainer"],[data-baseweb="input"]):focus-within' in css

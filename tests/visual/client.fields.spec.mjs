@@ -521,7 +521,7 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
 
 
 for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
-  test('CL-F15 foco fino uniforme nos seletores e valores '+viewport.width,
+  test('CL-F15 seletor claro apenas enquanto lista aberta '+viewport.width,
     async({page},info)=>{
       await openClient(page,viewport);
       const activeColor='rgb(245, 245, 245)',
@@ -532,39 +532,52 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
         await expect(group).toHaveCSS('box-shadow','none');
         await expect(group).toHaveCSS('outline-style','none');
       };
-      const profile=page.locator(
-        '.st-key-dashboard-profile-choices [data-testid="stButton"] button:visible').first();
+      const assertClosed=async group=>{
+        await expect(group).toHaveCSS('border-color',neutralColor);
+        await expect(group).toHaveCSS('border-top-width','1px');
+      };
       const contract=fieldGroup(page,'Tipo de contrato');
       const contractInput=page.getByRole('combobox',{name:'Tipo de contrato'});
-      await expect(contract).toHaveCSS('border-color',neutralColor);
+      await assertClosed(contract);
       await contractInput.focus();
-      await assertActive(contract);
+      await assertClosed(contract); // foco DOM sozinho não mantém borda clara
       await contract.getByRole('button',{name:'Open'}).click();
       await expect(page.getByRole('option',{name:'Mensal',exact:true})).toBeVisible();
-      await assertActive(contract); // manter borda clara com menu aberto
+      await assertActive(contract);
       await screenshot(page,info,'CL-F15-seletor-aberto-'+viewport.width);
+      await page.getByRole('option',{name:'Anual',exact:true}).click();
+      await expect(contractInput).toHaveValue('Anual');
+      await assertClosed(contract); // opção escolhida fecha o menu
+      await contractInput.click();
+      await expect(page.getByRole('option',{name:'Anual',exact:true})).toBeVisible();
+      await assertActive(contract);
       await page.keyboard.press('Escape');
-      await profile.focus();
-      await expect(contract).toHaveCSS('border-color',neutralColor);
+      await assertClosed(contract); // Esc fecha o menu
 
-      // Cobertura de todos os selects acessíveis em cada uma das quatro abas.
-      let focused=0;
+      // Cobertura dos seletores nas quatro abas.
+      let examined=0;
       for(const tab of ['Perfil','Conta','Serviços','Extras']){
         await tabs(page).getByRole('tab',{name:tab,exact:true}).click();
         const groups=page.locator(
           '.st-key-dashboard-client-fields [data-testid="stSelectbox"] [role="group"]:visible');
         for(const group of await groups.all()){
-          const combobox=group.locator('input[role="combobox"]');
-          if(await combobox.isDisabled())continue;
-          await combobox.focus();
+          const input=group.locator('input[role="combobox"]');
+          if(await input.isDisabled())continue;
+          await input.focus();
+          await assertClosed(group);
+          await input.click();
+          await expect.poll(()=>group.locator('[aria-expanded="true"]').count())
+            .toBeGreaterThan(0);
           await assertActive(group);
-          focused+=1;
+          examined+=1;
+          await page.keyboard.press('Escape');
+          await assertClosed(group);
         }
       }
-      expect(focused,'Campos selecionáveis realmente examinados').toBeGreaterThanOrEqual(10);
+      expect(examined,'Seletores examinados nas quatro abas')
+        .toBeGreaterThanOrEqual(10);
 
-      // Os dois number_input (Cobrança mensal e Total cobrado) seguem
-      // o mesmo padrão visual do seletor, com borda de exatos 1 px.
+      // Number inputs permanecem ativos com foco; regra exclusiva dos selects.
       for(const label of ['Cobrança mensal','Total cobrado']){
         if(label==='Total cobrado')
           await tabs(page).getByRole('tab',{name:'Conta'}).click();
@@ -574,10 +587,52 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
         const frame=widget.locator('[data-testid="stNumberInputContainer"]');
         await number.focus();
         await assertActive(frame);
-        await profile.focus();
-        await expect(frame).toHaveCSS('border-color',neutralColor);
       }
-      await screenshot(page,info,'CL-F15-foco-campos-'+viewport.width);
+      await screenshot(page,info,'CL-F15-foco-numero-'+viewport.width);
       await ensureNoException(page);
+    });
+
+  test('CL-F16 seta anima ao abrir e volta ao fechar seletor '+viewport.width,
+    async({page},info)=>{
+      await openClient(page,viewport);
+      const field=fieldGroup(page,'Tipo de contrato');
+      const input=page.getByRole('combobox',{name:'Tipo de contrato'});
+      const trigger=field.getByRole('button',{name:'Open'});
+      const svg=trigger.locator('svg').first();
+      await expect(svg).toBeVisible();
+      const angle=()=>svg.evaluate(el=>{
+        const t=getComputedStyle(el).transform;
+        const matrix=new DOMMatrixReadOnly(t);
+        return Math.round((Math.atan2(matrix.b,matrix.a)*180/Math.PI+360)%360);
+      });
+      await expect.poll(angle).toBe(0);
+      await expect(svg).toHaveCSS('transition-duration','0.16s');
+      await expect(field).toHaveCSS('border-color','rgb(85, 88, 93)');
+
+      await trigger.click();
+      await expect(field.locator('[aria-expanded="true"]')).not.toHaveCount(0);
+      await expect(field).toHaveCSS('border-color','rgb(245, 245, 245)');
+      await expect.poll(angle).toBe(180);
+      await screenshot(page,info,'CL-F16-seta-cima-'+viewport.width);
+
+      await page.getByRole('option',{name:'Bienal',exact:true}).click();
+      await expect(input).toHaveValue('Bienal');
+      await expect(field).toHaveCSS('border-color','rgb(85, 88, 93)');
+      await expect.poll(angle).toBe(0);
+      await screenshot(page,info,'CL-F16-seta-baixo-'+viewport.width);
+
+      await input.click();
+      await expect.poll(angle).toBe(180);
+      await page.keyboard.press('Escape');
+      await expect.poll(angle).toBe(0);
+      await expect(field).toHaveCSS('border-color','rgb(85, 88, 93)');
+
+      await page.emulateMedia({reducedMotion:'reduce'});
+      await expect(svg).toHaveCSS('transition-duration','0s');
+      await input.click();
+      await expect.poll(angle).toBe(180);
+      await page.keyboard.press('Escape');
+      await expect.poll(angle).toBe(0);
+      await expect(field).toHaveCSS('border-color','rgb(85, 88, 93)');
     });
 }
