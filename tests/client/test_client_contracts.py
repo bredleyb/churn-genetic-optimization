@@ -114,6 +114,12 @@ def test_tenure_component_contract_has_one_input_and_protected_suffix(client_app
     assert "beforeinput" in js and "paste" in js and "placeCaret" in js
     assert "setStateValue" in js
     assert "requestAnimationFrame(placeCaret)" not in js
+    # Atualizações de state v2 não podem desfazer uma seleção (Ctrl+A)
+    # entre duas teclas. O caret só se move durante edição/foco.
+    render_code = js.split("const render = () => {", 1)[1].split("const commit = next =>", 1)[0]
+    commit_code = js.split("const commit = next => {", 1)[1].split("const bounds = () =>", 1)[0]
+    assert "placeCaret()" not in render_code
+    assert "placeCaret()" in commit_code
     for token in ("--n3-field-height", "--n3-field-fill", "--n3-field-radius",
                   "--n3-field-text-size", "--n3-field-text-shift"):
         assert token in _COMPONENT_CSS
@@ -142,6 +148,8 @@ def test_shared_css_tokens_and_scroll_contract(client_app):
     assert "border-radius:50%!important" in css
     assert "border-radius:var(--n3-field-radius)!important" in css
     assert "container-name:n3-client;container-type:inline-size" in css
+    assert "grid-template-columns:minmax(0,1fr)!important" in css
+    assert "width:100%!important;min-width:0!important;\n  height:20px!important" in css
     assert "@container n3-client (max-width:335px)" in css
     assert '[data-testid="stNumberInputContainer"]' in css
     assert "height:var(--n3-client-action-height)!important" in css
