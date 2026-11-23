@@ -148,7 +148,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .st-key-dashboard-client-footer {
   position:relative!important;z-index:3!important;overflow:visible!important;
-  height:auto!important;padding-top:8px;border-top:1px solid var(--n3-line);
+  height:auto!important;padding-top:8px;border-top:0!important;
 }
 .st-key-dashboard-client-footer::before {
   content:"";position:absolute;bottom:100%;left:0;right:0;
@@ -244,8 +244,26 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-elevated)!important;
 }
 .st-key-dashboard-client-footer [data-testid="stButton"] button[kind="primary"],
-.st-key-dashboard-client-footer button {height:48px!important;min-height:48px!important;background:var(--n3-text)!important;color:#000!important;border:1px solid var(--n3-text)!important;border-radius:4px!important;font-size:16px!important;font-weight:600!important;}
-.st-key-dashboard-client-footer button:hover {background:#D8D8D8!important;border-color:#D8D8D8!important;}
+.st-key-dashboard-client-footer button {
+  height:48px!important;min-height:48px!important;
+  background:var(--n3-text)!important;color:#000!important;
+  border:1px solid var(--n3-text)!important;border-radius:var(--n3-field-radius)!important;
+  font-family:var(--n3-font-ui)!important;
+  font-size:var(--n3-field-text-size)!important;
+  line-height:var(--n3-field-text-line)!important;font-weight:600!important;
+}
+.st-key-dashboard-client-footer [data-testid="stButton"] button p {
+  font-family:inherit!important;font-size:inherit!important;
+  line-height:inherit!important;font-weight:inherit!important;
+}
+.st-key-dashboard-client-footer button:hover:not(:disabled) {
+  background:var(--n3-secondary)!important;border-color:var(--n3-secondary)!important;
+}
+.st-key-dashboard-client-footer [data-testid="stButton"] button[kind="primary"]:disabled,
+.st-key-dashboard-client-footer button:disabled {
+  background:var(--n3-secondary)!important;border-color:var(--n3-secondary)!important;
+  color:var(--n3-surface)!important;opacity:1!important;cursor:default!important;
+}
 .st-key-dashboard-client-footer button:focus-visible {outline:2px solid #fff!important;outline-offset:3px!important;}
 .st-key-dashboard-client-fields button[kind="tertiary"],
 .st-key-dashboard-client-fields button {font-size:14px!important;color:var(--n3-secondary)!important;}
@@ -883,6 +901,7 @@ def _apply_profile(profile_name: str, *, preserve_previous: bool = True) -> None
     # A chave do componente textual de Tempo precisa mudar ao carregar valores.
     st.session_state["tenure_revision"] = st.session_state.get("tenure_revision", 0) + 1
     st.session_state["workflow_run"] = None
+    st.session_state["prediction_error"] = None
 
 
 def _select_example(name: str) -> None:
@@ -926,25 +945,6 @@ def _delete_active_example() -> str:
     return previous
 
 
-@st.dialog("Excluir exemplo", width="small")
-def _confirm_delete_example() -> None:
-    """Confirmação modal; o estado somente muda após a ação explícita."""
-    current = st.session_state["profile_choice"]
-    if not can_delete_example(st.session_state["example_profiles"], current):
-        return
-    st.markdown(f"**Excluir {current}?**")
-    st.markdown("Os dados deste exemplo serão descartados. Os demais serão preservados.")
-    cancel, confirm = st.columns(2, gap="small", wrap=False)
-    with cancel:
-        if st.button("Cancelar", key="cancel_delete_example", use_container_width=True):
-            st.rerun()
-    with confirm:
-        if st.button(f"Excluir {current}", key="confirm_delete_example",
-                     type="primary", use_container_width=True):
-            _delete_active_example()
-            st.rerun()
-
-
 def _ensure_widget_field(feature: str) -> None:
     """Recupera o valor salvo quando o Streamlit recria um widget de outra aba."""
     key = f"field_{feature}"
@@ -957,6 +957,7 @@ def _remember_field(feature: str) -> None:
     saved = st.session_state["customer_values"].copy()
     saved[feature] = st.session_state[f"field_{feature}"]
     st.session_state["customer_values"] = saved
+    st.session_state["prediction_error"] = None
     _save_active_example()
 
 
@@ -1324,10 +1325,11 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
             f"{genetic_result.evaluated_subsets} subconjuntos distintos")
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         st.session_state["workflow_run"] = None
+        st.session_state["prediction_error"] = f"Não foi possível concluir: {exc}"
         _render_workspace_heading("error", slot=slots["heading"])
         _render_prediction_comparison(None, "error", slot=slots["comparison"])
         slots["phase"].error("Execução interrompida")
-        slots["technical"].error(f"Não foi possível concluir: {exc}")
+        slots["technical"].error(st.session_state["prediction_error"])
         return
 
     summary = {
@@ -1350,7 +1352,26 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         "elapsed_seconds": perf_counter() - started,
     }
     st.session_state["workflow_run"] = run
+    st.session_state["prediction_error"] = None
     _render_finished_run(run, slots)
+
+
+def _request_prediction() -> None:
+    """Widget callback: executado antes do rerun, permitindo renderizar Calculando..."""
+    if st.session_state.get("prediction_running"):
+        return
+    st.session_state["prediction_requested"] = True
+    st.session_state["prediction_running"] = True
+    st.session_state["prediction_error"] = None
+
+
+def _prediction_button_label() -> str:
+    """Única origem da legenda do botão conforme o estado da execução."""
+    if st.session_state.get("prediction_running", False):
+        return "Calculando..."
+    if st.session_state.get("workflow_run") is not None:
+        return "Recalcular previsão"
+    return "Calcular previsão"
 
 
 def _render_client_panel() -> bool:
@@ -1399,7 +1420,7 @@ def _render_client_panel() -> bool:
                             )
                     with delete:
                         with st.container(key="dashboard-delete-action", border=False):
-                            if st.button(
+                            st.button(
                                 "Excluir perfil", icon=":material/delete_outline:",
                                 help="Excluir o exemplo selecionado (exemplos 1 e 2 protegidos).",
                                 key="delete_profile", type="tertiary",
@@ -1407,9 +1428,9 @@ def _render_client_panel() -> bool:
                                     st.session_state["example_profiles"],
                                     st.session_state["profile_choice"],
                                 ),
+                                on_click=_delete_active_example,
                                 use_container_width=True,
-                            ):
-                                _confirm_delete_example()
+                            )
         with st.container(key="dashboard-quick-fields", border=False):
             a, b = st.columns(QUICK_FIELD_COLUMNS, gap="small", wrap=False)
             with a:
@@ -1434,11 +1455,15 @@ def _render_client_panel() -> bool:
                                 on_change=_remember_field, args=("MonthlyCharges",))
         _render_client_details()
     with st.container(key="dashboard-client-footer", border=False):
-        clicked = st.button("Calcular previsão", type="primary", use_container_width=True,
-                            disabled=not DATASET.is_file())
+        st.button(
+            _prediction_button_label(), key="run_prediction",
+            type="primary", use_container_width=True,
+            disabled=not DATASET.is_file() or st.session_state.get("prediction_running", False),
+            on_click=_request_prediction,
+        )
         if not DATASET.is_file():
             st.caption("CSV não encontrado em data/raw/")
-    return clicked
+    return bool(st.session_state.get("prediction_requested", False))
 
 
 class _BroadcastSlot:
@@ -1518,21 +1543,35 @@ def main() -> None:
         client_col, workspace_col = st.columns([0.30, 0.70], gap="small", wrap=True)
         with client_col:
             with st.container(key="dashboard-client", border=True):
-                clicked = _render_client_panel()
+                _render_client_panel()
+        # O callback antecede o rerun e é a fonte da solicitação.
+        requested = bool(st.session_state.pop("prediction_requested", False))
         with workspace_col:
             with st.container(key="dashboard-workspace", border=True):
                 slots = _workspace_slots()
-                if clicked:
+                if requested:
                     st.session_state["workflow_run"] = None
                     customer = _current_customer()
-                    if customer is None:
-                        _render_idle(slots)
-                        _render_workspace_heading("error", slot=slots["heading"])
-                        slots["technical"].error("Dados do cliente inválidos. Revise os campos.")
-                    else:
-                        _execute_full_workflow(customer, slots)
+                    try:
+                        if customer is None:
+                            st.session_state["prediction_error"] = (
+                                "Dados do cliente inválidos. Revise os campos."
+                            )
+                            _render_idle(slots)
+                            _render_workspace_heading("error", slot=slots["heading"])
+                            slots["technical"].error(st.session_state["prediction_error"])
+                        else:
+                            _execute_full_workflow(customer, slots)
+                    finally:
+                        st.session_state["prediction_running"] = False
+                    # Atualiza a legenda depois de concluir sem executar o modelo novamente.
+                    st.rerun()
                 elif st.session_state.get("workflow_run") is not None:
                     _render_finished_run(st.session_state["workflow_run"], slots)
+                elif st.session_state.get("prediction_error"):
+                    _render_idle(slots)
+                    _render_workspace_heading("error", slot=slots["heading"])
+                    slots["technical"].error(st.session_state["prediction_error"])
                 else:
                     _render_idle(slots)
 
