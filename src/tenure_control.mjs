@@ -35,10 +35,9 @@ export default function({ parentElement, data, setStateValue }) {
   const placeCaret = () => {
     if (isFocused()) input.setSelectionRange(digitsLength(), digitsLength());
   };
-  const settleCaret = () => {
-    placeCaret();
-    requestAnimationFrame(placeCaret);
-  };
+  // Reposicionar apenas no próprio evento de foco/clique. O frame posterior
+  // desfazia seleções legítimas feitas imediatamente com Ctrl+A.
+  const settleCaret = () => placeCaret();
   const render = () => {
     input.value = displayMonths(value);
     minus.disabled = value <= 0;

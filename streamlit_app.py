@@ -65,6 +65,7 @@ st.markdown(
   --n3-text:#F5F5F5; --n3-secondary:#D8D8D8; --n3-muted:#B7B7B7;
   --n3-positive:#5FE29A; --n3-negative:#FF6464;
   --n3-field-height:42px; --n3-field-radius:4px;
+  --n3-client-action-height:48px;
   --n3-field-fill:#0E1013; --n3-field-action-fill:#0E1013;
   --n3-field-text-size:14px; --n3-field-text-line:20px;
   /* Ajuste óptico uniforme; o controle selecionável usa seu input real. */
@@ -120,7 +121,13 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-surface)!important;border:1px solid var(--n3-outline)!important;
   border-radius:6px!important;padding:var(--n3-panel-pad)!important;overflow:hidden!important;
 }
-.st-key-dashboard-client {position:relative!important;display:grid!important;grid-template-rows:20px minmax(0,1fr) auto!important;gap:var(--n3-panel-pad)!important;align-content:stretch!important;}
+.st-key-dashboard-client {
+  position:relative!important;display:grid!important;
+  grid-template-rows:20px minmax(0,1fr) auto!important;
+  gap:var(--n3-panel-pad)!important;align-content:stretch!important;
+  /* Breakpoint definido pela largura útil do Cliente, não da janela. */
+  container-name:n3-client;container-type:inline-size;
+}
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;}
 /* Camada de rolagem e máscaras: o topo acompanha a janela de conteúdo,
    enquanto o rodapé permanece fixo na grade do painel. */
@@ -201,7 +208,8 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client [data-testid="stVerticalBlock"] {gap:.65rem;}
 .st-key-dashboard-client-fields [data-testid="stVerticalBlock"] {gap:.62rem;}
 .st-key-dashboard-client [data-testid="stSelectbox"] [role="group"],
-.st-key-dashboard-client [data-testid="stNumberInput"] [data-baseweb="input"] {
+.st-key-dashboard-client [data-testid="stNumberInput"]
+  :is([data-testid="stNumberInputContainer"],[data-baseweb="input"]) {
   box-sizing:border-box!important;width:100%!important;
   height:var(--n3-field-height)!important;min-height:var(--n3-field-height)!important;
   max-height:var(--n3-field-height)!important;
@@ -258,7 +266,8 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .st-key-dashboard-client-footer [data-testid="stButton"] button[kind="primary"],
 .st-key-dashboard-client-footer button {
-  height:48px!important;min-height:48px!important;
+  height:var(--n3-client-action-height)!important;
+  min-height:var(--n3-client-action-height)!important;
   background:var(--n3-text)!important;color:#000!important;
   border:1px solid var(--n3-text)!important;border-radius:var(--n3-field-radius)!important;
   font-family:var(--n3-font-ui)!important;
@@ -486,7 +495,10 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   .churn-bit {height:23px;}
 }
 @media(max-width:620px) {
-  :root {--n3-page-pad:8px;--n3-panel-pad:8px;}
+  :root {
+    --n3-page-pad:8px;--n3-panel-pad:8px;
+    --n3-client-action-height:44px;
+  }
   /* Grade de dois painéis com margens simétricas na viewport. */
   .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
     position:fixed!important;display:grid!important;
@@ -499,7 +511,6 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   }
   .st-key-dashboard-client,.st-key-dashboard-workspace {height:100%!important;max-height:100%!important;min-height:0!important;}
   .churn-panel-heading {font-size:14px!important;}
-  .st-key-dashboard-client-footer button {height:44px!important;min-height:44px!important;}
   .churn-comparison {padding-bottom:7px;}
   .churn-section-top h3 {font-size:14px;}
   .churn-model-name {font-size:14px;}
@@ -880,8 +891,10 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
     font-size:13px!important;padding:7px 3px!important;
   }
 }
-/* A faixa dos campos rápidos passa a uma coluna no tablet estreito. */
-@media (min-width:621px) and (max-width:900px) {
+/* Quando o Cliente perde largura útil, as duas linhas rápidas passam a
+   controles empilhados. Isso preserva os rótulos e os steppers nativos.
+   A mesma regra serve a desktop estreito, tablet e janelas redimensionadas. */
+@container n3-client (max-width:335px) {
   .st-key-dashboard-quick-fields [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-tenure-control),
   .st-key-dashboard-quick-fields [data-testid="stHorizontalBlock"]:has(input[aria-label="Cobrança mensal"]) {
     display:flex!important;flex-direction:column!important;gap:7px!important;
