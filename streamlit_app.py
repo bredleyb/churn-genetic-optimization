@@ -121,6 +121,15 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-surface)!important;border:1px solid var(--n3-outline)!important;
   border-radius:6px!important;padding:var(--n3-panel-pad)!important;overflow:hidden!important;
 }
+/* Durante o treino, uma cobertura escura ocupa todo o Cliente e
+   impede interação com campos, abas, perfis e botão. Usa a mesma opacidade
+   da sombra de rolagem; inert é aplicado pelo observador JS para bloquear
+   também teclado, foco e tecnologias de entrada alternativas. */
+.st-key-dashboard-client[data-n3-interaction-locked="true"]::after {
+  content:"";position:absolute;inset:1px;z-index:20;
+  border-radius:5px;background:var(--n3-client-shadow-strong);
+  pointer-events:auto;touch-action:none;
+}
 .st-key-dashboard-client {
   position:relative!important;display:grid!important;
   grid-template-columns:minmax(0,1fr)!important;

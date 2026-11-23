@@ -37,6 +37,68 @@ export default function () {
   let actionState = null;
   let suppressHover = false;
   let activeNumberStepper = null;
+  // A solicitação persiste entre remontagens do componente durante reruns.
+  const busyKey = Symbol.for("n3.client.interactionLock");
+  const busy = window[busyKey] ??= {
+    pending: false, observedRunning: false, startHeading: null, panel: null,
+  };
+  const heading = () => document.querySelector(".churn-workspace-heading");
+  const lockPanel = locked => {
+    const next = document.querySelector(".st-key-dashboard-client");
+    if (busy.panel && busy.panel !== next) {
+      busy.panel.inert = false;
+      busy.panel.removeAttribute("data-n3-interaction-locked");
+      busy.panel.removeAttribute("aria-busy");
+    }
+    busy.panel = next;
+    if (!next) return;
+    if (locked) {
+      next.dataset.n3InteractionLocked = "true";
+      next.setAttribute("aria-busy", "true");
+      next.inert = true;
+    } else if (next.inert || next.hasAttribute("data-n3-interaction-locked")) {
+      next.inert = false;
+      next.removeAttribute("data-n3-interaction-locked");
+      next.removeAttribute("aria-busy");
+    }
+  };
+  const syncInteractionLock = state => {
+    const currentHeading = heading();
+    const phase = currentHeading?.dataset.runState;
+    if (state === "running" || phase === "running") {
+      busy.pending = true;
+      busy.observedRunning = true;
+    } else if (busy.pending) {
+      // Antes da primeira resposta do servidor, o botão anterior continua
+      // presente: não liberar o overlay ao observar esse estado transitório.
+      const completed = busy.observedRunning && (
+        state === "complete" || phase === "complete" ||
+        phase === "stale" || phase === "error"
+      );
+      const earlyError = !busy.observedRunning &&
+        currentHeading !== busy.startHeading && phase === "error";
+      if (completed || earlyError) {
+        busy.pending = false;
+        busy.observedRunning = false;
+        busy.startHeading = null;
+      }
+    }
+    lockPanel(busy.pending);
+  };
+  // O listener em document recebe o click DEPOIS do React, evitando que
+  // inert suprima o próprio clique que solicita a execução ao Streamlit.
+  const onPredictionClick = event => {
+    const button = event.target instanceof Element ? event.target.closest(
+      '.st-key-dashboard-client-footer [data-testid="stButton"] button'
+    ) : null;
+    if (!button || button.disabled) return;
+    const state = predictionButtonState(button.textContent, false);
+    if (state !== "idle" && state !== "complete") return;
+    busy.pending = true;
+    busy.observedRunning = false;
+    busy.startHeading = heading();
+    lockPanel(true);
+  };
 
   // Hover dos steppers nativos: usar movimento real do ponteiro elimina
   // :hover que o React pode reatribuir ao irmão depois de uma atualização.
@@ -74,8 +136,12 @@ export default function () {
       actionButton = next;
       next?.addEventListener("pointerleave", onActionLeave, { signal: abort.signal });
     }
-    if (!next) return;
+    if (!next) {
+      syncInteractionLock(null);
+      return;
+    }
     const state = predictionButtonState(next.textContent, next.disabled);
+    syncInteractionLock(state);
     if (state !== actionState) {
       if (state === "running") {
         suppressHover = false;
@@ -147,7 +213,9 @@ export default function () {
   const structure = new MutationObserver(queueBind);
   structure.observe(document.body, {
     childList: true, characterData: true, subtree: true,
+    attributes: true, attributeFilter: ["disabled", "data-run-state"],
   });
+  document.addEventListener("click", onPredictionClick, { signal: abort.signal });
   window.addEventListener("resize", schedule, { signal: abort.signal });
   document.addEventListener("pointermove", onNumberPointerMove,
     { capture:true, signal:abort.signal });

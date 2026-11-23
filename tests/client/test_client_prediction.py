@@ -127,3 +127,22 @@ def test_client_scroll_observer_is_visual_only(client_app):
     mount = next(row for row in ui.component_mounts if row[0] == "n3-client-scroll-cues")
     assert mount[1] is None
     assert mount[3] is None
+
+
+def test_client_execution_lock_is_visual_and_prevents_keyboard_input(client_app):
+    app, ui = client_app
+    app.main()
+    css = ui.markup[0]
+    observer = next(opts["js"] for name, opts in ui.component_defs
+                    if name == "n3_client_scroll_cues")
+    assert '.st-key-dashboard-client[data-n3-interaction-locked="true"]::after' in css
+    assert "background:var(--n3-client-shadow-strong)" in css
+    assert "z-index:20" in css and "pointer-events:auto" in css
+    assert 'next.dataset.n3InteractionLocked = "true"' in observer
+    assert "next.inert = true" in observer
+    assert "next.inert = false" in observer
+    assert 'next.setAttribute("aria-busy", "true")' in observer
+    assert 'document.addEventListener("click", onPredictionClick' in observer
+    assert 'state === "running" || phase === "running"' in observer
+    assert "busy.observedRunning" in observer
+    assert "setStateValue(" not in observer

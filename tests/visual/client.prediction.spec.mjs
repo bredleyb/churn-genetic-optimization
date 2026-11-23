@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {predictionButtonState} from '../../src/client_scroll_cues.mjs';
-import {openClient,action,replaceMonths,screenshot,ensureNoException} from './client.helpers.mjs';
+import {openClient,client,action,replaceMonths,screenshot,ensureNoException} from './client.helpers.mjs';
 
 test('CL-B01 função de estado do botão preserva as três legendas',()=>{
   expect(predictionButtonState('Calcular previsão',false)).toBe('idle');
@@ -27,6 +27,11 @@ test('CL-B02 estados cromáticos, reticências, retorno ao branco e movimento re
     await expect(button).toHaveCSS('background-color','rgb(85, 88, 93)');
     await expect(button).toHaveCSS('color','rgb(245, 245, 245)');
     await expect(button).toBeDisabled();
+    await expect(client(page)).toHaveAttribute('data-n3-interaction-locked','true');
+    await expect(client(page)).toHaveJSProperty('inert',true);
+    await expect(client(page)).toHaveAttribute('aria-busy','true');
+    await expect.poll(()=>client(page).evaluate(el=>
+      getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(0, 0, 0, 0.48)');
     await expect.poll(async()=>text.evaluate(el=>
       getComputedStyle(el,'::after').animationName)).toBe('n3-calculating-ellipsis');
     const original=await text.evaluate(el=>getComputedStyle(el,'::after').content);
@@ -48,6 +53,8 @@ test('CL-B02 estados cromáticos, reticências, retorno ao branco e movimento re
     await expect(button).toHaveAttribute('data-n3-hover-ready','false');
     await expect(button).toHaveCSS('background-color','rgb(245, 245, 245)');
     await expect(button).toBeEnabled();
+    await expect(client(page)).not.toHaveAttribute('data-n3-interaction-locked','true');
+    await expect(client(page)).toHaveJSProperty('inert',false);
     await screenshot(page,info,'CL-B02-recalcular');
     await page.mouse.move(0,0);
     await button.hover();
@@ -70,11 +77,26 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
     await expect(page.locator('.churn-workspace-heading[data-run-state="running"]'))
       .toBeVisible({timeout:30000});
     await expect(button).toContainText('Calculando');
+    await expect(client(page)).toHaveAttribute('data-n3-interaction-locked','true');
+    await expect(client(page)).toHaveJSProperty('inert',true);
+    // Mesmo com clique e digitação durante o treino, o formulário não muda
+    // e nenhuma atualização interrompe a execução genética em andamento.
+    const charge = page.locator('input[aria-label="Cobrança mensal"]');
+    const originalCharge = await charge.inputValue();
+    const bounds = await charge.boundingBox();
+    expect(bounds).toBeTruthy();
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type('175');
+    await expect(charge).toHaveValue(originalCharge);
+    await expect(charge).not.toBeFocused();
     await screenshot(page,info,'CL-B03-processando');
     await expect(page.locator('.churn-workspace-heading[data-run-state="complete"]'))
       .toBeVisible({timeout:600000});
     await expect(button).toBeEnabled();
     await expect(button).toContainText('Recalcular previsão');
+    await expect(client(page)).toHaveJSProperty('inert',false);
+    await expect(client(page)).not.toHaveAttribute('data-n3-interaction-locked','true');
     await expect(button).toHaveCSS('background-color','rgb(245, 245, 245)');
     await expect(page.locator('.churn-comparison .churn-model')).toHaveCount(2);
     await expect(page.locator('.churn-run-check')).toBeVisible();
