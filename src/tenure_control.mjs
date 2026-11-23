@@ -35,6 +35,18 @@ export default function({ parentElement, data, setStateValue }) {
   let value = editing && currentText
     ? clampMonths(currentText[1]) : clampMonths(data?.value ?? 0);
   const digitsLength = () => String(value).length;
+  // Um rerun do Streamlit pode recolher a seleção entre Ctrl+A e beforeinput.
+  // O input expõe a intenção à interação; o host persiste entre montagens.
+  const selectionStore =
+    parentElement.dataset ?? parentElement.host?.dataset ?? root.dataset;
+  const selectAllPending = () =>
+    input.dataset.selectAllDigits === "true" ||
+    selectionStore.n3SelectAllDigits === "true";
+  const clearSelectAll = () => {
+    delete input.dataset.selectAllDigits;
+    delete selectionStore.n3SelectAllDigits;
+  };
+  const numericSelection = () => selectAllPending() ? [0, digitsLength()] : bounds();
   // Em componentes v2, o foco real está no ShadowRoot, e document.activeElement
   // aponta para o host. Usar a raiz correta antes de reposicionar o cursor.
   const isFocused = () => input.getRootNode().activeElement === input ||
@@ -71,11 +83,13 @@ export default function({ parentElement, data, setStateValue }) {
     ];
   };
   const insert = text => {
-    const [start, end] = bounds();
+    const [start, end] = numericSelection();
+    clearSelectAll();
     commit(replaceMonthDigits(value, start, end, text));
   };
   const remove = backwards => {
-    const [start, end] = bounds();
+    const [start, end] = numericSelection();
+    clearSelectAll();
     const n = digitsLength();
     if (end > start) commit(replaceMonthDigits(value, start, end, ""));
     else if (backwards && start > 0) commit(replaceMonthDigits(value, start - 1, start, ""));
@@ -84,6 +98,7 @@ export default function({ parentElement, data, setStateValue }) {
   };
   render();
   input.addEventListener("focus", settleCaret, { signal });
+  input.addEventListener("pointerdown", clearSelectAll, { signal });
   input.addEventListener("pointerup", settleCaret, { signal });
   input.addEventListener("click", settleCaret, { signal });
   input.addEventListener("select", () => {
@@ -96,12 +111,16 @@ export default function({ parentElement, data, setStateValue }) {
     const key = event.key;
     if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === "a") {
       event.preventDefault();
+      input.dataset.selectAllDigits = "true";
+      selectionStore.n3SelectAllDigits = "true";
       input.setSelectionRange(0, digitsLength());
     } else if (key === "ArrowUp" || key === "ArrowDown") {
       event.preventDefault();
+      clearSelectAll();
       commit(value + (key === "ArrowUp" ? 1 : -1));
     } else if (key === "Home" || key === "End" || key === "ArrowLeft" || key === "ArrowRight") {
       event.preventDefault();
+      clearSelectAll();
       placeCaret();
     }
   }, { signal });
@@ -122,20 +141,29 @@ export default function({ parentElement, data, setStateValue }) {
     const text = (event.clipboardData?.getData("text") ?? "").trim();
     const match = /^(\d+)(?:\s+meses?)?$/i.exec(text);
     if (match) {
-      const [start, end] = bounds();
+      const [start, end] = numericSelection();
+      clearSelectAll();
       // Paste over selected numeric part, or replace the number as a whole.
       commit(start === 0 && end === digitsLength()
         ? Number(match[1]) : replaceMonthDigits(value, start, end, match[1]));
     }
   }, { signal });
   input.addEventListener("drop", event => event.preventDefault(), { signal });
+  // O blur dispara antes de o navegador desconectar um input substituído.
+  // Na microtarefa seguinte, somente a saída real de foco deve cancelar a
+  // intenção; a remontagem do componente preserva o estado do host.
+  input.addEventListener("blur", () => {
+    queueMicrotask(() => {
+      if (input.isConnected) clearSelectAll();
+    });
+  }, { signal });
   input.addEventListener("input", () => {
     // Defensive fallback for browser/assistive input events without beforeinput.
     const match = /^(\d{1,3})(?:\s+meses?)?$/i.exec(input.value.trim());
     if (match) commit(Number(match[1]));
     else render();
   }, { signal });
-  minus.addEventListener("click", () => commit(value - 1), { signal });
-  plus.addEventListener("click", () => commit(value + 1), { signal });
+  minus.addEventListener("click", () => { clearSelectAll(); commit(value - 1); }, { signal });
+  plus.addEventListener("click", () => { clearSelectAll(); commit(value + 1); }, { signal });
   return () => controller.abort();
 }
