@@ -240,7 +240,10 @@ def test_selectbox_border_and_arrow_follow_expanded_state_only(client_app):
     assert ':focus-within,:has([aria-expanded="true"])' not in css
     assert '[data-focus-within="true"]' not in css
     assert 'body:has([data-testid="stSelectboxVirtualDropdown"])' in css
-    assert '[role="group"]:has([aria-expanded="true"]) button[aria-label="Open"] svg' in css
+    # O nome acessível 'Open' muda/é ocultado pelo React Aria quando expande.
+    # aria-haspopup mantém a referência ao acionador durante toda a interação.
+    assert '[role="group"]:has([aria-expanded="true"]) button[aria-haspopup="listbox"] svg' in css
+    assert 'button[aria-label="Open"] svg' not in css
     assert "transform:rotate(0deg)!important" in css
     assert "transform:rotate(180deg)!important" in css
     assert "transition:transform .16s ease-in-out!important" in css
