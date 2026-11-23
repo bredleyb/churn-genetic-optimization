@@ -237,9 +237,15 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert 'icon=":material/restart_alt:"' not in style
     assert "churn-run-spinner" in style
     assert "churn-run-check" in style
-    assert "scrollbar-gutter:stable both-edges!important" in style
-    assert "padding-inline:10px!important" in style
+    assert "--n3-client-content-inset:10px" in style
+    assert ".st-key-dashboard-client-fields,\n.st-key-dashboard-client-footer {" in style
+    assert style.count("scrollbar-gutter:stable both-edges!important") == 1
+    assert style.count("padding-inline:var(--n3-client-content-inset)!important") == 1
     assert "padding-inline-end:10px!important" not in style
+    assert ".st-key-dashboard-client-footer {\n  position:relative!important;height:auto!important;\n  overflow:hidden!important;scrollbar-width:thin!important;" in style
+    assert ".st-key-dashboard-client-footer::before {" not in style
+    assert 'stLayoutWrapper"]:has(.st-key-dashboard-client-footer)::before' in style
+    assert "outline-offset:-4px!important" in style
     assert "--n3-client-shadow-length:52px" in style
     assert "--n3-client-shadow-strong:rgba(0,0,0,.48)" in style
     assert "--n3-client-shadow-soft:rgba(0,0,0,.20)" in style
