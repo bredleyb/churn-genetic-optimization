@@ -17,7 +17,14 @@ from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
 from src.tenure_control import render_tenure_control
 from src.client_scroll_cues import mount_client_scroll_cues
-from src.example_profiles import MAX_EXAMPLES, append_example, initial_examples, is_original
+from src.example_profiles import (
+    MAX_EXAMPLES,
+    append_example,
+    can_delete_example,
+    delete_example,
+    initial_examples,
+    is_original,
+)
 from src.ui_data import (
     BILLING_FEATURES,
     INTERNET_FEATURES,
@@ -68,7 +75,7 @@ st.markdown(
   --n3-client-shadow-length:52px;
   --n3-client-shadow-strong:rgba(0,0,0,.48);
   --n3-client-shadow-soft:rgba(0,0,0,.20);
-  --n3-profile-button-size:32px;
+  --n3-profile-button-size:32px;--n3-profile-button-gap:4px;
 }
 html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)!important;}
 .stApp,[data-testid="stMain"] {height:100dvh!important;overflow:hidden!important;background:var(--n3-bg)!important;}
@@ -242,113 +249,100 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client-footer button:focus-visible {outline:2px solid #fff!important;outline-offset:3px!important;}
 .st-key-dashboard-client-fields button[kind="tertiary"],
 .st-key-dashboard-client-fields button {font-size:14px!important;color:var(--n3-secondary)!important;}
-/* Seletor de exemplos: uma única fila de círculos dentro da área de Cliente.
-   Todos os estados seguem os tokens de superfícies e de bordas existentes. */
+/* Perfis e ações pertencem a uma única linha alinhada verticalmente.
+   Apenas números e '+' são circulares. Restaurar e Excluir são quadrados
+   com os mesmos tokens e dimensões, sem ajustes individuais de posição. */
 .churn-profile-label {
   display:block;min-height:20px;margin:0 0 6px;padding:0;
   font-size:15px;line-height:20px;color:var(--n3-secondary);
   transform:translateY(var(--n3-field-text-shift));
 }
-.st-key-dashboard-profile-picker {min-width:0!important;width:100%!important;}
+.st-key-dashboard-profile-picker {box-sizing:border-box!important;min-width:0!important;width:100%!important;}
 .st-key-dashboard-profile-picker [data-testid="stMarkdownContainer"]:has(.churn-profile-label) {
   margin:0!important;padding:0!important;
 }
+.st-key-dashboard-profile-picker [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-profile-choices):has(.st-key-dashboard-profile-actions) {
+  display:flex!important;align-items:center!important;gap:0!important;
+}
 .st-key-dashboard-profile-choices,
-.st-key-dashboard-restore-action {
+.st-key-dashboard-profile-actions {
   box-sizing:border-box!important;min-width:0!important;width:100%!important;
-  min-height:42px!important;height:42px!important;
+  height:42px!important;min-height:42px!important;
   display:flex!important;align-items:center!important;
 }
-.st-key-dashboard-profile-choices > [data-testid="stVerticalBlock"] {
+.st-key-dashboard-profile-choices > [data-testid="stVerticalBlock"],
+.st-key-dashboard-profile-actions > [data-testid="stVerticalBlock"] {
   min-width:0!important;width:100%!important;
 }
-.st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {
-  display:flex!important;gap:4px!important;align-items:center!important;
-  justify-content:flex-start!important;flex-wrap:nowrap!important;
-  width:100%!important;
+.st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"],
+.st-key-dashboard-profile-actions [data-testid="stHorizontalBlock"] {
+  display:flex!important;gap:var(--n3-profile-button-gap)!important;
+  align-items:center!important;flex-wrap:nowrap!important;width:100%!important;
 }
-.st-key-dashboard-profile-choices [data-testid="stColumn"] {
-  flex:0 0 32px!important;min-width:32px!important;max-width:32px!important;
-  width:32px!important;
+.st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {justify-content:flex-start!important;}
+.st-key-dashboard-profile-actions [data-testid="stHorizontalBlock"] {justify-content:flex-end!important;}
+.st-key-dashboard-profile-choices [data-testid="stColumn"],
+.st-key-dashboard-profile-actions [data-testid="stColumn"] {
+  flex:0 0 var(--n3-profile-button-size)!important;
+  box-sizing:border-box!important;min-width:var(--n3-profile-button-size)!important;
+  max-width:var(--n3-profile-button-size)!important;width:var(--n3-profile-button-size)!important;
 }
 .st-key-dashboard-profile-choices [data-testid="stButton"] button,
-.st-key-dashboard-restore-action [data-testid="stButton"] button {
+.st-key-dashboard-profile-actions [data-testid="stButton"] button {
   box-sizing:border-box!important;
   width:var(--n3-profile-button-size)!important;min-width:var(--n3-profile-button-size)!important;
   max-width:var(--n3-profile-button-size)!important;
   height:var(--n3-profile-button-size)!important;min-height:var(--n3-profile-button-size)!important;
   max-height:var(--n3-profile-button-size)!important;
   padding:0!important;border:1px solid var(--n3-outline)!important;
-  border-radius:50%!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  background:var(--n3-field-fill)!important;color:var(--n3-secondary)!important;
 }
 .st-key-dashboard-profile-choices [data-testid="stButton"] button {
-  background:var(--n3-field-fill)!important;color:var(--n3-secondary)!important;
-  font-size:14px!important;font-weight:600!important;line-height:1!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  font-variant-numeric:tabular-nums!important;
+  border-radius:50%!important;font-size:14px!important;font-weight:600!important;
+  line-height:1!important;font-variant-numeric:tabular-nums!important;
 }
-.st-key-dashboard-profile-choices [data-testid="stButton"] button:hover {
+.st-key-dashboard-profile-actions [data-testid="stButton"] button {
+  position:relative!important;border-radius:var(--n3-field-radius)!important;
+}
+.st-key-dashboard-profile-choices [data-testid="stButton"] button:hover,
+.st-key-dashboard-profile-actions [data-testid="stButton"] button:hover:not(:disabled) {
   background:var(--n3-elevated)!important;color:var(--n3-text)!important;
 }
 .st-key-dashboard-profile-choices [data-testid="stButton"] button[kind="primary"] {
   border-color:var(--n3-text)!important;color:var(--n3-text)!important;
   background:var(--n3-elevated)!important;
 }
-.st-key-dashboard-profile-choices [data-testid="stButton"] button:focus-visible {
-  outline:2px solid var(--n3-text)!important;outline-offset:2px!important;
-}
-@media(max-width:1150px) {
-  :root {--n3-profile-button-size:28px;}
-  .st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {gap:3px!important;}
-  .st-key-dashboard-profile-choices [data-testid="stColumn"] {
-    flex-basis:var(--n3-profile-button-size)!important;
-    min-width:var(--n3-profile-button-size)!important;
-    max-width:var(--n3-profile-button-size)!important;
-    width:var(--n3-profile-button-size)!important;
-  }
-}
-@media(max-width:900px) {
-  :root {--n3-profile-button-size:26px;}
-  .st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {gap:2px!important;}
-}
-/* Restauro herda o diâmetro dos exemplos e fica centralizado na mesma linha.
-   O círculo mantém o alinhamento à direita da linha de perfis. */
-.st-key-dashboard-restore-action {margin-top:0!important;}
-.st-key-dashboard-restore-action [data-testid="stButton"] {
-  display:flex!important;align-items:center!important;justify-content:flex-end!important;
-  height:42px!important;min-height:42px!important;
-}
-.st-key-dashboard-restore-action [data-testid="stButton"] button {
-  position:relative!important;
-  display:flex!important;justify-content:center!important;align-items:center!important;
-  margin-left:auto!important;
-  color:var(--n3-secondary)!important;background:var(--n3-field-fill)!important;
-}
-.st-key-dashboard-restore-action [data-testid="stButton"] button:hover:not(:disabled) {
-  background:var(--n3-elevated)!important;color:var(--n3-text)!important;
-}
-.st-key-dashboard-restore-action [data-testid="stButton"] button:disabled {
+.st-key-dashboard-profile-actions [data-testid="stButton"] button:disabled {
   background:var(--n3-bg)!important;color:var(--n3-outline)!important;
   border-color:var(--n3-line)!important;opacity:.65!important;cursor:default!important;
 }
-.st-key-dashboard-restore-action [data-testid="stButton"] button > div {
+.st-key-dashboard-profile-choices [data-testid="stButton"] button:focus-visible,
+.st-key-dashboard-profile-actions [data-testid="stButton"] button:focus-visible {
+  outline:2px solid var(--n3-text)!important;outline-offset:2px!important;
+}
+.st-key-dashboard-profile-actions [data-testid="stButton"] button > div {
   position:static!important;margin:0!important;padding:0!important;
 }
-/* Independente da árvore interna que Streamlit utiliza para ícone e rótulo. */
-.st-key-dashboard-restore-action [data-testid="stButton"] [data-testid="stIconMaterial"] {
+.st-key-dashboard-profile-actions [data-testid="stIconMaterial"] {
   position:absolute!important;left:50%!important;top:50%!important;
-  transform:translate(-50%,-50%)!important;
-  box-sizing:border-box!important;display:flex!important;
-  align-items:center!important;justify-content:center!important;
+  transform:translate(-50%,-50%)!important;box-sizing:border-box!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
   width:calc(var(--n3-profile-button-size) * .64)!important;
   height:calc(var(--n3-profile-button-size) * .64)!important;
-  margin:0!important;padding:0!important;
-  line-height:1!important;font-size:calc(var(--n3-profile-button-size) * .64)!important;
+  margin:0!important;padding:0!important;line-height:1!important;
+  font-size:calc(var(--n3-profile-button-size) * .64)!important;
   text-align:center!important;
 }
-.st-key-dashboard-restore-action [data-testid="stButton"] button p {
+.st-key-dashboard-profile-actions [data-testid="stButton"] button p {
   position:absolute!important;width:1px!important;height:1px!important;
   overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;
+}
+@media(max-width:1150px) {
+  :root {--n3-profile-button-size:28px;--n3-profile-button-gap:3px;}
+}
+@media(max-width:900px) {
+  :root {--n3-profile-button-size:26px;--n3-profile-button-gap:2px;}
 }
 /* Área analítica: cinco seções com função definida, uma só superfície principal. */
 .st-key-dashboard-workspace {
@@ -921,6 +915,36 @@ def _is_profile_pristine() -> bool:
     )
 
 
+def _delete_active_example() -> str:
+    """Remove o exemplo selecionado, seleciona o anterior e invalida a previsão."""
+    _ensure_examples()
+    current = st.session_state["profile_choice"]
+    previous = delete_example(st.session_state["example_profiles"], current)
+    # A entrada excluída deixou de existir e as posteriores foram renumeradas:
+    # nunca salvar os widgets antigos sob a chave do novo exemplo.
+    _apply_profile(previous, preserve_previous=False)
+    return previous
+
+
+@st.dialog("Excluir exemplo", width="small")
+def _confirm_delete_example() -> None:
+    """Confirmação modal; o estado somente muda após a ação explícita."""
+    current = st.session_state["profile_choice"]
+    if not can_delete_example(st.session_state["example_profiles"], current):
+        return
+    st.markdown(f"**Excluir {current}?**")
+    st.markdown("Os dados deste exemplo serão descartados. Os demais serão preservados.")
+    cancel, confirm = st.columns(2, gap="small", wrap=False)
+    with cancel:
+        if st.button("Cancelar", key="cancel_delete_example", use_container_width=True):
+            st.rerun()
+    with confirm:
+        if st.button(f"Excluir {current}", key="confirm_delete_example",
+                     type="primary", use_container_width=True):
+            _delete_active_example()
+            st.rerun()
+
+
 def _ensure_widget_field(feature: str) -> None:
     """Recupera o valor salvo quando o Streamlit recria um widget de outra aba."""
     key = f"field_{feature}"
@@ -1337,7 +1361,7 @@ def _render_client_panel() -> bool:
         with st.container(key="dashboard-profile-picker", border=False):
             st.markdown('<div class="churn-profile-label">Perfil de exemplo</div>',
                         unsafe_allow_html=True)
-            a, b = st.columns([0.75, 0.25], gap="small", vertical_alignment="center", wrap=False)
+            a, b = st.columns([0.70, 0.30], gap=None, vertical_alignment="center", wrap=False)
             with a:
                 with st.container(key="dashboard-profile-choices", border=False):
                     names = tuple(st.session_state["example_profiles"])
@@ -1362,14 +1386,30 @@ def _render_client_panel() -> bool:
                                 use_container_width=True,
                             )
             with b:
-                with st.container(key="dashboard-restore-action", border=False):
-                    st.button(
-                        "Restaurar perfil", icon=":material/history:",
-                        help="Restaurar os dados do exemplo selecionado.",
-                        key="restore_profile", type="tertiary",
-                        disabled=_is_profile_pristine(),
-                        on_click=_reset_profile, use_container_width=True,
-                    )
+                with st.container(key="dashboard-profile-actions", border=False):
+                    restore, delete = st.columns(2, gap=None, wrap=False)
+                    with restore:
+                        with st.container(key="dashboard-restore-action", border=False):
+                            st.button(
+                                "Restaurar perfil", icon=":material/history:",
+                                help="Restaurar os dados do exemplo selecionado.",
+                                key="restore_profile", type="tertiary",
+                                disabled=_is_profile_pristine(),
+                                on_click=_reset_profile, use_container_width=True,
+                            )
+                    with delete:
+                        with st.container(key="dashboard-delete-action", border=False):
+                            if st.button(
+                                "Excluir perfil", icon=":material/delete_outline:",
+                                help="Excluir o exemplo selecionado (exemplos 1 e 2 protegidos).",
+                                key="delete_profile", type="tertiary",
+                                disabled=not can_delete_example(
+                                    st.session_state["example_profiles"],
+                                    st.session_state["profile_choice"],
+                                ),
+                                use_container_width=True,
+                            ):
+                                _confirm_delete_example()
         with st.container(key="dashboard-quick-fields", border=False):
             a, b = st.columns(QUICK_FIELD_COLUMNS, gap="small", wrap=False)
             with a:
