@@ -14,6 +14,10 @@ export function parseMonthInput(raw) {
   return clampMonths(digits);
 }
 
+// Uma remontagem v2 pode ocorrer antes do cleanup do renderer anterior.
+// O slot fica no nó da interface; duas instâncias jamais escutam o mesmo input.
+const ACTIVE_MOUNT = Symbol.for("n3.tenure.activeMount");
+
 // Edição numérica nativa: a unidade é texto não editável na MESMA caixa visual.
 // Ctrl+A, Backspace e movimentação do cursor pertencem ao navegador.
 export default function({ parentElement, data, setStateValue }) {
@@ -23,7 +27,10 @@ export default function({ parentElement, data, setStateValue }) {
   const unit = root.querySelector(".n3-tenure-unit");
   const minus = root.querySelector('[data-step="-1"]');
   const plus = root.querySelector('[data-step="1"]');
+  // Garante idempotência mesmo se o framework remontar sem chamar cleanup.
+  root[ACTIVE_MOUNT]?.abort();
   const controller = new AbortController();
+  root[ACTIVE_MOUNT] = controller;
   const { signal } = controller;
   const isFocused = () => input.getRootNode().activeElement === input ||
     document.activeElement === input;
@@ -91,5 +98,9 @@ export default function({ parentElement, data, setStateValue }) {
   input.addEventListener("drop", event => event.preventDefault(), { signal });
   minus.addEventListener("click", () => commit(value - 1, {force:true}), { signal });
   plus.addEventListener("click", () => commit(value + 1, {force:true}), { signal });
-  return () => controller.abort();
+  return () => {
+    controller.abort();
+    // Um cleanup atrasado nunca deve desmontar a instância mais recente.
+    if (root[ACTIVE_MOUNT] === controller) delete root[ACTIVE_MOUNT];
+  };
 }

@@ -53,7 +53,9 @@ _COMPONENT_CSS = """
   color:var(--n3-text,#f5f5f5);white-space:pre;pointer-events:none;
   font:400 var(--n3-field-text-size,14px)/var(--n3-field-text-line,20px)
     var(--n3-font-ui,"Familjen Grotesk",sans-serif);
-  transform:translateY(var(--n3-field-text-shift,-1px));}
+  /* O texto do input nativo e um span usam referências de linha distintas.
+     Um pixel abaixo alinha a base visível do sufixo à base dos dígitos. */
+  transform:translateY(calc(var(--n3-field-text-shift,-1px) + 1px));}
 .n3-tenure-spacer {flex:1;min-width:0;}
 .n3-tenure-field button {box-sizing:border-box;flex:0 0 32px;width:32px;
   height:100%;padding:0;border:0;border-radius:0;
