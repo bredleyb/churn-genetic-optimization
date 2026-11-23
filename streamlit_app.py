@@ -123,9 +123,11 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 .st-key-dashboard-client {
   position:relative!important;display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
   grid-template-rows:20px minmax(0,1fr) auto!important;
   gap:var(--n3-panel-pad)!important;align-content:stretch!important;
-  /* Breakpoint definido pela largura útil do Cliente, não da janela. */
+  /* Uma única coluna ocupa todo o painel, inclusive a faixa do título.
+     Evita que o grid implícito se ajuste à largura do conteúdo rolável. */
   container-name:n3-client;container-type:inline-size;
 }
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"] {min-width:0!important;min-height:0!important;}
@@ -788,6 +790,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading),
 .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.churn-workspace-heading) {
   box-sizing:border-box!important;margin:0!important;padding:0!important;
+  width:100%!important;min-width:0!important;
   height:20px!important;min-height:0!important;max-height:20px!important;
   align-self:start!important;overflow:visible!important;
 }

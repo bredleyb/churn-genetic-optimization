@@ -42,13 +42,16 @@ export default function({ parentElement, data, setStateValue }) {
     input.value = displayMonths(value);
     minus.disabled = value <= 0;
     plus.disabled = value >= 999;
-    placeCaret();
   };
   const commit = next => {
     const clamped = clampMonths(next);
     const changed = clamped !== value;
     value = clamped;
     render();
+    // Posicionar após uma edição efetiva, inclusive quando um novo render
+    // não é necessário. A montagem do componente NÃO altera a seleção:
+    // um rerun assíncrono do Streamlit poderia desfazer Ctrl+A entre teclas.
+    placeCaret();
     if (changed) setStateValue("value", value);
   };
   const bounds = () => {
