@@ -1,292 +1,158 @@
-# Seleção de Características com Algoritmo Genético para Previsão de Cancelamento de Clientes
+# Seleção de características com algoritmo genético para previsão de churn
 
-Projeto de Aprendizagem de Máquina desenvolvido por Bredley Bauer, Gabriel Coelho e Gustavo Haiduk Pereira.
+Este estudo verifica se um **algoritmo genético** consegue reduzir as variáveis de entrada de uma
+**regressão logística** que prevê o cancelamento de clientes (*customer churn*) sem perder poder preditivo.
+Os dados vêm do setor de telecomunicações.
 
-## Objetivo
+Projeto de Aprendizagem de Máquina de **Bredley Bauer**, **Gabriel Coelho** e **Gustavo Haiduk Pereira**.
 
-Investigar o uso de um algoritmo genético na seleção de características para prever o cancelamento de clientes (*customer churn*). O estudo compara uma regressão logística com todas as características elegíveis e o mesmo classificador treinado com um subconjunto selecionado pelo algoritmo genético.
+---
 
-A solução é voltada à análise de clientes de serviços recorrentes, especialmente telecomunicações.
+## Resultado em resumo
 
-## Dados
+A busca genética reduziu as variáveis de **19 para 9 (−52,6%)**, com perda pequena de desempenho no conjunto de teste reservado (1.409 clientes).
 
-O conjunto [Telco Customer Churn (Kaggle — blastchar)](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) contém 7.043 registros e 21 colunas. Após excluir `customerID` (identificador) e `Churn` (resposta), restam 19 características candidatas.
+| Métrica (teste) | Referência — 19 características | Seleção genética — 9 características |
+|---|---:|---:|
+| **F1-score** | **0,6040** | 0,5869 |
+| Precisão | 0,6572 | 0,6463 |
+| Revocação | 0,5588 | 0,5374 |
+| Acurácia | 0,8055 | 0,7991 |
+| ROC-AUC | 0,8419 | 0,8401 |
 
-O arquivo CSV deve ser obtido na fonte indicada e colocado em `data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`. Consulte [data/README.md](data/README.md). Os dados brutos permanecem fora do versionamento.
+Na validação cruzada, o subconjunto genético superou a referência (F1 0,6059 contra 0,5952), mas essa vantagem
+não se manteve no teste. Por isso o teste fica separado até o fim. O modelo reduzido deixou de identificar
+8 cancelamentos a mais que a referência.
 
-**Representatividade do dataset:** a variável original `gender` registra apenas `Male` e `Female`, exibidos na aplicação como Masculino e Feminino. Essa delimitação decorre da fonte dos dados, não representa todas as identidades de gênero e impede avaliar o desempenho por outras categorias ausentes do conjunto. A aplicação conserva as duas categorias do estudo para manter a reprodutibilidade da comparação; veja [limitações dos resultados](docs/resultados_experimentais.md#limitações-de-representatividade).
+Matrizes de confusão, variáveis escolhidas e discussão: **[docs/resultados_experimentais.md](docs/resultados_experimentais.md)**.
 
-## Preparação dos dados
+---
 
-A leitura valida o esquema, codifica `Churn` como 1 (cancelamento) e 0 (permanência) e converte `TotalCharges` para numérico. A variável `SeniorCitizen` é tratada como categórica, preservando a distinção entre código binário e grandeza numérica.
+## Como funciona
 
-A divisão dos dados é estratificada, com 80% para desenvolvimento e 20% para teste (`random_state=42`). Os procedimentos que aprendem parâmetros são definidos em um `ColumnTransformer`:
+```
+CSV Telco (7.043 clientes)
+  └─ divisão estratificada 80/20 (seed 42)
+       ├─ desenvolvimento (5.634) ─┬─ referência: regressão logística com as 19 características
+       │                           └─ algoritmo genético: escolhe o subconjunto (CV estratificada, 3 partições)
+       └─ teste (1.409) ─────────── avaliação final dos dois modelos, usada uma única vez
+```
 
-- **Numéricos (`tenure`, `MonthlyCharges`, `TotalCharges`):** imputação pela mediana e padronização.
-- **Categóricos (16 colunas):** imputação pela categoria mais frequente e codificação one-hot, ignorando categorias desconhecidas na transformação.
+- **Pré-processamento:** um `ColumnTransformer` ajustado só nas partições de treino. Faz imputação pela mediana e padronização nas variáveis numéricas (`tenure`, `MonthlyCharges`, `TotalCharges`) e imputação pela moda com *one-hot* nas 16 categóricas. `SeniorCitizen` é tratada como categórica.
+- **Cromossomo:** 19 bits, um por característica original. Quando uma característica categórica é selecionada, todas as colunas *one-hot* dela entram juntas.
+- **Aptidão:** F1 médio na validação cruzada menos `λ = 0,02` vezes a fração de características usadas.
+- **Parâmetros:** 24 indivíduos, 15 gerações, torneio de 3, cruzamento de um ponto (p = 0,8), mutação por indivíduo (p = 0,2, com inversão de cada bit a `1/19`), elitismo de 1. Cromossomos vazios são proibidos e avaliações repetidas ficam em cache.
 
-O transformador é criado sem ajuste prévio; sua estimação deverá ocorrer dentro de cada partição de treinamento da validação cruzada. A seleção genética opera sobre as 19 características originais, incluindo integralmente o grupo one-hot quando uma característica categórica é selecionada.
+---
 
-## Executar a análise exploratória
+## Início rápido
 
-Requer Python 3.10 ou superior. No PowerShell, a partir da raiz do repositório:
+É preciso ter **Python 3.10+**. Os comandos abaixo são para PowerShell e devem ser executados na raiz do repositório.
 
 ```powershell
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-python -m scripts.analyze_data --data data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
 ```
 
-O comando gera `results/analise_dados.json` e `results/analise_dados.md`, com estatísticas agregadas de qualidade, distribuição de classes e cancelamentos por contrato e tipo de conexão. Pode-se alterar o destino por `--output outro-diretorio`.
+**Dados:** baixe o [Telco Customer Churn (Kaggle, blastchar)](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)
+e salve o arquivo em `data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`. O CSV não é versionado. Detalhes em [data/README.md](data/README.md).
 
-Para executar os testes automatizados:
+Depois rode o experimento completo e abra o dashboard:
 
 ```powershell
-python -m pytest -q
+python -m scripts.compare_models          # treina, seleciona e avalia os dois modelos
+python -m streamlit run streamlit_app.py  # dashboard interativo
 ```
 
-O código de preparação está em `src/data.py`, o transformador reutilizável está em `src/preprocessing.py` e os indicadores exploratórios estão em `src/analysis.py`.
+### Todos os comandos
 
-## Análise exploratória
+| Comando | O que faz | Saída em `results/` |
+|---|---|---|
+| `python -m scripts.analyze_data --data <csv>` | Análise exploratória (qualidade, classes, churn por contrato e conexão) | `analise_dados.{json,md}` |
+| `python -m scripts.train_baseline` | Validação cruzada da regressão logística completa | `baseline_cv.json`, `baseline.joblib` |
+| `python -m scripts.run_genetic` | Busca genética e treino com o subconjunto escolhido | `genetic_selection.json`, `genetic.joblib` |
+| `python -m scripts.compare_models` | Comparação final no conjunto de teste | `comparacao_modelos.{json,md}`, `*.joblib` |
+| `python -m scripts.predict --cliente <json>` | Previsão para um cliente novo (`--modelo baseline\|genetico`) | — |
 
-A inspeção do CSV identificou **1.869 cancelamentos (26,54%)**, **5.174 permanências (73,46%)**, nenhum identificador duplicado e **11 valores ausentes em `TotalCharges`**, todos com `tenure = 0`. Esses registros são preservados para imputação durante o treinamento. Os indicadores descritivos e as justificativas estão em [docs/analise_exploratoria.md](docs/analise_exploratoria.md).
+Para um teste rápido do algoritmo genético: `python -m scripts.run_genetic --population 6 --generations 2`.
+Os artefatos em `results/` são gerados localmente e não são versionados.
 
-## Metodologia do experimento
+---
 
-O estudo compara a regressão logística de referência com a mesma técnica após a seleção de atributos por algoritmo genético. A função de aptidão considera o F1-score médio em validação cruzada estratificada e uma penalização proporcional à quantidade de características. O conjunto de teste será utilizado exclusivamente na avaliação final dos modelos.
+## Previsão para um novo cliente
 
-## Classificador de referência
-
-A regressão logística utiliza todas as 19 características originais, com imputação,
-*one-hot encoding* e padronização dentro de um único pipeline do scikit-learn.
-A avaliação é feita com validação cruzada estratificada em três partições somente
-nos 80% reservados ao desenvolvimento. O conjunto de teste (20%) permanece
-intocado para a comparação final com a seleção genética.
-
-Após obter o CSV e instalar as dependências, execute:
-
-```powershell
-python -m scripts.train_baseline
-```
-
-O comando apresenta as médias e os desvios-padrão de F1-score, precisão,
-revocação, acurácia e ROC-AUC. Também salva o relatório de validação cruzada em
-`results/baseline_cv.json` e o classificador treinado em
-`results/baseline.joblib`. Esses arquivos são gerados localmente e podem ser
-reproduzidos pelo comando acima. O classificador permanece disponível para a
-comparação posterior com as características selecionadas pelo algoritmo genético.
-
-## Seleção de características por algoritmo genético
-
-O algoritmo genético representa as 19 características originais como um
-cromossomo binário. Cada bit indica se a característica será utilizada na
-regressão logística. A aptidão combina o F1-score médio em validação cruzada
-estratificada (três partições) e uma penalização proporcional à quantidade de
-características. O conjunto de teste permanece reservado para a comparação final.
-
-A configuração padrão utiliza 24 indivíduos, 15 gerações, seleção por torneio
-de três participantes, cruzamento de um ponto (probabilidade 0,8), mutação por
-indivíduo (probabilidade 0,2, seguida de inversão de cada bit com chance de `1/d`),
-elitismo de um indivíduo e penalização `λ = 0,02`. A busca utiliza semente 42,
-impede cromossomos vazios e reutiliza avaliações de subconjuntos já calculadas.
-
-Com o CSV na pasta indicada, execute:
-
-```powershell
-python -m scripts.run_genetic
-```
-
-O comando apresenta o desempenho do melhor indivíduo de cada geração, salva
-`results/genetic_selection.json` com a seleção e o histórico da busca e treina
-`results/genetic.joblib` com o subconjunto selecionado, usando os dados de
-desenvolvimento. Os arquivos podem ser reproduzidos pelo comando acima.
-
-É possível verificar o funcionamento com uma execução reduzida:
-
-```powershell
-python -m scripts.run_genetic --population 6 --generations 2
-```
-
-O experimento principal utiliza os parâmetros padrão.
-
-## Comparação dos modelos
-
-A avaliação final utiliza a mesma divisão estratificada para os dois modelos.
-A regressão logística de referência e a busca genética são ajustadas apenas
-com os dados de desenvolvimento. Depois da seleção, os dois classificadores
-são treinados novamente nesses dados e avaliados no mesmo conjunto de teste.
-
-```powershell
-python -m scripts.compare_models
-```
-
-O comando apresenta o F1-score de cada modelo e registra em `results/`:
-
-- `comparacao_modelos.md`: tabela de métricas, matrizes de confusão, atributos
-  selecionados e limitações da avaliação;
-- `comparacao_modelos.json`: métricas e parâmetros para reprodução;
-- `baseline.joblib` e `genetic.joblib`: classificadores treinados.
-
-O relatório apresenta F1-score, precisão, revocação, acurácia e ROC-AUC, além
-da quantidade de características e do tempo da busca genética. A análise
-interpreta falsos positivos e falsos negativos. Os arquivos de `results/` são
-gerados localmente e ficam fora do versionamento; os números experimentais
-que fundamentarem a conclusão serão registrados na documentação final.
-
-## Resultados experimentais
-
-A comparação foi executada com os 7.043 registros do conjunto Telco Customer Churn, mantendo 20% dos dados reservados para teste. A seleção genética reduziu o número de características originais de 19 para 9 (52,63%). No conjunto de teste, a regressão logística completa alcançou **F1-score de 0,6040** e o modelo com seleção genética obteve **0,5869**. A redução das variáveis foi acompanhada de uma pequena perda de desempenho preditivo.
-
-As demais métricas, matrizes de confusão, características selecionadas e limitações estão descritas em [Resultados experimentais](docs/resultados_experimentais.md).
-
-## Demonstração com um novo cliente
-
-O script de previsão recebe um cliente em formato JSON, valida as 19 características
-originais e utiliza os classificadores treinados para indicar cancelamento ou
-permanência, acompanhados da probabilidade estimada de cancelamento.
-
-Após executar `python -m scripts.compare_models` para gerar os modelos na pasta
-`results/`, utilize um dos perfis de exemplo:
+Os arquivos em [examples/](examples/) trazem perfis fictícios com as 19 características originais, sem `customerID` e sem `Churn`.
 
 ```powershell
 python -m scripts.predict --cliente examples/cliente_exemplo.json
-python -m scripts.predict --cliente examples/cliente_exemplo_2.json
 ```
 
-Por padrão, o programa mostra as previsões **dos dois modelos** para o mesmo
-cliente. É possível selecionar apenas um:
+| Perfil | Referência | Seleção genética | Previsão |
+|---|---:|---:|---|
+| `cliente_exemplo.json` | 82,04% | 76,66% | Cancelamento |
+| `cliente_exemplo_2.json` | 0,37% | 0,71% | Permanência |
+
+Os percentuais são a probabilidade de cancelamento estimada pelo modelo, não uma garantia sobre o cliente.
+Para testar outro perfil, copie um dos JSONs e altere os valores: `tenure` é dado em meses, `SeniorCitizen` vale 0 ou 1
+e `TotalCharges` aceita `null`. Carregue apenas arquivos `.joblib` gerados pelo próprio projeto.
+
+---
+
+## Dashboard
+
+[streamlit_app.py](streamlit_app.py) reúne a previsão e o experimento em um painel monocromático pensado para projeção
+(resolução prioritária: 1280 × 720). O verde e o vermelho aparecem só nos estados Permanência e Cancelamento.
+
+- **Cliente:** formulário com as 19 características em abas (Perfil, Conta, Serviços, Extras) e até 5 perfis por sessão. Os perfis 1 e 2 são protegidos.
+- **Comparação:** probabilidades de cancelamento dos dois modelos para o cliente atual.
+- **Gráfico:** evolução do melhor F1 em validação cruzada ao longo das gerações.
+- **Características e teste:** cromossomo de 19 bits, F1 de teste, ΔF1 e taxa de redução.
+- **Monitor:** eventos reais do algoritmo genético, com download do log completo.
+
+**Calcular previsão** executa o experimento inteiro com a configuração original, sem sobrescrever os modelos salvos em `results/`.
+
+---
+
+## Testes
 
 ```powershell
-python -m scripts.predict --cliente examples/cliente_exemplo.json --modelo genetico
-python -m scripts.predict --cliente examples/cliente_exemplo.json --modelo baseline
-```
+python -m pytest -q                 # dados, modelo, algoritmo genético, avaliação e painel Cliente
 
-Para testar outro perfil, faça uma cópia de um dos JSONs em `examples/` e altere os
-valores das características. Os nomes e as categorias seguem o dataset original;
-`tenure` indica meses, `MonthlyCharges` e `TotalCharges` são valores numéricos,
-e `SeniorCitizen` utiliza 0 ou 1. `TotalCharges` também aceita `null`, tratado
-pela imputação do modelo. Os exemplos são fictícios e não possuem `customerID`
-nem a resposta `Churn`.
-
-Na execução dos modelos utilizados no experimento, `cliente_exemplo.json` recebeu
-previsão de **cancelamento** (82,04% na referência e 76,66% no genético). O perfil
-`cliente_exemplo_2.json` recebeu previsão de **permanência** (0,37% e 0,71% de
-probabilidade de cancelamento, respectivamente).
-
-Os percentuais representam estimativas dos classificadores para esses perfis, não
-garantias individuais de cancelamento. Os modelos `.joblib` são gerados localmente
-e devem ser carregados apenas quando provenientes do próprio treinamento do projeto.
-
-
-### Dashboard monocromático para apresentação
-
-A aplicação organiza a previsão do cliente e os resultados experimentais em um
-**dashboard preto/cinza/branco**, com fontes dimensionadas para projeção em sala,
-contornos neutros e verde/vermelho reservados aos estados semânticos
-**Permanência/Cancelamento**. A interface utiliza Familjen Grotesk
-distribuída localmente (licença SIL Open Font License 1.1) nos controles
-e fonte monoespaçada no registro de execução.
-
-- **Cliente:** quatro campos principais em duas linhas com a mesma grade,
-  exemplos selecionados por botões circulares (1 e 2 originais, até 5 na sessão,
-  com `+` para duplicar os valores atuais), restauro independente e escurecido
-  quando o exemplo não sofreu alterações, e exclusão imediata dos exemplos
-  3–5. Os exemplos 1 e 2 são protegidos. Ao excluir um exemplo, os posteriores
-  são renumerados preservando os dados; o exemplo anterior é selecionado.
-  Restaurar e Excluir ficam juntos à direita em botões quadrados de mesmo tamanho,
-  alinhados à linha circular. Abas Perfil, Conta, Serviços e Extras
-  e botão de cálculo fixo na base do painel, sem linha divisória. O botão
-  apresenta **Calcular previsão** antes da execução, **Calculando. → Calculando.. → Calculando...**
-  em animação contínua enquanto processa e **Recalcular previsão** após a conclusão.
-  O estado intermediário é desabilitado em cinza médio (diferente do hover
-  cinza-claro); o botão volta ao branco imediatamente após a execução, mesmo
-  se o cursor continuar sobre ele. A animação respeita a preferência por
-  movimento reduzido e é executada apenas no navegador, sem reruns adicionais.
-  O recálculo utiliza o fluxo de treinamento e avaliação já existente.
-  O tempo de permanência utiliza um componente Streamlit v2 local: uma única
-  caixa visual mostra `X mês`/`X meses`, com input numérico nativo e unidade
-  fixa adjacente. Ctrl+A, Backspace e o cursor são controlados pelo navegador;
-  o sufixo permanece protegido e somente o inteiro (0–999) vai ao modelo. A rolagem do formulário
-  reserva calhas simétricas para a scrollbar e compartilha o mesmo recuo
-  horizontal com o rodapé, mantendo o botão de cálculo alinhado às bordas
-  dos campos, mesmo quando a barra está oculta. Duas sombras progressivas,
-  no topo e acima do botão, desaparecem nas respectivas extremidades.
-  Um componente v2 sem interface mede o scroll no navegador sem rerodar o Python;
-- **Comparação:** probabilidades individuais da regressão logística de
-  referência (19 características) e da versão com seleção genética;
-- **Gráfico:** evolução do melhor F1-score em validação cruzada, linha branca,
-  escala vertical iniciada em zero e 15 gerações;
-- **Características e teste:** cromossomo de 19 bits, F1 dos dois classificadores
-  no conjunto de teste reservado, variação ΔF1 e taxa de redução;
-- **Monitor:** eventos autênticos do algoritmo, gerações e log integral para
-  download no controle **Baixar log**. A tela mostra os eventos mais recentes primeiro.
-
-O botão **Calcular previsão** executa novamente todo o experimento: divisão
-estratificada, validação cruzada da referência, algoritmo genético com 24
-indivíduos e 15 gerações, treinamento, avaliação no teste reservado e previsão.
-Os cálculos usam a configuração original e não sobrescrevem os modelos
-persistidos na pasta `results/`. Após alterar os dados do cliente, o estado
-indica **Dados alterados** e oculta as probabilidades anteriores até novo cálculo.
-
-A página não deve ter rolagem própria. Os painéis usam a altura útil da janela
-e permitem rolagem interna onde necessário. A partir de 621 px, comparação,
-gráfico, características e monitor ficam presentes na grade. Em celulares,
-a comparação permanece visível e abas **Análise / Execução** dão acesso aos
-detalhes. Caso prioritário de apresentação: **1280 × 720 px**.
-
-Para executar (com o CSV original em `data/raw/`):
-
-```powershell
-python -m streamlit run streamlit_app.py
-```
-
-## Auditoria automatizada do painel Cliente
-
-Os testes do painel Cliente foram reorganizados em uma suíte nova e rastreável.
-A matriz de requisitos, os critérios mensuráveis e o roteiro de aceite estão
-em [docs/roteiro_testes_cliente.md](docs/roteiro_testes_cliente.md).
-
-- **pytest:** testes de contratos dos 19 campos, dependências, perfis
-  independentes (1–5), restauração, exclusão, componente de meses e ciclo da
-  previsão. Os testes científicos do restante do projeto continuam preservados.
-- **Playwright:** testes de geometria e tipografia, foco, paleta, rolagem,
-  responsividade em seis resoluções, interação real e execução E2E do algoritmo
-  quando o CSV original estiver disponível.
-
-Para executar:
-
-~~~powershell
-python -m pytest -q
-python -m pytest -q tests/client
 npm install
 npx playwright install chromium
-npm run test:visual
-~~~
+npm run test:visual                 # testes de navegador no painel Cliente (porta 8517)
+npm run test:visual:report          # abre o relatório HTML
+```
 
-O runner inicia o Streamlit em porta independente (8517) e salva imagens
-CL-* como anexos ao relatório HTML. **Não utiliza os snapshots monocromáticos
-anteriores.** O teste de execução integral CL-B03 depende do CSV original;
-caso o arquivo esteja ausente, ele será marcado como skipped e a validação
-end-to-end ficará pendente.
+Os testes Playwright cobrem layout, tipografia, foco, rolagem, interação e responsividade em seis resoluções.
+Cada rodada salva as evidências em `results/testes-visuais-para-revisao.zip`. O teste E2E `CL-B03` precisa do CSV
+original e é marcado como *skipped* quando o arquivo não existe. Os requisitos e critérios de aceite estão em [docs/roteiro_testes_cliente.md](docs/roteiro_testes_cliente.md).
 
-Cada rodada gera o ZIP de evidências em
-results/testes-visuais-para-revisao.zip, inclusive em caso de falha.
-Para regenerar o pacote sem executar os testes ou abrir o relatório:
+---
 
-~~~powershell
-npm run test:visual:package
-npm run test:visual:report
-~~~
+## Estrutura
 
-## Artigo
+```
+├── src/                 # dados, pré-processamento, modelo, algoritmo genético, avaliação, previsão, UI
+├── scripts/             # pontos de entrada da linha de comando (python -m scripts.<nome>)
+├── streamlit_app.py     # dashboard
+├── examples/            # perfis de cliente fictícios
+├── tests/               # pytest (raiz e client/) e Playwright (visual/)
+├── docs/                # análise, resultados, roteiro de testes, artigo e apresentação
+├── data/                # instruções para obter o CSV (data/raw/ fica fora do Git)
+└── static/              # fonte Familjen Grotesk (SIL OFL 1.1)
+```
 
-O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação
-teórica e a metodologia do estudo, seguindo o padrão da Sociedade Brasileira
-de Computação (SBC). A delimitação binária da variável `gender` também está
-registrada em uma [nota metodológica complementar](docs/artigo/nota-representatividade.md),
-para integração à seção de limitações do texto final.
+## Documentação
 
-O [texto para o slide de limitações](docs/apresentacao/limites-dos-dados.md)
-mantém a mesma explicação para a apresentação, sem modificar os resultados
-experimentais ou criar categorias que não existem no treinamento.
+- [Análise exploratória](docs/analise_exploratoria.md): 26,54% de churn e 11 valores ausentes em `TotalCharges`, todos com `tenure = 0`
+- [Resultados experimentais](docs/resultados_experimentais.md): métricas completas, matrizes de confusão e discussão
+- [Artigo (PDF, padrão SBC)](docs/artigo/artigo-n3.pdf): fundamentação teórica e metodologia
+- [Roteiro de testes do painel Cliente](docs/roteiro_testes_cliente.md)
+
+## Limitações
+
+- Os resultados vêm de **uma única divisão** dos dados e de **uma execução** da busca, então podem mudar com outras sementes.
+- As associações encontradas entre características e churn **não indicam causalidade**.
+- No dataset, `gender` tem apenas `Male` e `Female`. A aplicação mantém essas duas categorias para que o experimento seja reprodutível, mas elas não representam todas as identidades de gênero e não permitem avaliar o modelo para outros grupos. Veja a [nota metodológica](docs/artigo/nota-representatividade.md) e o [texto para a apresentação](docs/apresentacao/limites-dos-dados.md).
