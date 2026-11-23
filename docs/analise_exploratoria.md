@@ -6,6 +6,8 @@ O conjunto [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telc
 
 A base possui 21 colunas: `customerID`, `Churn` e 19 características candidatas. O cancelamento (`Churn = Yes`) é a classe positiva.
 
+A variável categórica `gender` contém somente os valores originais `Female` e `Male`. Essa classificação binária reflete o registro disponível no dataset e não representa a diversidade de identidades de gênero. Categorias ausentes da amostra não podem ter seu desempenho preditivo avaliado com estes dados; os valores aceitos na demonstração foram mantidos para preservar a correspondência com o treinamento.
+
 ## Qualidade e distribuição das classes
 
 | Indicador | Resultado |

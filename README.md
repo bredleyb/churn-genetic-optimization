@@ -14,6 +14,8 @@ O conjunto [Telco Customer Churn (Kaggle — blastchar)](https://www.kaggle.com/
 
 O arquivo CSV deve ser obtido na fonte indicada e colocado em `data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`. Consulte [data/README.md](data/README.md). Os dados brutos permanecem fora do versionamento.
 
+**Representatividade do dataset:** a variável original `gender` registra apenas `Male` e `Female`, exibidos na aplicação como Masculino e Feminino. Essa delimitação decorre da fonte dos dados, não representa todas as identidades de gênero e impede avaliar o desempenho por outras categorias ausentes do conjunto. A aplicação conserva as duas categorias do estudo para manter a reprodutibilidade da comparação; veja [limitações dos resultados](docs/resultados_experimentais.md#limitações-de-representatividade).
+
 ## Preparação dos dados
 
 A leitura valida o esquema, codifica `Churn` como 1 (cancelamento) e 0 (permanência) e converte `TotalCharges` para numérico. A variável `SeniorCitizen` é tratada como categórica, preservando a distinção entre código binário e grandeza numérica.
@@ -272,4 +274,10 @@ Testes Python: `python -m pytest -q`.
 
 O [artigo acadêmico em PDF](docs/artigo/artigo-n3.pdf) apresenta a fundamentação
 teórica e a metodologia do estudo, seguindo o padrão da Sociedade Brasileira
-de Computação (SBC).
+de Computação (SBC). A delimitação binária da variável `gender` também está
+registrada em uma [nota metodológica complementar](docs/artigo/nota-representatividade.md),
+para integração à seção de limitações do texto final.
+
+O [texto para o slide de limitações](docs/apresentacao/limites-dos-dados.md)
+mantém a mesma explicação para a apresentação, sem modificar os resultados
+experimentais ou criar categorias que não existem no treinamento.

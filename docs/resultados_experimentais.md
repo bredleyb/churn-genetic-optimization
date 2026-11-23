@@ -57,6 +57,10 @@ Os resultados evidenciam um compromisso entre a simplificação das entradas do 
 
 Este experimento utilizou uma única divisão dos dados e uma execução da busca genética. Os resultados podem variar com outras sementes e amostras. O conjunto de dados também representa uma situação específica; associações entre características e cancelamento não demonstram causalidade.
 
+## Limitações de representatividade
+
+A coluna `gender` do Telco Customer Churn apresenta exclusivamente `Female` e `Male`, categorias reproduzidas como Feminino e Masculino na interface. Essa delimitação binária corresponde ao esquema do dataset e não contempla outras identidades de gênero. Não é possível avaliar a qualidade ou a equidade das previsões para categorias não representadas. O modelo de referência utiliza as 19 características originais, incluindo `gender`; o algoritmo genético selecionou nove características e excluiu `gender` de seu subconjunto final. Isso não elimina a limitação de representatividade do conjunto de dados utilizado para treinar e avaliar a solução.
+
 ## Reprodução
 
 Com o CSV original salvo em `data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv` e as dependências instaladas, execute a partir da raiz do repositório:

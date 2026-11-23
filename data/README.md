@@ -8,4 +8,6 @@ O projeto utiliza [Telco Customer Churn — blastchar (Kaggle)](https://www.kagg
 
 O arquivo original possui 7.043 registros e 21 colunas. O CSV não é versionado no Git; os relatórios agregados podem ser reproduzidos a partir dele.
 
+A variável `gender` contém apenas `Female` e `Male` no conjunto original. A aplicação aceita essas categorias para reproduzir o experimento. Essa limitação da fonte é discutida na [análise exploratória](../docs/analise_exploratoria.md) e nos [resultados experimentais](../docs/resultados_experimentais.md).
+
 A preparação preserva os registros com `TotalCharges` vazio. A imputação ocorrerá somente no pipeline dos modelos, sem utilizar informações do conjunto de teste na estimação dos parâmetros.
