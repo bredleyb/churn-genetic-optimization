@@ -31,6 +31,9 @@ class DummyUI(ModuleType):
         super().__init__("streamlit")
         self.session_state = {}
         self.clicked = clicked
+        self.clicked_label = None
+        self.rerun_count = 0
+        self.dialog_specs = []
         self.buttons = []
         self.button_options = []
         self.panel_keys = []
@@ -45,6 +48,13 @@ class DummyUI(ModuleType):
 
     def set_page_config(self, **kwargs):
         pass
+
+    def dialog(self, title, **kwargs):
+        self.dialog_specs.append({"title": title, **kwargs})
+        return lambda function: function
+
+    def rerun(self):
+        self.rerun_count += 1
 
     def markdown(self, html, **_kwargs):
         self.styled_markup.append(html)
@@ -98,7 +108,7 @@ class DummyUI(ModuleType):
     def button(self, label, **kwargs):
         self.buttons.append(label)
         self.button_options.append((label, kwargs))
-        return self.clicked and label == "Calcular previsão"
+        return (self.clicked and label == "Calcular previsão") or label == self.clicked_label
 
     def caption(self, *args, **kwargs):
         pass
@@ -130,7 +140,7 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     for panel in ui.panel_settings:
         if panel.get("key") in {"dashboard-client", "dashboard-workspace", "dashboard-client-fields"}:
             assert "height" not in panel
-    assert ui.buttons == ["1", "2", "+", "Restaurar perfil", "Calcular previsão"]
+    assert ui.buttons == ["1", "2", "+", "Restaurar perfil", "Excluir perfil", "Calcular previsão"]
     options = {name: settings for name, settings in ui.button_options}
     assert options["1"]["type"] == "primary"
     assert options["2"]["type"] == "secondary"
@@ -139,6 +149,10 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     assert options["Restaurar perfil"]["type"] == "tertiary"
     assert options["Restaurar perfil"]["disabled"] is True
     assert callable(options["Restaurar perfil"]["on_click"])
+    assert options["Excluir perfil"]["icon"] == ":material/delete_outline:"
+    assert options["Excluir perfil"]["disabled"] is True
+    assert options["Excluir perfil"]["type"] == "tertiary"
+    assert any(spec["title"] == "Excluir exemplo" for spec in ui.dialog_specs)
     assert "Características" not in ui.selectbox_labels
     assert "Editar características" not in ui.selectbox_labels
     assert ["Perfil", "Conta", "Serviços", "Extras"] in ui.tab_groups
@@ -194,7 +208,11 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert ".churn-run-check {\n  border:2px" in style
     assert "st-key-dashboard-restore-action" in style
     assert "st-key-dashboard-profile-choices" in style
+    assert "st-key-dashboard-profile-actions" in style
+    assert "st-key-dashboard-delete-action" not in style
     assert "border-radius:50%!important" in style
+    assert "border-radius:var(--n3-field-radius)!important" in style
+    assert "--n3-profile-button-gap" in style
     assert "button:disabled" in style
     assert "QUICK_FIELD_COLUMNS" not in style
     assert 'icon=":material/restart_alt:"' not in style
@@ -229,7 +247,7 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "--n3-field-text-size:14px" in style
     assert "--n3-field-text-shift:-1px" in style
     assert "transform:translateY(var(--n3-field-text-shift))!important" in style
-    assert "top:calc(50% + var(--n3-field-text-shift))!important" in style
+    assert "position:absolute!important;left:50%!important;top:50%!important" in style
     assert "background:var(--n3-field-fill)!important" in style
     assert "background:var(--n3-field-action-fill)!important" in style
     assert '[data-testid="stSelectbox"] [role="group"]' in style
@@ -629,7 +647,7 @@ def test_scroll_cues_component_is_visual_only(monkeypatch):
     assert len(mount) == 1
     assert mount[0]["data"] is None
     assert mount[0]["on_value_change"] is None
-    assert ui.buttons == ["1", "2", "+", "Restaurar perfil", "Calcular previsão"]
+    assert ui.buttons == ["1", "2", "+", "Restaurar perfil", "Excluir perfil", "Calcular previsão"]
 
 
 def test_example_selector_preserves_values_across_switches_and_restores(monkeypatch):
@@ -685,6 +703,7 @@ def test_new_examples_stop_at_five_and_hide_creation_button(monkeypatch):
     assert ui.buttons[:5] == ["1", "2", "3", "4", "5"]
     assert "+" not in ui.buttons
     assert "Restaurar perfil" in ui.buttons
+    assert "Excluir perfil" in ui.buttons
     assert "Calcular previsão" in ui.buttons
 
 
@@ -741,3 +760,73 @@ def test_legacy_session_migrates_active_example_without_losing_edits(monkeypatch
     assert ui.session_state["example_profiles"]["Exemplo 1"]["original"]["tenure"] == 3
     app._reset_profile()
     assert ui.session_state["customer_values"]["tenure"] == 3
+
+
+def test_delete_action_only_enabled_for_added_examples(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_delete_action_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app.main()
+    assert dict(ui.button_options)["Excluir perfil"]["disabled"] is True
+    app._select_example("Exemplo 2")
+    ui.button_options.clear()
+    app.main()
+    assert dict(ui.button_options)["Excluir perfil"]["disabled"] is True
+    app._create_example()
+    ui.button_options.clear()
+    app.main()
+    assert dict(ui.button_options)["Excluir perfil"]["disabled"] is False
+
+
+def test_delete_active_example_preserves_snapshots_and_invalidates_run(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_delete_active_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    for _ in range(3):
+        app._create_example()
+    examples = ui.session_state["example_profiles"]
+    saved_original = examples["Exemplo 5"]["original"]
+    app._select_example("Exemplo 4")
+    # Trocar de perfil sincroniza o rascunho e pode substituir seu dicionário.
+    saved_values = examples["Exemplo 5"]["values"]
+    ui.session_state["workflow_run"] = {"previous_prediction": True}
+    revision = ui.session_state["tenure_revision"]
+    assert app._delete_active_example() == "Exemplo 3"
+    assert ui.session_state["profile_choice"] == "Exemplo 3"
+    assert ui.session_state["workflow_run"] is None
+    assert ui.session_state["tenure_revision"] == revision + 1
+    assert list(examples) == [f"Exemplo {i}" for i in range(1, 5)]
+    assert examples["Exemplo 4"]["original"] is saved_original
+    assert examples["Exemplo 4"]["values"] is saved_values
+    assert examples["Exemplo 1"]["original"] == app.load_profile(ROOT, "Exemplo 1")
+    for base in ("Exemplo 1", "Exemplo 2"):
+        app._select_example(base)
+        with pytest.raises(ValueError, match="protegido"):
+            app._delete_active_example()
+    app._select_example("Exemplo 4")
+    app._create_example()
+    assert ui.session_state["profile_choice"] == "Exemplo 5"
+
+
+def test_delete_dialog_requires_confirmation_and_allows_cancellation(monkeypatch):
+    ui = DummyUI(False)
+    monkeypatch.setitem(sys.modules, "streamlit", ui)
+    spec = importlib.util.spec_from_file_location("n3_delete_dialog_test", ROOT / "streamlit_app.py")
+    app = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app)
+    app._apply_profile("Exemplo 1")
+    app._create_example()
+    ui.clicked_label = "Cancelar"
+    app._confirm_delete_example()
+    assert "Exemplo 3" in ui.session_state["example_profiles"]
+    assert ui.session_state["profile_choice"] == "Exemplo 3"
+    ui.clicked_label = "Excluir Exemplo 3"
+    app._confirm_delete_example()
+    assert "Exemplo 3" not in ui.session_state["example_profiles"]
+    assert ui.session_state["profile_choice"] == "Exemplo 2"
+    assert ui.rerun_count == 2

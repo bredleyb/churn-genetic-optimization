@@ -336,15 +336,18 @@ for (const { width, height } of viewports) {
         await expect(page.locator('.churn-comparison .churn-state')).toHaveCount(0);
         await expect(page.getByRole('textbox', { name: 'Tempo como cliente' })).toHaveValue('3 meses');
         const restore = page.getByRole('button', { name: 'Restaurar perfil' });
+        const deleteProfile = page.getByRole('button', { name: 'Excluir perfil' });
         await expect(restore).toBeVisible();
+        await expect(deleteProfile).toBeVisible();
+        await expect(deleteProfile).toBeDisabled();
         const firstExample = page.getByRole('button', { name: '1', exact: true });
         const secondExample = page.getByRole('button', { name: '2', exact: true });
         const createExample = page.getByRole('button', { name: '+', exact: true });
         await expect(firstExample).toBeVisible();
         await expect(secondExample).toBeVisible();
         await expect(createExample).toBeVisible();
-        const [restoreBox, profileBox] = await Promise.all([
-          restore.boundingBox(), firstExample.boundingBox(),
+        const [restoreBox, deleteBox, profileBox] = await Promise.all([
+          restore.boundingBox(), deleteProfile.boundingBox(), firstExample.boundingBox(),
         ]);
         expect(Math.abs(
           restoreBox.y + restoreBox.height/2 - profileBox.y - profileBox.height/2),
@@ -353,6 +356,18 @@ for (const { width, height } of viewports) {
           'Restaurar possui largura diferente do círculo').toBeLessThanOrEqual(1);
         expect(Math.abs(restoreBox.height - profileBox.height),
           'Restaurar possui altura diferente do círculo').toBeLessThanOrEqual(1);
+        expect(Math.abs(deleteBox.width - restoreBox.width),
+          'Excluir e Restaurar têm larguras diferentes').toBeLessThanOrEqual(1);
+        expect(Math.abs(deleteBox.height - restoreBox.height),
+          'Excluir e Restaurar têm alturas diferentes').toBeLessThanOrEqual(1);
+        expect(Math.abs(deleteBox.y + deleteBox.height/2 -
+          profileBox.y - profileBox.height/2),
+          'Excluir desalinhado verticalmente com os perfis').toBeLessThanOrEqual(2);
+        expect(deleteBox.x, 'Excluir deve ficar à direita de Restaurar').toBeGreaterThan(restoreBox.x);
+        const corners = await Promise.all([firstExample, restore, deleteProfile]
+          .map(item => item.evaluate(el => parseFloat(getComputedStyle(el).borderTopLeftRadius))));
+        expect(corners[0]).toBeGreaterThan(corners[1] + 4);
+        expect(corners.slice(1)).toEqual([4, 4]);
         await expect(restore).toBeDisabled();
         const restoreAppearance = await restore.evaluate(button => {
           const icon = button.querySelector('[data-testid="stIconMaterial"]');
@@ -371,6 +386,7 @@ for (const { width, height } of viewports) {
         expect(restoreAppearance.iconOffset, 'Ícone de restauro desalinhado horizontalmente').toBeLessThanOrEqual(2);
         expect(restoreAppearance.iconVerticalOffset, 'Ícone de restauro desalinhado verticalmente').toBeLessThanOrEqual(2);
         await expect(restore.locator('[data-testid="stIconMaterial"]')).toHaveCount(1);
+        await expect(deleteProfile.locator('[data-testid="stIconMaterial"]')).toHaveCount(1);
         // Restaurar desabilitado mantém a superfície escura; Playwright não
         // deve exigir hover em botão com pointer-events bloqueado.
         await expect(restore).toBeDisabled();

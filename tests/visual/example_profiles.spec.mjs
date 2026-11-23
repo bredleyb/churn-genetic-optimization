@@ -5,6 +5,7 @@ test('exemplos numerados preservam edições, restauro e limite de cinco', async
   await page.goto('/', {waitUntil:'domcontentloaded'});
   const month = page.getByRole('textbox', {name:'Tempo como cliente'});
   const restore = page.getByRole('button', {name:'Restaurar perfil'});
+  const deleteProfile = page.getByRole('button', {name:'Excluir perfil'});
   const first = page.getByRole('button', {name:'1',exact:true});
   const second = page.getByRole('button', {name:'2',exact:true});
   const plus = page.getByRole('button', {name:'+',exact:true});
@@ -12,13 +13,19 @@ test('exemplos numerados preservam edições, restauro e limite de cinco', async
   await expect(first).toBeVisible();
   await expect(second).toBeVisible();
   await expect(restore).toBeDisabled();
+  await expect(deleteProfile).toBeDisabled();
   const topAlignment = await Promise.all([
-    restore.boundingBox(),first.boundingBox(),
+    restore.boundingBox(),first.boundingBox(),deleteProfile.boundingBox(),
   ]);
   expect(Math.abs(topAlignment[0].height - topAlignment[1].height)).toBeLessThanOrEqual(1);
   expect(Math.abs(topAlignment[0].width - topAlignment[1].width)).toBeLessThanOrEqual(1);
   expect(Math.abs(topAlignment[0].y + topAlignment[0].height/2 -
                   topAlignment[1].y - topAlignment[1].height/2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(topAlignment[2].height - topAlignment[0].height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(topAlignment[2].width - topAlignment[0].width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(topAlignment[2].y + topAlignment[2].height/2 -
+                  topAlignment[1].y - topAlignment[1].height/2)).toBeLessThanOrEqual(2);
+  expect(topAlignment[2].x).toBeGreaterThan(topAlignment[0].x);
   const pristineColor = await restore.evaluate(el => getComputedStyle(el).backgroundColor);
   expect(pristineColor).toBe('rgb(0, 0, 0)');
 
@@ -27,6 +34,7 @@ test('exemplos numerados preservam edições, restauro e limite de cinco', async
   const secondOriginal = await month.inputValue();
   await plus.click();
   await expect(page.getByRole('button', {name:'3',exact:true})).toBeVisible();
+  await expect(deleteProfile).toBeEnabled();
   await expect(month).toHaveValue(secondOriginal);
   await expect(restore).toBeDisabled();
 
@@ -70,18 +78,33 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
       await expect(controls).toHaveCount(3);
       const frame = await choices.boundingBox();
       const restore = page.getByRole('button',{name:'Restaurar perfil'});
+      const deleteProfile = page.getByRole('button',{name:'Excluir perfil'});
       const restoreBox = await restore.boundingBox();
+      const deleteBox = await deleteProfile.boundingBox();
       const positions = await Promise.all((await controls.all()).map(button => button.boundingBox()));
       for (const rect of positions) {
         expect(Math.abs(rect.width - rect.height), 'Botão não é circular').toBeLessThanOrEqual(1);
-        expect(Math.abs(rect.width - restoreBox.width), 'Restaurar de outro diâmetro')
-          .toBeLessThanOrEqual(1);
-        expect(Math.abs((rect.y+rect.height/2) - (restoreBox.y+restoreBox.height/2)),
-          'Restaurar e exemplos não estão no mesmo eixo').toBeLessThanOrEqual(2);
+        for (const [label, action] of [['Restaurar',restoreBox],['Excluir',deleteBox]]) {
+          expect(Math.abs(rect.width - action.width), label+' com dimensão diferente')
+            .toBeLessThanOrEqual(1);
+          expect(Math.abs((rect.y+rect.height/2) - (action.y+action.height/2)),
+            label+' desalinhado com os perfis').toBeLessThanOrEqual(2);
+        }
         expect(rect.x, 'Botão passou do lado esquerdo').toBeGreaterThanOrEqual(frame.x - 2);
         expect(rect.x+rect.width, 'Botão passou do lado direito')
           .toBeLessThanOrEqual(frame.x+frame.width+2);
       }
+      const actionFrame = await page.locator('.st-key-dashboard-profile-actions').boundingBox();
+      for (const rect of [restoreBox,deleteBox]) {
+        expect(rect.x).toBeGreaterThanOrEqual(actionFrame.x - 2);
+        expect(rect.x + rect.width).toBeLessThanOrEqual(actionFrame.x + actionFrame.width + 2);
+      }
+      const squareRadius = await restore.evaluate(el =>
+        parseFloat(getComputedStyle(el).borderTopLeftRadius));
+      const circleRadius = await controls.first().evaluate(el =>
+        parseFloat(getComputedStyle(el).borderTopLeftRadius));
+      expect(squareRadius).toBe(4);
+      expect(circleRadius).toBeGreaterThan(squareRadius + 3);
       const plus = page.getByRole('button', {name:'+',exact:true});
       for (let i=3; i<=5; i++) {
         await plus.click();
@@ -125,3 +148,75 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
       }
     });
 }
+
+
+test('exclusão pede confirmação e preserva os exemplos protegidos', async ({page}) => {
+  await page.setViewportSize({width:1024,height:768});
+  await page.goto('/', {waitUntil:'domcontentloaded'});
+  const first = page.getByRole('button',{name:'1',exact:true});
+  const second = page.getByRole('button',{name:'2',exact:true});
+  const add = page.getByRole('button',{name:'+',exact:true});
+  const remove = page.getByRole('button',{name:'Excluir perfil'});
+
+  await expect(remove).toBeDisabled();
+  await second.click();
+  await expect(remove).toBeDisabled();
+  await add.click();
+  await expect(remove).toBeEnabled();
+  await remove.click();
+
+  const modal = page.getByRole('dialog',{name:'Excluir exemplo'});
+  await expect(modal).toBeVisible();
+  await expect(modal).toContainText('Excluir Exemplo 3?');
+  await modal.getByRole('button',{name:'Cancelar'}).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'3',exact:true})).toBeVisible();
+
+  await remove.click();
+  await modal.getByRole('button',{name:'Excluir Exemplo 3'}).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'3',exact:true})).toHaveCount(0);
+  await expect(second).toHaveAttribute('kind','primary');
+  await expect(remove).toBeDisabled();
+  await expect(add).toBeVisible();
+  await expect(first).toBeVisible();
+});
+
+test('exclusão intermediária renumera sem perder dados e reabre a criação', async ({page}) => {
+  await page.setViewportSize({width:1024,height:768});
+  await page.goto('/', {waitUntil:'domcontentloaded'});
+  const add = page.getByRole('button',{name:'+',exact:true});
+  const remove = page.getByRole('button',{name:'Excluir perfil'});
+  const tenure = page.getByRole('textbox',{name:'Tempo como cliente'});
+  const setMonths = async value => {
+    await tenure.click();
+    await tenure.press('ControlOrMeta+A');
+    for (const digit of value) await tenure.press(digit);
+    await expect(tenure).toHaveValue(value+' meses');
+  };
+  await add.click(); // Exemplo 3, fotografia com 3 meses
+  await setMonths('30');
+  await add.click(); // Exemplo 4, fotografia com 30 meses
+  await setMonths('40');
+  await add.click(); // Exemplo 5, fotografia com 40 meses
+  await setMonths('50');
+  await expect(add).toHaveCount(0);
+
+  await page.getByRole('button',{name:'4',exact:true}).click();
+  await expect(tenure).toHaveValue('40 meses');
+  await remove.click();
+  const modal=page.getByRole('dialog',{name:'Excluir exemplo'});
+  await expect(modal).toContainText('Excluir Exemplo 4?');
+  await modal.getByRole('button',{name:'Excluir Exemplo 4'}).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'3',exact:true})).toHaveAttribute('kind','primary');
+  await expect(tenure).toHaveValue('30 meses');
+  await expect(page.getByRole('button',{name:'5',exact:true})).toHaveCount(0);
+  await expect(add).toBeVisible();
+  await page.getByRole('button',{name:'4',exact:true}).click();
+  await expect(tenure).toHaveValue('50 meses');
+  await page.getByRole('button',{name:'Restaurar perfil'}).click();
+  await expect(tenure).toHaveValue('40 meses');
+  await add.click();
+  await expect(page.getByRole('button',{name:'5',exact:true})).toBeVisible();
+});

@@ -4,7 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from src.example_profiles import MAX_EXAMPLES, append_example, initial_examples, is_original
+from src.example_profiles import (
+    MAX_EXAMPLES,
+    append_example,
+    can_delete_example,
+    delete_example,
+    initial_examples,
+    is_original,
+)
 from src.ui_data import PROFILE_FILES, model_input
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,3 +51,47 @@ def test_edits_and_restoration_do_not_mutate_other_examples():
     assert examples["Exemplo 2"]["values"]["MonthlyCharges"] != 123.0
     examples[created]["values"] = examples[created]["original"].copy()
     assert is_original(examples, created, examples[created]["values"])
+
+
+def test_original_examples_cannot_be_deleted():
+    examples = initial_examples(ROOT)
+    for name in ("Exemplo 1", "Exemplo 2"):
+        assert not can_delete_example(examples, name)
+        with pytest.raises(ValueError, match="protegido"):
+            delete_example(examples, name)
+        assert list(examples) == ["Exemplo 1", "Exemplo 2"]
+    with pytest.raises(ValueError, match="desconhecido"):
+        delete_example(examples, "Exemplo 3")
+
+
+def test_deleting_middle_example_renumbers_preserving_independent_snapshots():
+    examples = initial_examples(ROOT)
+    for number in range(3, 6):
+        customer = examples["Exemplo 1"]["values"].copy()
+        customer["tenure"] = number * 10
+        append_example(examples, customer)
+        examples[f"Exemplo {number}"]["values"]["MonthlyCharges"] = float(number * 12)
+
+    original = examples["Exemplo 5"]["original"]
+    edited = examples["Exemplo 5"]["values"]
+    assert can_delete_example(examples, "Exemplo 4")
+    assert delete_example(examples, "Exemplo 4") == "Exemplo 3"
+    assert list(examples) == [f"Exemplo {n}" for n in range(1, 5)]
+    assert examples["Exemplo 4"]["original"] is original
+    assert examples["Exemplo 4"]["values"] is edited
+    assert examples["Exemplo 4"]["original"]["tenure"] == 50
+    assert examples["Exemplo 4"]["values"]["MonthlyCharges"] == 60.0
+    assert examples["Exemplo 1"]["values"] == examples["Exemplo 1"]["original"]
+    assert examples["Exemplo 2"]["values"] == examples["Exemplo 2"]["original"]
+
+    customer = examples["Exemplo 4"]["values"].copy()
+    assert append_example(examples, customer) == "Exemplo 5"
+    assert len(examples) == MAX_EXAMPLES
+
+
+def test_delete_first_optional_example_returns_protected_previous():
+    examples = initial_examples(ROOT)
+    append_example(examples, examples["Exemplo 2"]["values"])
+    assert delete_example(examples, "Exemplo 3") == "Exemplo 2"
+    assert list(examples) == ["Exemplo 1", "Exemplo 2"]
+    assert not can_delete_example(examples, "Exemplo 3")
