@@ -36,6 +36,27 @@ export default function () {
   let actionButton = null;
   let actionState = null;
   let suppressHover = false;
+  let activeNumberStepper = null;
+
+  // Hover dos steppers nativos: usar movimento real do ponteiro elimina
+  // :hover que o React pode reatribuir ao irmão depois de uma atualização.
+  const setNumberStepperHover = next => {
+    if (next === activeNumberStepper) return;
+    activeNumberStepper?.removeAttribute("data-n3-pointer-hover");
+    activeNumberStepper = next;
+    if (next && !next.disabled) next.dataset.n3PointerHover = "true";
+  };
+  const numberStepperAt = target => target instanceof Element
+    ? target.closest('.st-key-dashboard-client [data-testid="stNumberInput"] button')
+    : null;
+  const onNumberPointerMove = event => {
+    if (event.pointerType === "touch") return;
+    setNumberStepperHover(numberStepperAt(event.target));
+  };
+  // O pointerdown sempre descarrega o estado, mesmo que o React mantenha
+  // o cursor sobre o componente ou substitua o botão antes do pointerup.
+  const onNumberPointerDown = () => setNumberStepperHover(null);
+
 
   // Ao concluir a execução, o cursor pode continuar sobre o botão e manter
   // :hover ativo. Só habilitar novamente o hover após sair da área clicável.
@@ -128,6 +149,11 @@ export default function () {
     childList: true, characterData: true, subtree: true,
   });
   window.addEventListener("resize", schedule, { signal: abort.signal });
+  document.addEventListener("pointermove", onNumberPointerMove,
+    { capture:true, signal:abort.signal });
+  document.addEventListener("pointerdown", onNumberPointerDown,
+    { capture:true, signal:abort.signal });
+  window.addEventListener("blur", onNumberPointerDown, { signal:abort.signal });
   bind();
 
   return () => {
@@ -135,6 +161,7 @@ export default function () {
     if (frame) cancelAnimationFrame(frame);
     if (locatorFrame) cancelAnimationFrame(locatorFrame);
     structure.disconnect();
+    setNumberStepperHover(null);
     actionButton?.removeEventListener("pointerleave", onActionLeave);
     mutations?.disconnect();
     resizes.disconnect();

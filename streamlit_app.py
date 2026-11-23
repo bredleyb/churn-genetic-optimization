@@ -219,6 +219,21 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-field-fill)!important;border:1px solid var(--n3-outline)!important;
   border-radius:var(--n3-field-radius)!important;
 }
+/* A borda em foco pertence ao container, acima do fundo dos steppers.
+   O recorte e o raio são compartilhados para preservar as quatro curvas. */
+.st-key-dashboard-client [data-testid="stNumberInput"] [data-testid="stNumberInputContainer"] {
+  position:relative!important;isolation:isolate!important;
+}
+.st-key-dashboard-client [data-testid="stNumberInput"]
+  [data-testid="stNumberInputContainer"]:focus-within {
+  border-color:var(--n3-text)!important;
+}
+.st-key-dashboard-client [data-testid="stNumberInput"]
+  [data-testid="stNumberInputContainer"]:focus-within::after {
+  content:"";position:absolute;inset:0;box-sizing:border-box;
+  border:2px solid var(--n3-text);border-radius:inherit;
+  z-index:3;pointer-events:none;
+}
 .st-key-dashboard-client [data-testid="stSelectbox"] input[role="combobox"] {
   box-sizing:border-box!important;flex:1 1 auto!important;width:0!important;
   min-width:0!important;height:calc(var(--n3-field-height) - 2px)!important;
@@ -263,7 +278,10 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   justify-content:center!important;background:var(--n3-field-action-fill)!important;
   border:0!important;border-radius:0!important;color:var(--n3-secondary)!important;
 }
-.st-key-dashboard-client [data-testid="stNumberInput"] button:hover {
+/* A cor acompanha o último movimento real do ponteiro; a remoção da marca
+   no pointerdown evita hover obsoleto no botão vizinho após um rerun. */
+.st-key-dashboard-client [data-testid="stNumberInput"]
+  button[data-n3-pointer-hover="true"]:not(:disabled) {
   background:var(--n3-elevated)!important;
 }
 .st-key-dashboard-client-footer [data-testid="stButton"] button[kind="primary"],

@@ -32,6 +32,28 @@ export default function({ parentElement, data, setStateValue }) {
   const controller = new AbortController();
   root[ACTIVE_MOUNT] = controller;
   const { signal } = controller;
+  const steppers = [minus, plus];
+  const showPointerHover = active => {
+    for (const button of steppers) {
+      if (button === active && !button.disabled) {
+        button.dataset.n3PointerHover = "true";
+      } else {
+        delete button.dataset.n3PointerHover;
+      }
+    }
+  };
+  // CSS :hover pode ficar associado a um irmão após rerender com o ponteiro
+  // imóvel. Só o pointermove real arma o destaque; o clique limpa ambos.
+  showPointerHover(null);
+  root.addEventListener("pointermove", event => {
+    if (event.pointerType === "touch") return;
+    const button = event.target instanceof Element
+      ? event.target.closest('button[data-step]') : null;
+    showPointerHover(steppers.includes(button) ? button : null);
+  }, { signal });
+  root.addEventListener("pointerdown", () => showPointerHover(null),
+    { capture:true, signal });
+  root.addEventListener("pointerleave", () => showPointerHover(null), { signal });
   const isFocused = () => input.getRootNode().activeElement === input ||
     document.activeElement === input;
 
@@ -100,6 +122,7 @@ export default function({ parentElement, data, setStateValue }) {
   plus.addEventListener("click", () => commit(value + 1, {force:true}), { signal });
   return () => {
     controller.abort();
+    if (root[ACTIVE_MOUNT] === controller) showPointerHover(null);
     // Um cleanup atrasado nunca deve desmontar a instância mais recente.
     if (root[ACTIVE_MOUNT] === controller) delete root[ACTIVE_MOUNT];
   };

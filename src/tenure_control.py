@@ -31,13 +31,19 @@ _COMPONENT_CSS = """
   font-size:15px;line-height:20px;font-weight:400;white-space:nowrap;
   transform:translateY(var(--n3-field-text-shift,-1px));}
 .n3-tenure-field {box-sizing:border-box;display:flex;align-items:stretch;
+  position:relative;isolation:isolate;
   width:100%;height:var(--n3-field-height,42px);min-width:0;overflow:hidden;
   background:var(--n3-field-fill,#0e1013);border:1px solid var(--n3-outline,#55585d);
   border-radius:var(--n3-field-radius,4px);}
-/* O painel pai recorta overflow-x; o anel de foco deve caber DENTRO da borda. */
+/* A borda do foco fica ACIMA dos dois steppers; uma sombra inset
+   aplicada ao container é coberta pelo fundo de hover dos filhos. */
 .n3-tenure-field:focus-within {
   outline:none;border-color:var(--n3-text,#f5f5f5);
-  box-shadow:inset 0 0 0 1px var(--n3-text,#f5f5f5);
+}
+.n3-tenure-field:focus-within::after {
+  content:"";position:absolute;inset:0;box-sizing:border-box;
+  border:2px solid var(--n3-text,#f5f5f5);border-radius:inherit;
+  z-index:3;pointer-events:none;
 }
 /* O input seleciona somente dígitos; o sufixo ocupa a mesma caixa ao lado
    sem pertencer ao texto editável. Isso elimina a gestão manual do caret. */
@@ -63,7 +69,11 @@ _COMPONENT_CSS = """
   font:500 17px/20px var(--n3-font-ui,"Familjen Grotesk",sans-serif);
   background:var(--n3-field-action-fill,#0e1013);color:var(--n3-secondary,#d8d8d8);
   cursor:pointer;}
-.n3-tenure-field button:hover:not(:disabled) {background:var(--n3-elevated,#202124);}
+/* Hover armado por movimento real do ponteiro; após clicar, nenhuma ação
+   vizinha herda um :hover obsoleto durante o rerun do Streamlit. */
+.n3-tenure-field button[data-n3-pointer-hover="true"]:not(:disabled) {
+  background:var(--n3-elevated,#202124);
+}
 .n3-tenure-field button:disabled {opacity:.45;cursor:default;}
 .n3-tenure-field button:focus-visible {outline:2px solid var(--n3-text,#f5f5f5);outline-offset:-2px;}
 """
