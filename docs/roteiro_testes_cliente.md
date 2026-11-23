@@ -67,6 +67,7 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F09 | Montagem v2 com atualização tardia | Input numérico nativo preserva seleção com props antigas; sem foco, aceita mudança externa; nova revisão recria controle válido |
 | CL-F10 | Geometria da unidade | Dígitos e sufixo contíguos na mesma caixa, seleção restrita ao número, em 1440 e 390 px |
 | CL-F11 | Entrada inválida e colagem | Rejeita letras, aceita colagem numérica com unidade e normaliza campo vazio no blur |
+| CL-F12 | Montagem única | Montagens sem cleanup anterior não acumulam listeners; colagem dispara uma única alteração e cleanup atrasado preserva a instância atual |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
@@ -121,3 +122,6 @@ A auditoria só está concluída com pytest sem falhas, Playwright sem falhas
 nem flakiness, CL-B03 executado com dataset, screenshots CL-* revisadas e
 evidências do ZIP correspondendo ao mesmo HEAD Git. Um teste ignorado,
 mesmo que proposital, deve permanecer explicitamente registrado no relatório.
+
+Auditoria detalhada da falha de colagem e correção de montagem:
+[sétima rodada](auditoria_cliente_2026-11-23_rodada7.md).
