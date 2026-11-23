@@ -191,12 +191,16 @@ e fonte monoespaçada no registro de execução.
 - **Cliente:** quatro campos principais em duas linhas com a mesma grade,
   exemplos selecionados por botões circulares (1 e 2 originais, até 5 na sessão,
   com `+` para duplicar os valores atuais), restauro independente e escurecido
-  quando o exemplo não sofreu alterações, e exclusão confirmada dos exemplos
+  quando o exemplo não sofreu alterações, e exclusão imediata dos exemplos
   3–5. Os exemplos 1 e 2 são protegidos. Ao excluir um exemplo, os posteriores
   são renumerados preservando os dados; o exemplo anterior é selecionado.
   Restaurar e Excluir ficam juntos à direita em botões quadrados de mesmo tamanho,
   alinhados à linha circular. Abas Perfil, Conta, Serviços e Extras
-  e botão de cálculo fixo na base do painel.
+  e botão de cálculo fixo na base do painel, sem linha divisória. O botão
+  apresenta **Calcular previsão** antes da execução, **Calculando...** enquanto
+  o processamento está em andamento e **Recalcular previsão** após a conclusão.
+  O estado intermediário desabilita novas solicitações; o recálculo utiliza
+  o fluxo de treinamento e avaliação já existente.
   O tempo de permanência utiliza um componente Streamlit v2 local: o próprio
   campo mostra `X mês`/`X meses`, protege a unidade durante a edição e envia
   somente o número inteiro ao modelo (0 a 999 meses). A rolagem do formulário
