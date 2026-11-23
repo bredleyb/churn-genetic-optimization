@@ -71,7 +71,7 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F13 | Foco e hover de Tempo | Uma única borda branca de 1 px com raio de 4 px, sem sombra/anel adicional; clique limpa hover dos steppers em 1440 e 390 px |
 | CL-F14 | Foco e hover de Cobrança | Mesma borda ativa de 1 px, sem ring adicional e sem hover residual após clicar em 1440 e 390 px |
 | CL-F15 | Borda condicional dos seletores | Todos os seletores das quatro abas mantêm borda cinza com menu fechado, usam borda clara de 1 px apenas com lista aberta e voltam ao cinza após opção/Esc; controles numéricos mantêm foco normal |
-| CL-F16 | Seta de expansão | Seta voltada para baixo quando fechado e para cima quando aberto; transição de 160 ms e versão sem animação para movimento reduzido, em 1440 e 390 px |
+| CL-F16 | Seta independente da abertura | Popover montado antes de terminar a rotação da seta; transição de 160 ms após montagem da lista, retorno ao fechar e suporte a movimento reduzido em 1440 e 390 px |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
@@ -93,6 +93,10 @@ A nona auditoria registra a padronização da borda de foco em
 A décima auditoria documenta a borda condicionada à lista aberta e a
 animação da seta em
 [auditoria_cliente_2026-11-23_rodada10.md](auditoria_cliente_2026-11-23_rodada10.md).
+
+A décima primeira revisão registra a independência entre abertura
+imediata do menu e a rotação decorativa da seta em
+[auditoria_cliente_2026-11-23_rodada11.md](auditoria_cliente_2026-11-23_rodada11.md).
 
 ## Procedimento
 
