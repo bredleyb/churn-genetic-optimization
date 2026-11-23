@@ -139,8 +139,12 @@ def test_tenure_component_contract_separates_numeric_value_and_visual_unit(clien
     assert 'root.addEventListener("pointerleave"' in js
     assert 'button.dataset.n3PointerHover = "true"' in js
     assert 'showPointerHover(null)' in js
-    assert ".n3-tenure-field:focus-within::after" in _COMPONENT_CSS
-    assert "z-index:3;pointer-events:none" in _COMPONENT_CSS
+    assert ".n3-tenure-field:focus-within {" in _COMPONENT_CSS
+    assert "border:1px solid var(--n3-outline,#55585d)" in _COMPONENT_CSS
+    assert "border-color:var(--n3-text,#f5f5f5)" in _COMPONENT_CSS
+    assert ".n3-tenure-field:focus-within::after" not in _COMPONENT_CSS
+    assert "box-shadow:inset" not in _COMPONENT_CSS
+    assert "outline:2px" not in _COMPONENT_CSS
     assert 'button[data-n3-pointer-hover="true"]:not(:disabled)' in _COMPONENT_CSS
     assert "button:hover:not(:disabled)" not in _COMPONENT_CSS
     assert 'event.preventDefault();\n      commit(value +' in js
@@ -211,9 +215,14 @@ def test_native_numeric_steppers_use_same_hover_and_focus_model(client_app):
     cues = (app.ROOT / "src" / "client_scroll_cues.mjs").read_text(
         encoding="utf-8"
     )
-    assert '[data-testid="stNumberInputContainer"]:focus-within::after' in css
-    assert "border:2px solid var(--n3-text);border-radius:inherit" in css
-    assert "z-index:3;pointer-events:none" in css
+    assert '[data-testid="stSelectbox"] [role="group"]:is(' in css
+    assert ':has([aria-expanded="true"])' in css
+    assert '[data-testid="stNumberInputContainer"],[data-baseweb="input"]):focus-within' in css
+    assert "border:1px solid var(--n3-outline)!important" in css
+    assert "border-color:var(--n3-text)!important" in css
+    assert '[data-testid="stNumberInputContainer"]:focus-within::after' not in css
+    assert "border:2px solid var(--n3-text);border-radius:inherit" not in css
+    assert "z-index:3;pointer-events:none" not in css
     assert 'button[data-n3-pointer-hover="true"]:not(:disabled)' in css
     assert '[data-testid="stNumberInput"] button:hover {' not in css
     assert 'document.addEventListener("pointermove"' in cues

@@ -44,16 +44,16 @@ test('CL-F02 editor de meses tem um único texto protegido e stepper correto',as
   const focus=await field.evaluate(el=>({
     border:getComputedStyle(el).borderColor,
     width:el.getBoundingClientRect().width,
-    ring:getComputedStyle(el,'::after').borderTopColor,
-    ringWidth:getComputedStyle(el,'::after').borderTopWidth,
-    ringZ:Number(getComputedStyle(el,'::after').zIndex),
-    ringPointer:getComputedStyle(el,'::after').pointerEvents,
+    borderWidth:getComputedStyle(el).borderTopWidth,
+    shadow:getComputedStyle(el).boxShadow,
+    outline:getComputedStyle(el).outlineStyle,
+    ring:getComputedStyle(el,'::after').content,
   }));
   expect(focus.border).toBe('rgb(245, 245, 245)');
-  expect(focus.ring).toBe('rgb(245, 245, 245)');
-  expect(focus.ringWidth).toBe('2px');
-  expect(focus.ringZ).toBeGreaterThanOrEqual(3);
-  expect(focus.ringPointer).toBe('none');
+  expect(focus.borderWidth).toBe('1px');
+  expect(focus.shadow).toBe('none');
+  expect(focus.outline).toBe('none');
+  expect(focus.ring).toBe('none');
   expect(focus.width).toBeGreaterThan(60);
   await screenshot(page,info,'CL-F02-meses-foco-e-limite');
 });
@@ -442,16 +442,16 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
       await months.click();
       await expect(field).toHaveCSS('border-color','rgb(245, 245, 245)');
       const visual=await field.evaluate(el=>{
-        const css=getComputedStyle(el),ring=getComputedStyle(el,'::after');
+        const css=getComputedStyle(el);
         return {clip:css.overflowX,position:css.position,
-          radius:css.borderTopRightRadius,layer:Number(ring.zIndex),
-          pointer:ring.pointerEvents,color:ring.borderTopColor,
-          width:ring.borderTopWidth,round:ring.borderTopRightRadius};
+          radius:css.borderTopRightRadius,color:css.borderTopColor,
+          width:css.borderTopWidth,shadow:css.boxShadow,
+          outline:css.outlineStyle,extraRing:getComputedStyle(el,'::after').content};
       });
       expect(visual).toMatchObject({
-        clip:'hidden',position:'relative',radius:'4px',layer:3,
-        pointer:'none',color:'rgb(245, 245, 245)',
-        width:'2px',round:'4px',
+        clip:'hidden',position:'relative',radius:'4px',
+        color:'rgb(245, 245, 245)',width:'1px',shadow:'none',
+        outline:'none',extraRing:'none',
       });
       await plus.hover();
       await expect(plus).toHaveCSS('background-color',hover);
@@ -488,14 +488,15 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
       const bg='rgb(14, 16, 19)',hover='rgb(32, 33, 36)';
       await number.getByRole('spinbutton',{name:'Cobrança mensal'}).focus();
       const visual=await container.evaluate(el=>{
-        const css=getComputedStyle(el),ring=getComputedStyle(el,'::after');
-        return {clip:css.overflowX,position:css.position,radius:css.borderTopRightRadius,
-          layer:Number(ring.zIndex),pointer:ring.pointerEvents,
-          color:ring.borderTopColor,width:ring.borderTopWidth,round:ring.borderTopRightRadius};
+        const css=getComputedStyle(el);
+        return {clip:css.overflowX,radius:css.borderTopRightRadius,
+          color:css.borderTopColor,width:css.borderTopWidth,
+          shadow:css.boxShadow,outline:css.outlineStyle,
+          extraRing:getComputedStyle(el,'::after').content};
       });
       expect(visual).toMatchObject({
-        clip:'hidden',position:'relative',radius:'4px',layer:3,
-        pointer:'none',color:'rgb(245, 245, 245)',width:'2px',round:'4px',
+        clip:'hidden',radius:'4px',color:'rgb(245, 245, 245)',
+        width:'1px',shadow:'none',outline:'none',extraRing:'none',
       });
       await first.hover();
       await expect(first).toHaveCSS('background-color',hover);
@@ -515,5 +516,68 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
       await page.mouse.move(0,0);
       await expect(first).toHaveCSS('background-color',bg);
       await expect(second).toHaveCSS('background-color',bg);
+    });
+}
+
+
+for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
+  test('CL-F15 foco fino uniforme nos seletores e valores '+viewport.width,
+    async({page},info)=>{
+      await openClient(page,viewport);
+      const activeColor='rgb(245, 245, 245)',
+        neutralColor='rgb(85, 88, 93)';
+      const assertActive=async group=>{
+        await expect(group).toHaveCSS('border-color',activeColor);
+        await expect(group).toHaveCSS('border-top-width','1px');
+        await expect(group).toHaveCSS('box-shadow','none');
+        await expect(group).toHaveCSS('outline-style','none');
+      };
+      const profile=page.locator(
+        '.st-key-dashboard-profile-choices [data-testid="stButton"] button:visible').first();
+      const contract=fieldGroup(page,'Tipo de contrato');
+      const contractInput=page.getByRole('combobox',{name:'Tipo de contrato'});
+      await expect(contract).toHaveCSS('border-color',neutralColor);
+      await contractInput.focus();
+      await assertActive(contract);
+      await contract.getByRole('button',{name:'Open'}).click();
+      await expect(page.getByRole('option',{name:'Mensal',exact:true})).toBeVisible();
+      await assertActive(contract); // manter borda clara com menu aberto
+      await screenshot(page,info,'CL-F15-seletor-aberto-'+viewport.width);
+      await page.keyboard.press('Escape');
+      await profile.focus();
+      await expect(contract).toHaveCSS('border-color',neutralColor);
+
+      // Cobertura de todos os selects acessíveis em cada uma das quatro abas.
+      let focused=0;
+      for(const tab of ['Perfil','Conta','Serviços','Extras']){
+        await tabs(page).getByRole('tab',{name:tab,exact:true}).click();
+        const groups=page.locator(
+          '.st-key-dashboard-client-fields [data-testid="stSelectbox"] [role="group"]:visible');
+        for(const group of await groups.all()){
+          const combobox=group.locator('input[role="combobox"]');
+          if(await combobox.isDisabled())continue;
+          await combobox.focus();
+          await assertActive(group);
+          focused+=1;
+        }
+      }
+      expect(focused,'Campos selecionáveis realmente examinados').toBeGreaterThanOrEqual(10);
+
+      // Os dois number_input (Cobrança mensal e Total cobrado) seguem
+      // o mesmo padrão visual do seletor, com borda de exatos 1 px.
+      for(const label of ['Cobrança mensal','Total cobrado']){
+        if(label==='Total cobrado')
+          await tabs(page).getByRole('tab',{name:'Conta'}).click();
+        const widget=page.locator('[data-testid="stNumberInput"]')
+          .filter({has:page.locator('input[aria-label="'+label+'"]')});
+        const number=widget.getByRole('spinbutton',{name:label});
+        const frame=widget.locator('[data-testid="stNumberInputContainer"]');
+        await number.focus();
+        await assertActive(frame);
+        await profile.focus();
+        await expect(frame).toHaveCSS('border-color',neutralColor);
+      }
+      await screenshot(page,info,'CL-F15-foco-campos-'+viewport.width);
+      await ensureNoException(page);
     });
 }
