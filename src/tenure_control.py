@@ -1,7 +1,8 @@
-"""Controle de permanência: um único campo textual com unidade protegida.
+"""Controle de permanência: um campo visual com número e unidade protegida.
 
-O componente v2 mantém o sufixo dentro do próprio input, permitindo edição
-exclusiva do número e enviando ao Python somente meses inteiros (0 a 999).
+O componente v2 apresenta um único input nativo contendo só os dígitos.
+A unidade fixa fica visualmente na mesma caixa, em um span inacessível
+à edição. O Python recebe meses inteiros de 0 a 999.
 """
 
 from pathlib import Path
@@ -12,7 +13,10 @@ _COMPONENT_HTML = """
   <label for="n3-tenure-value">Tempo como cliente</label>
   <div class="n3-tenure-field">
     <input id="n3-tenure-value" type="text" inputmode="numeric"
-           autocomplete="off" spellcheck="false" aria-label="Tempo como cliente" />
+           pattern="[0-9]*" maxlength="3" autocomplete="off" spellcheck="false"
+           aria-label="Tempo como cliente" aria-describedby="n3-tenure-unit" />
+    <span id="n3-tenure-unit" class="n3-tenure-unit"> meses</span>
+    <span class="n3-tenure-spacer" aria-hidden="true"></span>
     <button type="button" data-step="-1" aria-label="Diminuir um mês">−</button>
     <button type="button" data-step="1" aria-label="Aumentar um mês">+</button>
   </div>
@@ -35,13 +39,22 @@ _COMPONENT_CSS = """
   outline:none;border-color:var(--n3-text,#f5f5f5);
   box-shadow:inset 0 0 0 1px var(--n3-text,#f5f5f5);
 }
-.n3-tenure-field input {box-sizing:border-box;flex:1;min-width:0;width:0;
-  height:100%;padding:0 10px;outline:0;border:0;border-radius:0;
+/* O input seleciona somente dígitos; o sufixo ocupa a mesma caixa ao lado
+   sem pertencer ao texto editável. Isso elimina a gestão manual do caret. */
+.n3-tenure-field input {box-sizing:content-box;flex:0 0 auto;min-width:0;
+  width:calc(var(--n3-tenure-digit-count,1)*1ch);
+  height:100%;padding:0 0 0 10px;outline:0;border:0;border-radius:0;
   background:transparent;color:var(--n3-text,#f5f5f5);
   font:400 var(--n3-field-text-size,14px)/var(--n3-field-text-line,20px)
     var(--n3-font-ui,"Familjen Grotesk",sans-serif);
   font-variant-numeric:tabular-nums;
   transform:translateY(var(--n3-field-text-shift,-1px));}
+.n3-tenure-unit {box-sizing:border-box;flex:0 0 auto;align-self:center;
+  color:var(--n3-text,#f5f5f5);white-space:pre;pointer-events:none;
+  font:400 var(--n3-field-text-size,14px)/var(--n3-field-text-line,20px)
+    var(--n3-font-ui,"Familjen Grotesk",sans-serif);
+  transform:translateY(var(--n3-field-text-shift,-1px));}
+.n3-tenure-spacer {flex:1;min-width:0;}
 .n3-tenure-field button {box-sizing:border-box;flex:0 0 32px;width:32px;
   height:100%;padding:0;border:0;border-radius:0;
   display:flex;align-items:center;justify-content:center;
@@ -55,7 +68,7 @@ _COMPONENT_CSS = """
 
 
 def render_tenure_control(st, *, value: int, revision: int, on_change) -> int:
-    """Renderiza o editor e retorna o valor numérico sincronizado do componente."""
+    """Renderiza o campo numérico e retorna meses sincronizados do componente."""
     widget = st.components.v2.component(
         "n3_tenure_control",
         html=_COMPONENT_HTML,

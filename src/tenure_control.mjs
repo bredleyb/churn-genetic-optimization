@@ -8,162 +8,88 @@ export function displayMonths(value) {
   return number + (number === 1 ? " mês" : " meses");
 }
 
-export function replaceMonthDigits(current, start, end, insert) {
-  const digits = String(clampMonths(current));
-  const from = Math.max(0, Math.min(digits.length, start));
-  const to = Math.max(from, Math.min(digits.length, end));
-  if (!/^\d*$/.test(insert)) return clampMonths(current);
-  return clampMonths(digits.slice(0, from) + insert + digits.slice(to));
+export function parseMonthInput(raw) {
+  const digits = String(raw ?? "").trim();
+  if (!/^\d{1,3}$/.test(digits)) return null;
+  return clampMonths(digits);
 }
 
-// A single native text input contains both number and immutable suffix.
-// Only numeric characters are editable; the caret stays before the unit.
+// Edição numérica nativa: a unidade é texto não editável na MESMA caixa visual.
+// Ctrl+A, Backspace e movimentação do cursor pertencem ao navegador.
 export default function({ parentElement, data, setStateValue }) {
   const root = parentElement.querySelector(".n3-tenure");
   if (!root) return;
   const input = root.querySelector("input");
+  const unit = root.querySelector(".n3-tenure-unit");
   const minus = root.querySelector('[data-step="-1"]');
   const plus = root.querySelector('[data-step="1"]');
   const controller = new AbortController();
-  const signal = controller.signal;
-  // Componentes v2 com key fixo atualizam o mesmo elemento durante reruns.
-  // A entrada em foco prevalece sobre props antigas que chegam da execução
-  // anterior; isso preserva Ctrl+A entre a seleção e a próxima digitação.
-  const currentText = /^(\d{1,3}) (?:mês|meses)$/.exec(input.value);
-  const editing = input.getRootNode().activeElement === input ||
-    document.activeElement === input;
-  let value = editing && currentText
-    ? clampMonths(currentText[1]) : clampMonths(data?.value ?? 0);
-  const digitsLength = () => String(value).length;
-  // Um rerun do Streamlit pode recolher a seleção entre Ctrl+A e beforeinput.
-  // O input expõe a intenção à interação; o host persiste entre montagens.
-  const selectionStore =
-    parentElement.dataset ?? parentElement.host?.dataset ?? root.dataset;
-  const selectAllPending = () =>
-    input.dataset.selectAllDigits === "true" ||
-    selectionStore.n3SelectAllDigits === "true";
-  const clearSelectAll = () => {
-    delete input.dataset.selectAllDigits;
-    delete selectionStore.n3SelectAllDigits;
-  };
-  const numericSelection = () => selectAllPending() ? [0, digitsLength()] : bounds();
-  // Em componentes v2, o foco real está no ShadowRoot, e document.activeElement
-  // aponta para o host. Usar a raiz correta antes de reposicionar o cursor.
+  const { signal } = controller;
   const isFocused = () => input.getRootNode().activeElement === input ||
     document.activeElement === input;
-  const placeCaret = () => {
-    if (isFocused()) input.setSelectionRange(digitsLength(), digitsLength());
-  };
-  // Reposicionar apenas no próprio evento de foco/clique. O frame posterior
-  // desfazia seleções legítimas feitas imediatamente com Ctrl+A.
-  const settleCaret = () => placeCaret();
-  const render = () => {
-    const text = displayMonths(value);
-    // Reatribuir value, sobretudo com props antigas, pode cancelar a seleção.
-    if (input.value !== text) input.value = text;
+
+  // Com a key estável, o rascunho nativo em foco tem precedência sobre data
+  // de um rerun anterior. Trocas de perfil criam uma revisão/key diferente.
+  const existing = parseMonthInput(input.value);
+  let value = isFocused() && existing !== null
+    ? existing : clampMonths(data?.value ?? 0);
+
+  const render = ({force = false} = {}) => {
+    const digits = String(value);
+    if (force || !isFocused()) {
+      if (input.value !== digits) input.value = digits;
+    }
+    unit.textContent = value === 1 ? " mês" : " meses";
+    input.style.setProperty("--n3-tenure-digit-count",
+      String(Math.max(1, input.value.length)));
     minus.disabled = value <= 0;
     plus.disabled = value >= 999;
   };
-  const commit = next => {
-    const clamped = clampMonths(next);
-    const changed = clamped !== value;
-    value = clamped;
-    render();
-    // Posicionar após uma edição efetiva, inclusive quando um novo render
-    // não é necessário. A montagem do componente NÃO altera a seleção:
-    // um rerun assíncrono do Streamlit poderia desfazer Ctrl+A entre teclas.
-    placeCaret();
+  const commit = (next, {force = false} = {}) => {
+    const normalized = clampMonths(next);
+    const changed = normalized !== value;
+    value = normalized;
+    render({force});
     if (changed) setStateValue("value", value);
   };
-  const bounds = () => {
-    const n = digitsLength();
-    return [
-      Math.max(0, Math.min(n, input.selectionStart ?? n)),
-      Math.max(0, Math.min(n, input.selectionEnd ?? n)),
-    ];
-  };
-  const insert = text => {
-    const [start, end] = numericSelection();
-    clearSelectAll();
-    commit(replaceMonthDigits(value, start, end, text));
-  };
-  const remove = backwards => {
-    const [start, end] = numericSelection();
-    clearSelectAll();
-    const n = digitsLength();
-    if (end > start) commit(replaceMonthDigits(value, start, end, ""));
-    else if (backwards && start > 0) commit(replaceMonthDigits(value, start - 1, start, ""));
-    else if (!backwards && start < n) commit(replaceMonthDigits(value, start, start + 1, ""));
-    else placeCaret();
-  };
   render();
-  input.addEventListener("focus", settleCaret, { signal });
-  input.addEventListener("pointerdown", clearSelectAll, { signal });
-  input.addEventListener("pointerup", settleCaret, { signal });
-  input.addEventListener("click", settleCaret, { signal });
-  input.addEventListener("select", () => {
-    if (!isFocused()) return;
-    const n = digitsLength();
-    if ((input.selectionStart ?? n) > n || (input.selectionEnd ?? n) > n)
-      settleCaret();
-  }, { signal });
-  input.addEventListener("keydown", event => {
-    const key = event.key;
-    if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === "a") {
-      event.preventDefault();
-      input.dataset.selectAllDigits = "true";
-      selectionStore.n3SelectAllDigits = "true";
-      input.setSelectionRange(0, digitsLength());
-    } else if (key === "ArrowUp" || key === "ArrowDown") {
-      event.preventDefault();
-      clearSelectAll();
-      commit(value + (key === "ArrowUp" ? 1 : -1));
-    } else if (key === "Home" || key === "End" || key === "ArrowLeft" || key === "ArrowRight") {
-      event.preventDefault();
-      clearSelectAll();
-      placeCaret();
-    }
-  }, { signal });
+
+  // beforeinput apenas rejeita caracteres não numéricos. Eventos de seleção
+  // e o texto válido não são interceptados ou reposicionados.
   input.addEventListener("beforeinput", event => {
-    if (event.inputType === "insertText" || event.inputType === "insertReplacementText") {
+    if (event.inputType === "insertText" &&
+        event.data && !/^\d+$/.test(event.data)) event.preventDefault();
+  }, { signal });
+  input.addEventListener("input", () => {
+    const raw = input.value;
+    const digits = raw.replace(/\D/g, "").slice(0, 3);
+    if (digits !== raw) {
+      const cursor = Math.min(input.selectionStart ?? digits.length, digits.length);
+      input.value = digits;
+      input.setSelectionRange(cursor, cursor);
+    }
+    // Vazio é um rascunho transitório. A normalização ocorre no blur.
+    commit(digits === "" ? 0 : Number(digits));
+  }, { signal });
+  input.addEventListener("blur", () => render({force: true}), { signal });
+  input.addEventListener("keydown", event => {
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
-      if (/^\d+$/.test(event.data ?? "")) insert(event.data);
-    } else if (event.inputType.startsWith("delete")) {
-      event.preventDefault();
-      remove(event.inputType.includes("Backward"));
-    } else {
-      // Includes IME insertions, suffix edits, drag and content replacement.
-      event.preventDefault();
+      commit(value + (event.key === "ArrowUp" ? 1 : -1), {force: true});
     }
   }, { signal });
   input.addEventListener("paste", event => {
-    event.preventDefault();
     const text = (event.clipboardData?.getData("text") ?? "").trim();
     const match = /^(\d+)(?:\s+meses?)?$/i.exec(text);
-    if (match) {
-      const [start, end] = numericSelection();
-      clearSelectAll();
-      // Paste over selected numeric part, or replace the number as a whole.
-      commit(start === 0 && end === digitsLength()
-        ? Number(match[1]) : replaceMonthDigits(value, start, end, match[1]));
-    }
+    event.preventDefault();
+    if (!match) return;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    input.setRangeText(match[1], start, end, "end");
+    input.dispatchEvent(new Event("input", {bubbles:true}));
   }, { signal });
   input.addEventListener("drop", event => event.preventDefault(), { signal });
-  // O blur dispara antes de o navegador desconectar um input substituído.
-  // Na microtarefa seguinte, somente a saída real de foco deve cancelar a
-  // intenção; a remontagem do componente preserva o estado do host.
-  input.addEventListener("blur", () => {
-    queueMicrotask(() => {
-      if (input.isConnected) clearSelectAll();
-    });
-  }, { signal });
-  input.addEventListener("input", () => {
-    // Defensive fallback for browser/assistive input events without beforeinput.
-    const match = /^(\d{1,3})(?:\s+meses?)?$/i.exec(input.value.trim());
-    if (match) commit(Number(match[1]));
-    else render();
-  }, { signal });
-  minus.addEventListener("click", () => { clearSelectAll(); commit(value - 1); }, { signal });
-  plus.addEventListener("click", () => { clearSelectAll(); commit(value + 1); }, { signal });
+  minus.addEventListener("click", () => commit(value - 1, {force:true}), { signal });
+  plus.addEventListener("click", () => commit(value + 1, {force:true}), { signal });
   return () => controller.abort();
 }
