@@ -64,6 +64,7 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F06 | Consistência visual | Fundo, raios, fontes, cor e hover do Tempo, Cobrança e seletores; wrapper real React Aria |
 | CL-F07 | Ações da Cobrança | Dois botões −/+ visíveis nas seis resoluções, com a mesma paleta e hover do Tempo |
 | CL-F08 | Edição rápida de Tempo | Ctrl+A e digitação após o stepper preservam seleção numérica inclusive durante reexecução do componente v2 |
+| CL-F09 | Montagem v2 com atualização tardia | Input focado mantém seleção apesar de props antigas; sem foco aceita atualização externa legítima |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
@@ -98,7 +99,8 @@ anterior esteja aberto no Windows).
 As auditorias estão documentadas em
 [primeira rodada](auditoria_cliente_2026-11-23.md),
 [segunda rodada](auditoria_cliente_2026-11-23_rodada2.md) e
-[terceira rodada](auditoria_cliente_2026-11-23_rodada3.md).
+[terceira rodada](auditoria_cliente_2026-11-23_rodada3.md) e
+[quarta rodada](auditoria_cliente_2026-11-23_rodada4.md).
 Os casos corrigidos nos testes precisam ser reexecutados; requisitos
 que revelaram problemas visuais permanecem reprováveis.
 
