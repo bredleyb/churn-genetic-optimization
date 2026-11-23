@@ -42,11 +42,18 @@ test('CL-F02 editor de meses tem um único texto protegido e stepper correto',as
   await expect(minus).toBeEnabled();
   await months.click();
   const focus=await field.evaluate(el=>({
-    shadow:getComputedStyle(el).boxShadow,border:getComputedStyle(el).borderColor,
+    border:getComputedStyle(el).borderColor,
     width:el.getBoundingClientRect().width,
+    ring:getComputedStyle(el,'::after').borderTopColor,
+    ringWidth:getComputedStyle(el,'::after').borderTopWidth,
+    ringZ:Number(getComputedStyle(el,'::after').zIndex),
+    ringPointer:getComputedStyle(el,'::after').pointerEvents,
   }));
-  expect(focus.shadow).toContain('inset');
   expect(focus.border).toBe('rgb(245, 245, 245)');
+  expect(focus.ring).toBe('rgb(245, 245, 245)');
+  expect(focus.ringWidth).toBe('2px');
+  expect(focus.ringZ).toBeGreaterThanOrEqual(3);
+  expect(focus.ringPointer).toBe('none');
   expect(focus.width).toBeGreaterThan(60);
   await screenshot(page,info,'CL-F02-meses-foco-e-limite');
 });
@@ -421,3 +428,92 @@ test('CL-F12 remontar sem cleanup não duplica listeners nem executa colagem dua
     await expect.poll(()=>page.evaluate(()=>window.values))
       .toEqual([['value',24],['value',1]]);
   });
+
+
+for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
+  test('CL-F13 foco, curvatura e hover exclusivo do Tempo '+viewport.width,
+    async({page},info)=>{
+      await openClient(page,viewport);
+      const field=page.locator('.n3-tenure-field');
+      const months=page.getByRole('textbox',{name:'Tempo como cliente'});
+      const minus=page.getByRole('button',{name:'Diminuir um mês'});
+      const plus=page.getByRole('button',{name:'Aumentar um mês'});
+      const bg='rgb(14, 16, 19)',hover='rgb(32, 33, 36)';
+      await months.click();
+      await expect(field).toHaveCSS('border-color','rgb(245, 245, 245)');
+      const visual=await field.evaluate(el=>{
+        const css=getComputedStyle(el),ring=getComputedStyle(el,'::after');
+        return {clip:css.overflowX,position:css.position,
+          radius:css.borderTopRightRadius,layer:Number(ring.zIndex),
+          pointer:ring.pointerEvents,color:ring.borderTopColor,
+          width:ring.borderTopWidth,round:ring.borderTopRightRadius};
+      });
+      expect(visual).toMatchObject({
+        clip:'hidden',position:'relative',radius:'4px',layer:3,
+        pointer:'none',color:'rgb(245, 245, 245)',
+        width:'2px',round:'4px',
+      });
+      await plus.hover();
+      await expect(plus).toHaveCSS('background-color',hover);
+      await expect(minus).toHaveCSS('background-color',bg);
+      await expect(plus).toHaveAttribute('data-n3-pointer-hover','true');
+      await plus.click();
+      await expectMonths(page,4);
+      await expect(plus).toHaveCSS('background-color',bg);
+      await expect(minus).toHaveCSS('background-color',bg);
+      await expect(plus).not.toHaveAttribute('data-n3-pointer-hover','true');
+      await expect(minus).not.toHaveAttribute('data-n3-pointer-hover','true');
+      await expect(field).toHaveCSS('border-color','rgb(245, 245, 245)');
+      await screenshot(page,info,'CL-F13-foco-sem-hover-vizinho-'+viewport.width);
+      await minus.hover();
+      await expect(minus).toHaveCSS('background-color',hover);
+      await expect(plus).toHaveCSS('background-color',bg);
+      await minus.click();
+      await expectMonths(page,3);
+      await expect(minus).toHaveCSS('background-color',bg);
+      await expect(plus).toHaveCSS('background-color',bg);
+      await page.mouse.move(0,0);
+      await expect(minus).toHaveCSS('background-color',bg);
+      await expect(plus).toHaveCSS('background-color',bg);
+    });
+  test('CL-F14 foco e hover exclusivo da Cobrança '+viewport.width,
+    async({page},info)=>{
+      await openClient(page,viewport);
+      const number=page.locator(
+        '[data-testid="stNumberInput"]:has(input[aria-label="Cobrança mensal"])');
+      const container=number.locator('[data-testid="stNumberInputContainer"]');
+      const steppers=number.locator('button:visible');
+      await expect(steppers).toHaveCount(2);
+      const first=steppers.nth(0),second=steppers.nth(1);
+      const bg='rgb(14, 16, 19)',hover='rgb(32, 33, 36)';
+      await number.getByRole('spinbutton',{name:'Cobrança mensal'}).focus();
+      const visual=await container.evaluate(el=>{
+        const css=getComputedStyle(el),ring=getComputedStyle(el,'::after');
+        return {clip:css.overflowX,position:css.position,radius:css.borderTopRightRadius,
+          layer:Number(ring.zIndex),pointer:ring.pointerEvents,
+          color:ring.borderTopColor,width:ring.borderTopWidth,round:ring.borderTopRightRadius};
+      });
+      expect(visual).toMatchObject({
+        clip:'hidden',position:'relative',radius:'4px',layer:3,
+        pointer:'none',color:'rgb(245, 245, 245)',width:'2px',round:'4px',
+      });
+      await first.hover();
+      await expect(first).toHaveCSS('background-color',hover);
+      await expect(second).toHaveCSS('background-color',bg);
+      await first.click();
+      await expect(first).toHaveCSS('background-color',bg);
+      await expect(second).toHaveCSS('background-color',bg);
+      await expect(first).not.toHaveAttribute('data-n3-pointer-hover','true');
+      await expect(second).not.toHaveAttribute('data-n3-pointer-hover','true');
+      await screenshot(page,info,'CL-F14-cobranca-foco-hover-'+viewport.width);
+      await second.hover();
+      await expect(second).toHaveCSS('background-color',hover);
+      await expect(first).toHaveCSS('background-color',bg);
+      await second.click();
+      await expect(first).toHaveCSS('background-color',bg);
+      await expect(second).toHaveCSS('background-color',bg);
+      await page.mouse.move(0,0);
+      await expect(first).toHaveCSS('background-color',bg);
+      await expect(second).toHaveCSS('background-color',bg);
+    });
+}

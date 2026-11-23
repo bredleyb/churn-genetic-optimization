@@ -134,6 +134,15 @@ def test_tenure_component_contract_separates_numeric_value_and_visual_unit(clien
     assert "if (root[ACTIVE_MOUNT] === controller)" in js
     assert "controller.abort()" in js
     assert "new AbortController()" in js
+    assert 'root.addEventListener("pointermove"' in js
+    assert 'root.addEventListener("pointerdown"' in js
+    assert 'root.addEventListener("pointerleave"' in js
+    assert 'button.dataset.n3PointerHover = "true"' in js
+    assert 'showPointerHover(null)' in js
+    assert ".n3-tenure-field:focus-within::after" in _COMPONENT_CSS
+    assert "z-index:3;pointer-events:none" in _COMPONENT_CSS
+    assert 'button[data-n3-pointer-hover="true"]:not(:disabled)' in _COMPONENT_CSS
+    assert "button:hover:not(:disabled)" not in _COMPONENT_CSS
     assert 'event.preventDefault();\n      commit(value +' in js
     assert "isFocused()" in js
     for token in ("--n3-field-height", "--n3-field-fill", "--n3-field-radius",
@@ -192,3 +201,23 @@ def test_detail_tabs_retain_selection_during_widget_reruns(client_app):
     assert 'key="dashboard_client_active_tab"' in source
     assert 'on_change="rerun"' in source
     assert list(app.DETAIL_TABS) == ["Perfil", "Conta", "Serviços", "Extras"]
+
+
+
+def test_native_numeric_steppers_use_same_hover_and_focus_model(client_app):
+    app, fake = client_app
+    app.main()
+    css = fake.markup[0]
+    cues = (app.ROOT / "src" / "client_scroll_cues.mjs").read_text(
+        encoding="utf-8"
+    )
+    assert '[data-testid="stNumberInputContainer"]:focus-within::after' in css
+    assert "border:2px solid var(--n3-text);border-radius:inherit" in css
+    assert "z-index:3;pointer-events:none" in css
+    assert 'button[data-n3-pointer-hover="true"]:not(:disabled)' in css
+    assert '[data-testid="stNumberInput"] button:hover {' not in css
+    assert 'document.addEventListener("pointermove"' in cues
+    assert 'document.addEventListener("pointerdown"' in cues
+    assert "setNumberStepperHover(null)" in cues
+    assert 'data-n3-pointer-hover' in cues
+    assert "setStateValue(" not in cues
