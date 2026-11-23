@@ -40,6 +40,12 @@ test('CL-P01 seleção, cópia, edições isoladas, restauração e exclusão se
   await replaceMonths(page,50);
   await expect(add).toHaveCount(0);
   await expect(profileCircles(page)).toHaveCount(5);
+  // Regressão: o primeiro círculo foi recortado ao selecionar perfis extras.
+  const strip=await measure(page.locator('.st-key-dashboard-profile-choices'));
+  const buttons=profileCircles(page);
+  const first=await measure(buttons.first()),last=await measure(buttons.last());
+  expect(first.left,'Primeiro perfil recortado à esquerda').toBeGreaterThanOrEqual(strip.left-1);
+  expect(last.right,'Último perfil recortado à direita').toBeLessThanOrEqual(strip.right+1);
   await screenshot(page,info,'CL-P01-limite-cinco');
 
   await button('4').click();

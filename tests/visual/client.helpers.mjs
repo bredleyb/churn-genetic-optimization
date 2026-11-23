@@ -50,16 +50,36 @@ export async function screenshot(page,testInfo,name){
 
 export async function clickOption(page,label,name) {
   const input=page.getByRole('combobox',{name:label,exact:true});
+  const option=page.getByRole('option',{name,exact:true});
   await expect(input,'Campo ausente na aba ativa: '+label).toBeVisible({timeout:15000});
-  await input.click();
-  await page.getByRole('option',{name,exact:true}).click();
-  await expect(input).toHaveValue(name);
+  // Reruns podem desmontar um menu logo após duas alterações consecutivas.
+  // Reabrir o mesmo campo é limitado a três tentativas, sem esperas de minutos.
+  for(let attempt=1;attempt<=3;attempt++){
+    await expect(input).toBeVisible({timeout:10000});
+    try {
+      if(await input.getAttribute('aria-expanded')!=='true')
+        await input.click({timeout:8000});
+      await expect(input).toHaveAttribute('aria-expanded','true',{timeout:3500});
+      await expect(option).toBeVisible({timeout:3500});
+      await option.click({timeout:8000});
+      await expect(input).toHaveValue(name,{timeout:8000});
+      return;
+    } catch(error) {
+      if(await input.inputValue().catch(()=>null)===name)return;
+      if(attempt===3)throw new Error(
+        'Falha ao escolher '+JSON.stringify(name)+' em '+JSON.stringify(label)+
+        ' após três tentativas: '+error.message);
+      if(await input.getAttribute('aria-expanded').catch(()=>null)==='true')
+        await page.keyboard.press('Escape');
+    }
+  }
 }
 
 export async function expectMonths(page,value) {
   const input=page.getByRole('textbox',{name:'Tempo como cliente'});
   await expect(input).toHaveValue(String(Number(value)),{timeout:7000});
-  await expect(page.locator('.n3-tenure-unit'))
+  // A unidade deve pertencer ao input ativo; reruns podem deixar um nó antigo.
+  await expect(input.locator('xpath=..').locator('.n3-tenure-unit'))
     .toHaveText(Number(value)===1?'mês':'meses');
 }
 

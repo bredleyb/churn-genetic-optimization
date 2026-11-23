@@ -252,7 +252,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 /* O botão real de expansão é o StyledOpenButton do Streamlit.
    Estilizar o próprio botão garante que o hover seja visível. */
-.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] {
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-haspopup="listbox"] {
   box-sizing:border-box!important;flex:0 0 32px!important;
   width:32px!important;min-width:32px!important;
   height:calc(var(--n3-field-height) - 2px)!important;min-height:0!important;
@@ -261,18 +261,18 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   background:var(--n3-field-action-fill)!important;color:var(--n3-secondary)!important;
   cursor:pointer!important;transition:background-color .12s ease!important;
 }
-.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"]:hover {
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-haspopup="listbox"]:hover {
   background:var(--n3-elevated)!important;
 }
 /* Os botões internos herdam o indicador de foco da borda da caixa. */
-.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"]:focus-visible,
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-haspopup="listbox"]:focus-visible,
 .st-key-dashboard-client [data-testid="stNumberInput"] button:focus-visible {
   outline:none!important;box-shadow:none!important;
 }
 /* A lista do st.selectbox é um Popover do React Aria, inserido em um
    portal separado do botão. A seta só inicia a transição DEPOIS que esse
    popover é montado; o clique e a abertura nativa não aguardam a rotação. */
-.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] svg {
+.st-key-dashboard-client [data-testid="stSelectbox"] button[aria-haspopup="listbox"] svg {
   color:inherit!important;
   transform-origin:center center!important;
   transform:rotate(0deg)!important;
@@ -280,11 +280,11 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
 }
 body:has([data-testid="stSelectboxVirtualDropdown"])
   .st-key-dashboard-client [data-testid="stSelectbox"]
-  [role="group"]:has([aria-expanded="true"]) button[aria-label="Open"] svg {
+  [role="group"]:has([aria-expanded="true"]) button[aria-haspopup="listbox"] svg {
   transform:rotate(180deg)!important;
 }
 @media(prefers-reduced-motion:reduce) {
-  .st-key-dashboard-client [data-testid="stSelectbox"] button[aria-label="Open"] svg {
+  .st-key-dashboard-client [data-testid="stSelectbox"] button[aria-haspopup="listbox"] svg {
     transition:none!important;
   }
 }
@@ -379,7 +379,8 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
   display:flex!important;gap:var(--n3-profile-button-gap)!important;
   align-items:center!important;flex-wrap:nowrap!important;width:100%!important;
 }
-.st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {justify-content:flex-start!important;}
+/* Impede scrollLeft automático ao clicar no quinto exemplo, que recortava o primeiro. */
+.st-key-dashboard-profile-choices [data-testid="stHorizontalBlock"] {justify-content:flex-start!important;overflow:visible!important;}
 .st-key-dashboard-profile-actions [data-testid="stHorizontalBlock"] {justify-content:flex-end!important;}
 .st-key-dashboard-profile-choices [data-testid="stColumn"],
 .st-key-dashboard-profile-actions [data-testid="stColumn"] {

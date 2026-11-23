@@ -487,6 +487,8 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
       const first=steppers.nth(0),second=steppers.nth(1);
       const bg='rgb(14, 16, 19)',hover='rgb(32, 33, 36)';
       await number.getByRole('spinbutton',{name:'Cobrança mensal'}).focus();
+      // Validar a cor final depois da transição, preservando a exigência.
+      await expect(container).toHaveCSS('border-top-color','rgb(245, 245, 245)');
       const visual=await container.evaluate(el=>{
         const css=getComputedStyle(el);
         return {clip:css.overflowX,radius:css.borderTopRightRadius,
@@ -597,7 +599,9 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
       await openClient(page,viewport);
       const field=fieldGroup(page,'Tipo de contrato');
       const input=page.getByRole('combobox',{name:'Tipo de contrato'});
-      const trigger=field.getByRole('button',{name:'Open'});
+      // Quando aberto, o React Aria torna o botão aria-hidden; CSS permanece estável.
+      const trigger=field.locator('button[aria-haspopup="listbox"]');
+      await expect(trigger).toHaveCount(1);
       const svg=trigger.locator('svg').first();
       await expect(svg).toBeVisible();
       const angle=()=>svg.evaluate(el=>{
@@ -619,7 +623,7 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
             '.st-key-dashboard-client [data-testid="stSelectbox"] [role="group"]:has([aria-expanded="true"])');
           if(!group)return;
           observer.disconnect();
-          const icon=group.querySelector('button[aria-label="Open"] svg');
+          const icon=group.querySelector('button[aria-haspopup="listbox"] svg');
           const matrix=icon
             ? new DOMMatrixReadOnly(getComputedStyle(icon).transform) : null;
           resolve({

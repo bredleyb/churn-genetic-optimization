@@ -18,6 +18,13 @@ for(const size of [{width:1024,height:768},{width:390,height:900}]){
     await openClient(page,size);
     await tabs(page).getByRole('tab',{name:'Serviços'}).click();
     const scroller=fields(page),panel=client(page);
+    // Os placeholders são temporários; só medir com o conteúdo da aba montado.
+    await expect(page.getByRole('combobox',{name:'Serviço de telefone'}))
+      .toBeVisible({timeout:15000});
+    await expect(page.getByRole('combobox',{name:'Segurança online'}))
+      .toBeVisible({timeout:15000});
+    await expect.poll(()=>scroller.evaluate(el=>el.scrollHeight-el.clientHeight),
+      {timeout:15000}).toBeGreaterThan(3);
     const metrics=await scroller.evaluate(el=>{
       const style=getComputedStyle(el),foot=getComputedStyle(
         document.querySelector('.st-key-dashboard-client-footer'));
