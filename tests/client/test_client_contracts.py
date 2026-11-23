@@ -127,6 +127,13 @@ def test_tenure_component_contract_separates_numeric_value_and_visual_unit(clien
     assert "selectAllPending" not in js
     assert "selectAllDigits" not in js
     assert "placeCaret" not in js
+    # A montagem deve ser idempotente e resistir a cleanups fora de ordem.
+    assert 'Symbol.for("n3.tenure.activeMount")' in js
+    assert "root[ACTIVE_MOUNT]?.abort()" in js
+    assert "root[ACTIVE_MOUNT] = controller" in js
+    assert "if (root[ACTIVE_MOUNT] === controller)" in js
+    assert "controller.abort()" in js
+    assert "new AbortController()" in js
     assert 'event.preventDefault();\n      commit(value +' in js
     assert "isFocused()" in js
     for token in ("--n3-field-height", "--n3-field-fill", "--n3-field-radius",

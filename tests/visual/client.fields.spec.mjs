@@ -232,6 +232,7 @@ test('CL-F09 componente v2 preserva edição nativa durante reruns e revisões',
       'const clampMonths = ('+src.clamp+');',
       'const displayMonths = ('+src.display+');',
       'const parseMonthInput = ('+src.parse+');',
+      'const ACTIVE_MOUNT = Symbol.for("n3.tenure.activeMount");',
       'return ('+src.renderer+');',
     ].join('\n');
     const mount = new Function(js)();
@@ -307,6 +308,22 @@ for(const width of [1440,390]){
       await expectMonths(page,1);
       const suffixAfter=await measure(unit);
       near(suffixAfter.left,unitBox.left,'unidade não desloca o campo',2);
+      // O span deve ficar um pixel abaixo da referência vertical do
+      // input nativo, alinhando a base do texto sem mexer nos dígitos.
+      const baseline=await input.evaluate(el=>{
+        const suffix=el.parentElement.querySelector('.n3-tenure-unit');
+        const inputStyle=getComputedStyle(el);
+        const unitStyle=getComputedStyle(suffix);
+        return {
+          valueY:new DOMMatrixReadOnly(inputStyle.transform).m42,
+          unitY:new DOMMatrixReadOnly(unitStyle.transform).m42,
+          sameFontSize:inputStyle.fontSize===unitStyle.fontSize,
+          sameLineHeight:inputStyle.lineHeight===unitStyle.lineHeight,
+        };
+      });
+      expect(baseline.sameFontSize).toBe(true);
+      expect(baseline.sameLineHeight).toBe(true);
+      near(baseline.unitY-baseline.valueY,1,'base da unidade alinhada ao valor',0.15);
     });
 }
 
@@ -337,4 +354,70 @@ test('CL-F11 colagem, caracteres inválidos e rascunho vazio usam edição nativ
     await page.getByRole('button',{name:'Aumentar um mês'}).focus();
     await expectMonths(page,0);
     await expect(page.getByRole('button',{name:'Diminuir um mês'})).toBeDisabled();
+  });
+
+
+test('CL-F12 remontar sem cleanup não duplica listeners nem executa colagem duas vezes',
+  async ({page})=>{
+    const source={
+      clamp:clampMonths.toString(),display:displayMonths.toString(),
+      parse:parseMonthInput.toString(),renderer:tenureRenderer.toString(),
+    };
+    await page.setContent(
+      '<div class="n3-tenure"><label for="n3-tenure-value">Tempo como cliente</label>'+
+      '<div class="n3-tenure-field">'+
+      '<input id="n3-tenure-value" type="text" inputmode="numeric" maxlength="3" '+
+      'aria-label="Tempo como cliente" aria-describedby="n3-tenure-unit"/>'+
+      '<span id="n3-tenure-unit" class="n3-tenure-unit"> meses</span>'+
+      '<span class="n3-tenure-spacer"></span>'+
+      '<button type="button" data-step="-1" aria-label="Diminuir um mês">−</button>'+
+      '<button type="button" data-step="1" aria-label="Aumentar um mês">+</button>'+
+      '</div></div>');
+    await page.evaluate(src=>{
+      const mount=new Function(
+        'const clampMonths = ('+src.clamp+');\n'+
+        'const displayMonths = ('+src.display+');\n'+
+        'const parseMonthInput = ('+src.parse+');\n'+
+        'const ACTIVE_MOUNT = Symbol.for("n3.tenure.activeMount");\n'+
+        'return ('+src.renderer+');')();
+      window.values=[];
+      window.mountMonth=value=>mount({
+        parentElement:document.body,
+        data:{value},
+        setStateValue:(name,value)=>window.values.push([name,value]),
+      });
+      // Reproduz uma montagem nova que chega antes do cleanup anterior.
+      window.firstCleanup=window.mountMonth(8);
+      window.secondCleanup=window.mountMonth(8);
+      // NÃO executar firstCleanup aqui: a primeira colagem precisa
+      // revelar se as duas instâncias ainda estão escutando o mesmo evento.
+    },source);
+    const input=page.getByRole('textbox',{name:'Tempo como cliente'});
+    const paste=text=>input.evaluate((el,source)=>{
+      const clipboard=new DataTransfer();
+      clipboard.setData('text/plain',source);
+      el.dispatchEvent(new ClipboardEvent('paste',{
+        bubbles:true,cancelable:true,clipboardData:clipboard,
+      }));
+    },text);
+    await expectMonths(page,8);
+    await input.click();
+    await input.press('ControlOrMeta+A');
+    await paste('24 meses');
+    await expectMonths(page,24);
+    await expect.poll(()=>page.evaluate(()=>window.values))
+      .toEqual([['value',24]]);
+    // Cleanup de uma instância antiga não pode cancelar a mais recente.
+    await page.evaluate(()=>window.firstCleanup());
+
+    // Uma terceira montagem também deve substituir a segunda.
+    await page.evaluate(()=>{
+      window.thirdCleanup=window.mountMonth(24);
+      window.secondCleanup(); // cleanup antigo fora de ordem
+    });
+    await input.press('ControlOrMeta+A');
+    await paste('1 mês');
+    await expectMonths(page,1);
+    await expect.poll(()=>page.evaluate(()=>window.values))
+      .toEqual([['value',24],['value',1]]);
   });
