@@ -61,7 +61,9 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F03 | Categorias | Gênero limitado aos dados originais, campos Perfil e Extras persistentes |
 | CL-F04 | Dependências | Telefone e Internet desabilitam e restauram dependentes |
 | CL-F05 | Cobrança | Número decimal e Total cobrado indisponível |
-| CL-F06 | Consistência visual | Fundo, raios, fontes, cor e hover de −, +, Cobrança e setas dos seletores |
+| CL-F06 | Consistência visual | Fundo, raios, fontes, cor e hover do Tempo, Cobrança e seletores; wrapper real React Aria |
+| CL-F07 | Ações da Cobrança | Dois botões −/+ visíveis, com a mesma paleta e hover do Tempo |
+| CL-F08 | Edição rápida de Tempo | Ctrl+A e digitação imediatamente após clique no stepper preservam seleção numérica |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
@@ -92,6 +94,11 @@ O runner de navegador inicia o Streamlit isoladamente na porta 8517.
 O ZIP é gerado mesmo que ocorram falhas, em
 results/testes-visuais-para-revisao.zip (ou variante com timestamp, caso o
 anterior esteja aberto no Windows).
+
+A primeira execução da auditoria está diagnosticada em
+[docs/auditoria_cliente_2026-11-23.md](auditoria_cliente_2026-11-23.md).
+Os casos corrigidos nos testes precisam ser reexecutados; requisitos
+que revelaram problemas visuais permanecem reprováveis.
 
 O cenário **CL-B03 exige o CSV original** em
 data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv. Se estiver ausente, esse
