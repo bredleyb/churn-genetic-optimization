@@ -114,6 +114,8 @@ def test_tenure_component_contract_has_one_input_and_protected_suffix(client_app
     assert "beforeinput" in js and "paste" in js and "placeCaret" in js
     assert "setStateValue" in js
     assert "requestAnimationFrame(placeCaret)" not in js
+    assert "editing && currentText" in js
+    assert "if (input.value !== text) input.value = text" in js
     # Atualizações de state v2 não podem desfazer uma seleção (Ctrl+A)
     # entre duas teclas. O caret só se move durante edição/foco.
     render_code = js.split("const render = () => {", 1)[1].split("const commit = next =>", 1)[0]
@@ -169,3 +171,11 @@ def test_profile_actions_have_expected_icons_and_are_not_confusable(client_app):
     assert delete["disabled"] is True
     assert restore["on_click"] == app._reset_profile
     assert delete["on_click"] == app._delete_active_example
+
+
+def test_detail_tabs_retain_selection_during_widget_reruns(client_app):
+    app, _ = client_app
+    source = getsource(app._render_client_details)
+    assert 'key="dashboard_client_active_tab"' in source
+    assert 'on_change="rerun"' in source
+    assert list(app.DETAIL_TABS) == ["Perfil", "Conta", "Serviços", "Extras"]

@@ -49,9 +49,11 @@ export async function screenshot(page,testInfo,name){
 }
 
 export async function clickOption(page,label,name) {
-  await page.getByRole('combobox',{name:label,exact:true}).click();
+  const input=page.getByRole('combobox',{name:label,exact:true});
+  await expect(input,'Campo ausente na aba ativa: '+label).toBeVisible({timeout:15000});
+  await input.click();
   await page.getByRole('option',{name,exact:true}).click();
-  await expect(page.getByRole('combobox',{name:label,exact:true})).toHaveValue(name);
+  await expect(input).toHaveValue(name);
 }
 
 export async function replaceMonths(page,digits) {

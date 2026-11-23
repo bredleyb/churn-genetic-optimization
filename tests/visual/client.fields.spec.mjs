@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {openClient,tabs,fieldGroup,clickOption,replaceMonths,measure,near,screenshot,ensureNoException} from './client.helpers.mjs';
-import {clampMonths,displayMonths,replaceMonthDigits} from '../../src/tenure_control.mjs';
+import tenureRenderer,{clampMonths,displayMonths,replaceMonthDigits} from '../../src/tenure_control.mjs';
 
 test('CL-F01 mês singular/plural, limites e substituição numérica sem afetar unidade',()=>{
   expect([0,1,2,999].map(displayMonths)).toEqual(['0 meses','1 mês','2 meses','999 meses']);
@@ -62,7 +62,10 @@ test('CL-F03 categorias representam apenas os dados do dataset',async({page})=>{
   await clickOption(page,'Pessoa idosa','Sim');
   await clickOption(page,'Possui parceiro(a)','Sim');
   await clickOption(page,'Possui dependentes','Sim');
-  await tabs(page).getByRole('tab',{name:'Extras'}).click();
+  const extras=tabs(page).getByRole('tab',{name:'Extras'});
+  await extras.click();
+  await expect(extras,'A aba Extras deve permanecer ativa após editar o Perfil')
+    .toHaveAttribute('aria-selected','true');
   await clickOption(page,'Streaming de filmes','Sim');
   await tabs(page).getByRole('tab',{name:'Perfil'}).click();
   await expect(page.getByRole('combobox',{name:'Gênero'})).toHaveValue('Masculino');
@@ -203,4 +206,58 @@ test('CL-F08 edição imediata após stepper não perde seleção por reposicion
     await expect(value,
       'O caret voltou ao fim dos dígitos antes da substituição, produzindo 31 meses')
       .toHaveValue('1 mês',{timeout:1500});
+});
+
+
+test('CL-F09 componente v2 mantém seleção quando chega um rerun antigo',async({page})=>{
+  // O componente recebe código REAL importado do módulo, com callbacks v2
+  // simulados apenas para reproduzir a ordem de eventos sem treinar modelos.
+  const source = {
+    clamp:clampMonths.toString(),display:displayMonths.toString(),
+    replace:replaceMonthDigits.toString(),renderer:tenureRenderer.toString(),
+  };
+  await page.setContent(
+    '<div class="n3-tenure"><input type="text" aria-label="Tempo como cliente" />'+
+    '<button data-step="-1" aria-label="Diminuir um mês">−</button>'+
+    '<button data-step="1" aria-label="Aumentar um mês">+</button></div>');
+  await page.evaluate(src=>{
+    const js=[
+      'const clampMonths = ('+src.clamp+');',
+      'const displayMonths = ('+src.display+');',
+      'const replaceMonthDigits = ('+src.replace+');',
+      'return ('+src.renderer+');',
+    ].join('\n');
+    const mount = new Function(js)();
+    const root=document.querySelector('.n3-tenure');
+    window.n3Mount = value => {
+      window.n3Cleanup?.();
+      window.n3Cleanup=mount({
+        parentElement:root.parentElement,
+        data:{value},setStateValue:()=>{},
+      });
+    };
+    window.n3Mount(3);
+  },source);
+  const input=page.getByRole('textbox',{name:'Tempo como cliente'});
+  await page.getByRole('button',{name:'Aumentar um mês'}).click();
+  await page.getByRole('button',{name:'Diminuir um mês'}).click();
+  await input.click();
+  await input.press('ControlOrMeta+A');
+  await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
+    .toEqual([0,1]);
+
+  // Resposta atrasada do Streamlit sobre o mesmo elemento montado com key:
+  // o Python ainda contém 4 meses, mas o editor já está em 3 selecionado.
+  await page.evaluate(()=>window.n3Mount(4));
+  await expect(input).toHaveValue('3 meses');
+  await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
+    .toEqual([0,1]);
+  await input.press('1');
+  await expect(input).toHaveValue('1 mês');
+  await expect.poll(()=>input.evaluate(el=>[el.selectionStart,el.selectionEnd]))
+    .toEqual([1,1]);
+  // Fora da edição, uma atualização externa legítima deve voltar a prevalecer.
+  await page.getByRole('button',{name:'Aumentar um mês'}).click();
+  await page.evaluate(()=>window.n3Mount(7));
+  await expect(input).toHaveValue('7 meses');
 });
