@@ -197,10 +197,13 @@ e fonte monoespaçada no registro de execução.
   Restaurar e Excluir ficam juntos à direita em botões quadrados de mesmo tamanho,
   alinhados à linha circular. Abas Perfil, Conta, Serviços e Extras
   e botão de cálculo fixo na base do painel, sem linha divisória. O botão
-  apresenta **Calcular previsão** antes da execução, **Calculando...** enquanto
-  o processamento está em andamento e **Recalcular previsão** após a conclusão.
-  O estado intermediário desabilita novas solicitações; o recálculo utiliza
-  o fluxo de treinamento e avaliação já existente.
+  apresenta **Calcular previsão** antes da execução, **Calculando. → Calculando.. → Calculando...**
+  em animação contínua enquanto processa e **Recalcular previsão** após a conclusão.
+  O estado intermediário é desabilitado em cinza médio (diferente do hover
+  cinza-claro); o botão volta ao branco imediatamente após a execução, mesmo
+  se o cursor continuar sobre ele. A animação respeita a preferência por
+  movimento reduzido e é executada apenas no navegador, sem reruns adicionais.
+  O recálculo utiliza o fluxo de treinamento e avaliação já existente.
   O tempo de permanência utiliza um componente Streamlit v2 local: o próprio
   campo mostra `X mês`/`X meses`, protege a unidade durante a edição e envia
   somente o número inteiro ao modelo (0 a 999 meses). A rolagem do formulário
