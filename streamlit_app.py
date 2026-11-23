@@ -70,6 +70,7 @@ st.markdown(
   /* Ajuste óptico uniforme; o controle selecionável usa seu input real. */
   --n3-field-text-shift:-1px;
   --n3-page-pad:12px; --n3-panel-pad:12px;
+  --n3-client-content-inset:10px;
   --n3-client-shadow-top:0; --n3-client-shadow-bottom:0;
   /* Uma intensidade e extensão compartilhadas pelas duas extremidades. */
   --n3-client-shadow-length:52px;
@@ -127,15 +128,19 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   position:relative!important;z-index:1!important;
   height:100%!important;max-height:100%!important;overflow:hidden!important;
 }
-/* Em barras clássicas, stable both-edges cria calhas iguais.
-   Em overlay scrollbars, padding bilateral mantém os controles protegidos. */
+/* Campos e rodapé compartilham a mesma geometria horizontal. As calhas
+   bilaterais compensam scrollbars clássicas; o padding cobre as sobrepostas. */
+.st-key-dashboard-client-fields,
+.st-key-dashboard-client-footer {
+  box-sizing:border-box!important;min-width:0!important;width:100%!important;
+  scrollbar-gutter:stable both-edges!important;
+  padding-inline:var(--n3-client-content-inset)!important;
+}
 .st-key-dashboard-client-fields {
-  box-sizing:border-box!important;height:100%!important;max-height:100%!important;
-  min-height:0!important;min-width:0!important;
+  height:100%!important;max-height:100%!important;min-height:0!important;
   overflow-y:auto!important;overflow-x:hidden!important;
-  scrollbar-gutter:stable both-edges!important;scrollbar-width:thin!important;
+  scrollbar-width:thin!important;
   scrollbar-color:var(--n3-outline) transparent!important;
-  padding-inline:10px!important;
 }
 /* O gradiente superior começa na primeira linha realmente rolável, após o
    espaçamento do título, para cobrir os campos que passam por baixo dele. */
@@ -146,11 +151,19 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
     var(--n3-client-shadow-strong) 0%,var(--n3-client-shadow-soft) 48%,rgba(0,0,0,0) 100%);
   opacity:var(--n3-client-shadow-top,0);transition:opacity .16s ease-out;
 }
-.st-key-dashboard-client-footer {
+/* O gradiente pertence ao wrapper fixo: o botão pode manter as calhas e
+   overflow:hidden sem recortar a sombra projetada sobre os campos. */
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-footer) {
   position:relative!important;z-index:3!important;overflow:visible!important;
-  height:auto!important;padding-top:8px;border-top:0!important;
 }
-.st-key-dashboard-client-footer::before {
+/* overflow:hidden reserva calhas também sem scrollbar visível.
+   A sombra fica no wrapper externo, preservando sua projeção superior. */
+.st-key-dashboard-client-footer {
+  position:relative!important;height:auto!important;
+  overflow:hidden!important;scrollbar-width:thin!important;
+  padding-top:8px;border-top:0!important;
+}
+.st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-footer)::before {
   content:"";position:absolute;bottom:100%;left:0;right:0;
   height:var(--n3-client-shadow-length);pointer-events:none;
   background:linear-gradient(to top,
@@ -158,7 +171,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   opacity:var(--n3-client-shadow-bottom,0);transition:opacity .16s ease-out;
 }
 @media(prefers-reduced-motion:reduce) {
-  .st-key-dashboard-client-footer::before,
+  .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-footer)::before,
   .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields)::before {
     transition:none!important;
   }
@@ -285,7 +298,9 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
     animation:none!important;content:"...";
   }
 }
-.st-key-dashboard-client-footer button:focus-visible {outline:2px solid #fff!important;outline-offset:3px!important;}
+.st-key-dashboard-client-footer button:focus-visible {
+  outline:2px solid var(--n3-bg)!important;outline-offset:-4px!important;
+}
 .st-key-dashboard-client-fields button[kind="tertiary"],
 .st-key-dashboard-client-fields button {font-size:14px!important;color:var(--n3-secondary)!important;}
 /* Perfis e ações pertencem a uma única linha alinhada verticalmente.
