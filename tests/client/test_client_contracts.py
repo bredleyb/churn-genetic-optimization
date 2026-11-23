@@ -239,6 +239,7 @@ def test_selectbox_border_and_arrow_follow_expanded_state_only(client_app):
     assert '[role="group"]:has([aria-expanded="true"]),' in css
     assert ':focus-within,:has([aria-expanded="true"])' not in css
     assert '[data-focus-within="true"]' not in css
+    assert 'body:has([data-testid="stSelectboxVirtualDropdown"])' in css
     assert '[role="group"]:has([aria-expanded="true"]) button[aria-label="Open"] svg' in css
     assert "transform:rotate(0deg)!important" in css
     assert "transform:rotate(180deg)!important" in css

@@ -609,7 +609,38 @@ for(const viewport of [{width:1440,height:900},{width:390,height:900}]){
       await expect(svg).toHaveCSS('transition-duration','0.16s');
       await expect(field).toHaveCSS('border-color','rgb(85, 88, 93)');
 
+      // O portal de opções deve montar ANTES de a seta concluir o giro.
+      const popupAtMount=page.evaluate(()=>new Promise(resolve=>{
+        const observer=new MutationObserver(()=>{
+          const popup=document.querySelector(
+            '[data-testid="stSelectboxVirtualDropdown"]');
+          if(!popup)return;
+          const group=document.querySelector(
+            '.st-key-dashboard-client [data-testid="stSelectbox"] [role="group"]:has([aria-expanded="true"])');
+          if(!group)return;
+          observer.disconnect();
+          const icon=group.querySelector('button[aria-label="Open"] svg');
+          const matrix=icon
+            ? new DOMMatrixReadOnly(getComputedStyle(icon).transform) : null;
+          resolve({
+            popupMounted:true,expanded:!!group,iconFound:!!icon,
+            arrowAngle:matrix
+              ? Math.round((Math.atan2(matrix.b,matrix.a)*180/Math.PI+360)%360)
+              : -1,
+          });
+        });
+        observer.observe(document.body,{
+          childList:true,subtree:true,attributes:true,attributeFilter:['aria-expanded']
+        });
+      }));
       await trigger.click();
+      const opening=await popupAtMount;
+      expect(opening.popupMounted).toBe(true);
+      expect(opening.expanded).toBe(true);
+      expect(opening.iconFound).toBe(true);
+      expect(opening.arrowAngle,
+        'O menu deve montar antes de concluir a rotação da seta').toBeLessThan(170);
+      await expect(page.getByRole('option',{name:'Mensal',exact:true})).toBeVisible();
       await expect(field.locator('[aria-expanded="true"]')).not.toHaveCount(0);
       await expect(field).toHaveCSS('border-color','rgb(245, 245, 245)');
       await expect.poll(angle).toBe(180);
