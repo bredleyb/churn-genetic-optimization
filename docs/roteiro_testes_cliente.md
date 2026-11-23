@@ -49,7 +49,7 @@ Esta camada não substitui verificações reais de renderização.
 
 | ID | Requisito | Evidência / limite |
 |---|---|---|
-| CL-L01 | Layout geral | 6 resoluções; título, cores, círculos e campos; grade adaptada à largura útil do Cliente, margens iguais; screenshots |
+| CL-L01 | Layout geral | 6 resoluções; título centralizado na coluna completa do Cliente, cores, círculos, campos, margens e screenshots |
 | CL-L02 | Quatro abas | Campos visíveis, alinhados ao botão e sem overflow lateral; screenshots |
 | CL-L03 | Texto e seletores | Familjen Grotesk carregada; rótulos 15 px; valores 14 px; centros ±2 px; hover |
 | CL-L04 | Teclado | Abas acessíveis, foco sem barras laterais cinzas |
@@ -63,7 +63,7 @@ Esta camada não substitui verificações reais de renderização.
 | CL-F05 | Cobrança | Número decimal e Total cobrado indisponível |
 | CL-F06 | Consistência visual | Fundo, raios, fontes, cor e hover do Tempo, Cobrança e seletores; wrapper real React Aria |
 | CL-F07 | Ações da Cobrança | Dois botões −/+ visíveis nas seis resoluções, com a mesma paleta e hover do Tempo |
-| CL-F08 | Edição rápida de Tempo | Ctrl+A e digitação imediatamente após clique no stepper preservam seleção numérica (sem reposicionamento posterior) |
+| CL-F08 | Edição rápida de Tempo | Ctrl+A e digitação após o stepper preservam seleção numérica inclusive durante reexecução do componente v2 |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
@@ -96,8 +96,9 @@ results/testes-visuais-para-revisao.zip (ou variante com timestamp, caso o
 anterior esteja aberto no Windows).
 
 As auditorias estão documentadas em
-[primeira rodada](auditoria_cliente_2026-11-23.md) e
-[segunda rodada](auditoria_cliente_2026-11-23_rodada2.md).
+[primeira rodada](auditoria_cliente_2026-11-23.md),
+[segunda rodada](auditoria_cliente_2026-11-23_rodada2.md) e
+[terceira rodada](auditoria_cliente_2026-11-23_rodada3.md).
 Os casos corrigidos nos testes precisam ser reexecutados; requisitos
 que revelaram problemas visuais permanecem reprováveis.
 
