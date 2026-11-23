@@ -26,7 +26,19 @@ export async function openClient(page,viewport) {
   await page.goto('/',{waitUntil:'domcontentloaded'});
   await expect(page.getByRole('heading',{name:'Cliente',exact:true})).toBeVisible({timeout:30000});
   await expect(action(page)).toBeVisible();
-  await page.evaluate(async()=>{await document.fonts.ready;});
+  // Título e botão aparecem antes da hidratação/CSS do Streamlit. Aguardar
+  // os controles finais e a superfície estilizada antes de medir geometria;
+  // a captura de 1366px registrou 80px de margem por ler o layout provisório.
+  await expect(page.locator('.n3-tenure-field')).toBeVisible({timeout:30000});
+  await expect(page.locator('input[aria-label="Cobrança mensal"]'))
+    .toBeVisible({timeout:30000});
+  await expect(client(page)).toHaveCSS('background-color','rgb(14, 16, 19)',
+    {timeout:30000});
+  await page.evaluate(async()=>{
+    await document.fonts.ready;
+    await new Promise(resolve=>requestAnimationFrame(()=>
+      requestAnimationFrame(resolve)));
+  });
   await expect(page.locator('[data-testid="stException"]')).toHaveCount(0);
 }
 

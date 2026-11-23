@@ -37,6 +37,17 @@ export default function () {
   let actionState = null;
   let suppressHover = false;
   let activeNumberStepper = null;
+  let lastPointerPosition = null;
+  // Consulta a geometria real: durante o estado inert, :hover pode
+  // desaparecer temporariamente, mesmo com o ponteiro sobre o botão.
+  const pointerInsideButton = (button, x, y) => {
+    if (!button) return false;
+    const rect = button.getBoundingClientRect();
+    return x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom;
+  };
+  const pointerOverAction = button => lastPointerPosition
+    ? pointerInsideButton(button, lastPointerPosition.x, lastPointerPosition.y)
+    : Boolean(button?.matches(":hover"));
   // A solicitação persiste entre remontagens do componente durante reruns.
   const busyKey = Symbol.for("n3.client.interactionLock");
   const busy = window[busyKey] ??= {
@@ -113,6 +124,7 @@ export default function () {
     : null;
   const onNumberPointerMove = event => {
     if (event.pointerType === "touch") return;
+    lastPointerPosition = {x: event.clientX, y: event.clientY};
     setNumberStepperHover(numberStepperAt(event.target));
   };
   // O pointerdown sempre descarrega o estado, mesmo que o React mantenha
@@ -122,7 +134,10 @@ export default function () {
 
   // Ao concluir a execução, o cursor pode continuar sobre o botão e manter
   // :hover ativo. Só habilitar novamente o hover após sair da área clicável.
-  const onActionLeave = () => {
+  const onActionLeave = event => {
+    // Ao tirar inert, o navegador pode emitir pointerleave sem deslocamento.
+    // Só reativar o hover quando o ponteiro realmente sair do retângulo.
+    if (pointerInsideButton(actionButton, event.clientX, event.clientY)) return;
     suppressHover = false;
     if (actionButton) actionButton.dataset.n3HoverReady = "true";
   };
@@ -145,13 +160,13 @@ export default function () {
     if (state !== actionState) {
       if (state === "running") {
         suppressHover = false;
-      } else if (state === "complete" && next.matches(":hover")) {
+      } else if (state === "complete" && pointerOverAction(next)) {
         suppressHover = true;
-      } else if (actionState === "running" && next.matches(":hover")) {
+      } else if (actionState === "running" && pointerOverAction(next)) {
         suppressHover = true;
       }
       actionState = state;
-    } else if (changedElement && state === "complete" && next.matches(":hover")) {
+    } else if (changedElement && state === "complete" && pointerOverAction(next)) {
       suppressHover = true;
     }
     if (next.dataset.n3PredictionState !== state) {

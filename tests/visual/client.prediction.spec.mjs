@@ -61,6 +61,20 @@ test('CL-B02 estados cromáticos, reticências, retorno ao branco e movimento re
     await expect(button).toHaveCSS('background-color','rgb(216, 216, 216)');
     await page.mouse.move(0,0);
     await expect(button).toHaveCSS('background-color','rgb(245, 245, 245)');
+    // A supressão deve valer apenas enquanto o ponteiro não tiver saído.
+    // Se estiver fora durante a conclusão, o próximo hover funciona normalmente.
+    await button.evaluate(el=>{
+      el.querySelector('p').textContent='Calculando';el.disabled=true;
+    });
+    await expect(button).toHaveAttribute('data-n3-prediction-state','running');
+    await page.mouse.move(0,0);
+    await button.evaluate(el=>{
+      el.querySelector('p').textContent='Recalcular previsão';el.disabled=false;
+    });
+    await expect(button).toHaveAttribute('data-n3-prediction-state','complete');
+    await expect(button).toHaveAttribute('data-n3-hover-ready','true');
+    await button.hover();
+    await expect(button).toHaveCSS('background-color','rgb(216, 216, 216)');
   });
 
 test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados',
