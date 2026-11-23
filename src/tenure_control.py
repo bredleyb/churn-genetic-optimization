@@ -35,15 +35,11 @@ _COMPONENT_CSS = """
   width:100%;height:var(--n3-field-height,42px);min-width:0;overflow:hidden;
   background:var(--n3-field-fill,#0e1013);border:1px solid var(--n3-outline,#55585d);
   border-radius:var(--n3-field-radius,4px);}
-/* A borda do foco fica ACIMA dos dois steppers; uma sombra inset
-   aplicada ao container é coberta pelo fundo de hover dos filhos. */
+/* Foco utiliza exatamente a borda de 1 px já existente na caixa.
+   A cor é a mesma do perfil ativo; nenhum anel ou camada sobreposta. */
 .n3-tenure-field:focus-within {
-  outline:none;border-color:var(--n3-text,#f5f5f5);
-}
-.n3-tenure-field:focus-within::after {
-  content:"";position:absolute;inset:0;box-sizing:border-box;
-  border:2px solid var(--n3-text,#f5f5f5);border-radius:inherit;
-  z-index:3;pointer-events:none;
+  border-color:var(--n3-text,#f5f5f5);
+  outline:none;box-shadow:none;
 }
 /* O input seleciona somente dígitos; o sufixo ocupa a mesma caixa ao lado
    sem pertencer ao texto editável. Isso elimina a gestão manual do caret. */
@@ -75,7 +71,8 @@ _COMPONENT_CSS = """
   background:var(--n3-elevated,#202124);
 }
 .n3-tenure-field button:disabled {opacity:.45;cursor:default;}
-.n3-tenure-field button:focus-visible {outline:2px solid var(--n3-text,#f5f5f5);outline-offset:-2px;}
+/* O foco do stepper é representado pela borda do campo inteiro. */
+.n3-tenure-field button:focus-visible {outline:none;box-shadow:none;}
 """
 
 
