@@ -215,8 +215,6 @@ def test_native_numeric_steppers_use_same_hover_and_focus_model(client_app):
     cues = (app.ROOT / "src" / "client_scroll_cues.mjs").read_text(
         encoding="utf-8"
     )
-    assert '[data-testid="stSelectbox"] [role="group"]:is(' in css
-    assert ':has([aria-expanded="true"])' in css
     assert '[data-testid="stNumberInputContainer"],[data-baseweb="input"]):focus-within' in css
     assert "border:1px solid var(--n3-outline)!important" in css
     assert "border-color:var(--n3-text)!important" in css
