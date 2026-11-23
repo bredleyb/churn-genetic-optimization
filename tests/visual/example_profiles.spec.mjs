@@ -12,6 +12,13 @@ test('exemplos numerados preservam edições, restauro e limite de cinco', async
   await expect(first).toBeVisible();
   await expect(second).toBeVisible();
   await expect(restore).toBeDisabled();
+  const topAlignment = await Promise.all([
+    restore.boundingBox(),first.boundingBox(),
+  ]);
+  expect(Math.abs(topAlignment[0].height - topAlignment[1].height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(topAlignment[0].width - topAlignment[1].width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(topAlignment[0].y + topAlignment[0].height/2 -
+                  topAlignment[1].y - topAlignment[1].height/2)).toBeLessThanOrEqual(2);
   const pristineColor = await restore.evaluate(el => getComputedStyle(el).backgroundColor);
   expect(pristineColor).toBe('rgb(0, 0, 0)');
 
@@ -62,9 +69,15 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
       const controls = choices.locator('[data-testid="stButton"] button');
       await expect(controls).toHaveCount(3);
       const frame = await choices.boundingBox();
+      const restore = page.getByRole('button',{name:'Restaurar perfil'});
+      const restoreBox = await restore.boundingBox();
       const positions = await Promise.all((await controls.all()).map(button => button.boundingBox()));
       for (const rect of positions) {
         expect(Math.abs(rect.width - rect.height), 'Botão não é circular').toBeLessThanOrEqual(1);
+        expect(Math.abs(rect.width - restoreBox.width), 'Restaurar de outro diâmetro')
+          .toBeLessThanOrEqual(1);
+        expect(Math.abs((rect.y+rect.height/2) - (restoreBox.y+restoreBox.height/2)),
+          'Restaurar e exemplos não estão no mesmo eixo').toBeLessThanOrEqual(2);
         expect(rect.x, 'Botão passou do lado esquerdo').toBeGreaterThanOrEqual(frame.x - 2);
         expect(rect.x+rect.width, 'Botão passou do lado direito')
           .toBeLessThanOrEqual(frame.x+frame.width+2);

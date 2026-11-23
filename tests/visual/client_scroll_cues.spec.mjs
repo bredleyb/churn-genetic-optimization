@@ -84,10 +84,12 @@ for (const viewport of [{width:1024,height:768},{width:390,height:900}]) {
       expect(overlays.bottomPointer).toBe('none');
       expect(overlays.topOpacity).toBeLessThan(.01);
       expect(overlays.bottomOpacity).toBeGreaterThan(.99);
-      expect(overlays.topLength).toBe('60px');
+      expect(overlays.topLength).toBe('52px');
       expect(overlays.bottomLength).toBe('52px');
-      expect(overlays.topGradient).toContain('0.72');
+      expect(overlays.topGradient).toContain('0.48');
       expect(overlays.bottomGradient).toContain('0.48');
+      expect(overlays.topGradient).toContain('0.2');
+      expect(overlays.bottomGradient).toContain('0.2');
       expect(Math.abs(overlays.topY-overlays.scrollY), 'Gradiente superior fora da área rolável')
         .toBeLessThanOrEqual(2);
       await scrollTo(dimensions.scrollable/2);

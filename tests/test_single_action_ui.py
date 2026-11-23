@@ -135,7 +135,7 @@ def test_single_button_starts_workflow_from_client_panel(monkeypatch, clicked):
     assert options["1"]["type"] == "primary"
     assert options["2"]["type"] == "secondary"
     assert options["+"]["on_click"] is not None
-    assert options["Restaurar perfil"]["icon"] == ":material/refresh:"
+    assert options["Restaurar perfil"]["icon"] == ":material/history:"
     assert options["Restaurar perfil"]["type"] == "tertiary"
     assert options["Restaurar perfil"]["disabled"] is True
     assert callable(options["Restaurar perfil"]["on_click"])
@@ -203,11 +203,18 @@ def test_css_is_monochrome_and_scoped_to_viewport(monkeypatch):
     assert "scrollbar-gutter:stable both-edges!important" in style
     assert "padding-inline:10px!important" in style
     assert "padding-inline-end:10px!important" not in style
-    assert "--n3-client-shadow-top-length:60px" in style
-    assert "--n3-client-shadow-bottom-length:52px" in style
+    assert "--n3-client-shadow-length:52px" in style
+    assert "--n3-client-shadow-strong:rgba(0,0,0,.48)" in style
+    assert "--n3-client-shadow-soft:rgba(0,0,0,.20)" in style
+    assert "height:var(--n3-client-shadow-length)" in style
+    assert style.count("var(--n3-client-shadow-strong)") == 2
+    assert style.count("var(--n3-client-shadow-soft)") == 2
     assert ".st-key-dashboard-client-fields)::before" in style
-    assert "rgba(0,0,0,.72)" in style
-    assert "rgba(0,0,0,.48)" in style
+    assert "--n3-profile-button-size:32px" in style
+    assert "--n3-profile-button-size:28px" in style
+    assert "--n3-profile-button-size:26px" in style
+    assert "border-radius:50%!important" in style
+    assert "width:42px!important;min-width:42px!important" not in style
     assert "--n3-client-shadow-top:0; --n3-client-shadow-bottom:0" in style
     assert "opacity:var(--n3-client-shadow-top,0)" in style
     assert "opacity:var(--n3-client-shadow-bottom,0)" in style

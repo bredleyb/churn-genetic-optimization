@@ -349,7 +349,10 @@ for (const { width, height } of viewports) {
         expect(Math.abs(
           restoreBox.y + restoreBox.height/2 - profileBox.y - profileBox.height/2),
           'Ícone de restauro e círculo fora do mesmo centro vertical').toBeLessThanOrEqual(3);
-        expect(restoreBox.height).toBe(42);
+        expect(Math.abs(restoreBox.width - profileBox.width),
+          'Restaurar possui largura diferente do círculo').toBeLessThanOrEqual(1);
+        expect(Math.abs(restoreBox.height - profileBox.height),
+          'Restaurar possui altura diferente do círculo').toBeLessThanOrEqual(1);
         await expect(restore).toBeDisabled();
         const restoreAppearance = await restore.evaluate(button => {
           const icon = button.querySelector('[data-testid="stIconMaterial"]');
