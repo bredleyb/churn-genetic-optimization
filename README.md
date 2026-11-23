@@ -204,9 +204,10 @@ e fonte monoespaçada no registro de execução.
   se o cursor continuar sobre ele. A animação respeita a preferência por
   movimento reduzido e é executada apenas no navegador, sem reruns adicionais.
   O recálculo utiliza o fluxo de treinamento e avaliação já existente.
-  O tempo de permanência utiliza um componente Streamlit v2 local: o próprio
-  campo mostra `X mês`/`X meses`, protege a unidade durante a edição e envia
-  somente o número inteiro ao modelo (0 a 999 meses). A rolagem do formulário
+  O tempo de permanência utiliza um componente Streamlit v2 local: uma única
+  caixa visual mostra `X mês`/`X meses`, com input numérico nativo e unidade
+  fixa adjacente. Ctrl+A, Backspace e o cursor são controlados pelo navegador;
+  o sufixo permanece protegido e somente o inteiro (0–999) vai ao modelo. A rolagem do formulário
   reserva calhas simétricas para a scrollbar e compartilha o mesmo recuo
   horizontal com o rodapé, mantendo o botão de cálculo alinhado às bordas
   dos campos, mesmo quando a barra está oculta. Duas sombras progressivas,

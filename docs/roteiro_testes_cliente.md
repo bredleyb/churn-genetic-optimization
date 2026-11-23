@@ -29,7 +29,7 @@ responsividade, rolagem, sombras e cálculo. Os resultados científicos
 | CL-U04 | Grade rápida | Mesma definição (0,55 / 0,45) nas duas linhas |
 | CL-U05 | Serviços | Telefonia e internet sincronizam campos dependentes e reversão |
 | CL-U06 | Validação | Ausência de TotalCharges, valores negativos e combinações inválidas |
-| CL-U07 | Meses | Um único texto, sufixo protegido, limites, seleção Ctrl+A e estado transitório mantido no host durante remontagens |
+| CL-U07 | Meses | Um único input de dígitos e unidade não editável na mesma caixa, limites 0–999, Ctrl+A nativo e sincronização numérica v2 |
 | CL-U08 | CSS compartilhado | Cores, tipografia, dimensões, recuo do footer, scroll e sombras |
 | CL-U09 | Criação | 3 a 5 copiam valores atuais, limite máximo de 5 |
 | CL-U10 | Restauração | Snapshot próprio, sem efeito sobre outros exemplos |
@@ -57,14 +57,16 @@ Esta camada não substitui verificações reais de renderização.
 | CL-P02 | Perfil responsivo | Dois botões quadrados, mesmo tamanho dos círculos e mesmo eixo em 4 larguras |
 | CL-P03 | Seleção | Botões identificáveis, estado ativo e proteção dos exemplos originais |
 | CL-F01 | Mês | 0/1/2/999, singular/plural e substituição de dígitos |
-| CL-F02 | Controle de meses | Input único, caret antes da unidade, botões e limites, foco interno, captura |
+| CL-F02 | Controle de meses | Input numérico único, unidade separada visualmente contígua, botões, limites, foco interno e captura |
 | CL-F03 | Categorias | Gênero limitado aos dados originais, campos Perfil e Extras persistentes |
 | CL-F04 | Dependências | Telefone e Internet desabilitam e restauram dependentes |
 | CL-F05 | Cobrança | Número decimal e Total cobrado indisponível |
 | CL-F06 | Consistência visual | Fundo, raios, fontes, cor e hover do Tempo, Cobrança e seletores; wrapper real React Aria |
 | CL-F07 | Ações da Cobrança | Dois botões −/+ visíveis nas seis resoluções, com a mesma paleta e hover do Tempo |
-| CL-F08 | Edição rápida de Tempo | Ctrl+A e digitação após o stepper preservam seleção numérica inclusive durante reexecução do componente v2 |
-| CL-F09 | Montagem v2 com atualização tardia | Remontagem com props antigas, seleção colapsada e substituição física do input ainda permitem Ctrl+A substituir todos os dígitos; fora de edição aceita atualização externa |
+| CL-F08 | Edição rápida de Tempo | Ctrl+A seguido de digitação após stepper usa seleção nativa sem concatenar dígitos |
+| CL-F09 | Montagem v2 com atualização tardia | Input numérico nativo preserva seleção com props antigas; sem foco, aceita mudança externa; nova revisão recria controle válido |
+| CL-F10 | Geometria da unidade | Dígitos e sufixo contíguos na mesma caixa, seleção restrita ao número, em 1440 e 390 px |
+| CL-F11 | Entrada inválida e colagem | Rejeita letras, aceita colagem numérica com unidade e normaliza campo vazio no blur |
 | CL-S01 | Sombra matemática | Inicial, meio, fim, ausência de overflow e conteúdo curto |
 | CL-S02 | Sombra visual | Calhas bilaterais, gradientes 52 px, rodapé fixo, capturas 1024/390 |
 | CL-S03 | Rodapé | Foco do botão dentro da área visível |
