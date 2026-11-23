@@ -13,6 +13,14 @@ export function scrollCueStrengths(scrollTop, clientHeight, scrollHeight, rampPi
   };
 }
 
+/** Estado visual do botão, obtido da legenda oficial de st.button. */
+export function predictionButtonState(label, disabled = false) {
+  const text = String(label ?? "").trim();
+  if (text === "Calculando" || text === "Calculando...") return "running";
+  if (text === "Recalcular previsão") return "complete";
+  return disabled ? "unavailable" : "idle";
+}
+
 /**
  * Acesso ao DOM principal é documentado para components v2: o componente
  * JS-only é montado fora da grade fixa e não envia eventos ao Python.
@@ -25,6 +33,46 @@ export default function () {
   let scrolling = null;
   let frame = 0;
   let locatorFrame = 0;
+  let actionButton = null;
+  let actionState = null;
+  let suppressHover = false;
+
+  // Ao concluir a execução, o cursor pode continuar sobre o botão e manter
+  // :hover ativo. Só habilitar novamente o hover após sair da área clicável.
+  const onActionLeave = () => {
+    suppressHover = false;
+    if (actionButton) actionButton.dataset.n3HoverReady = "true";
+  };
+  const syncPredictionButton = () => {
+    const next = document.querySelector(
+      '.st-key-dashboard-client-footer [data-testid="stButton"] button'
+    );
+    const changedElement = next !== actionButton;
+    if (changedElement) {
+      actionButton?.removeEventListener("pointerleave", onActionLeave);
+      actionButton = next;
+      next?.addEventListener("pointerleave", onActionLeave, { signal: abort.signal });
+    }
+    if (!next) return;
+    const state = predictionButtonState(next.textContent, next.disabled);
+    if (state !== actionState) {
+      if (state === "running") {
+        suppressHover = false;
+      } else if (state === "complete" && next.matches(":hover")) {
+        suppressHover = true;
+      } else if (actionState === "running" && next.matches(":hover")) {
+        suppressHover = true;
+      }
+      actionState = state;
+    } else if (changedElement && state === "complete" && next.matches(":hover")) {
+      suppressHover = true;
+    }
+    if (next.dataset.n3PredictionState !== state) {
+      next.dataset.n3PredictionState = state;
+    }
+    const ready = !suppressHover && state !== "running" ? "true" : "false";
+    if (next.dataset.n3HoverReady !== ready) next.dataset.n3HoverReady = ready;
+  };
 
   const clear = element => {
     element?.style.removeProperty("--n3-client-shadow-top");
@@ -45,6 +93,7 @@ export default function () {
   const bind = () => {
     locatorFrame = 0;
     if (abort.signal.aborted) return;
+    syncPredictionButton();
     const nextPanel = document.querySelector(".st-key-dashboard-client");
     const nextScrolling = nextPanel?.querySelector(".st-key-dashboard-client-fields");
     if (nextScrolling === scrolling && nextPanel === panel) {
@@ -71,10 +120,13 @@ export default function () {
   const queueBind = () => {
     if (!locatorFrame && !abort.signal.aborted) locatorFrame = requestAnimationFrame(bind);
   };
-  // Streamlit reruns may replace the scroll viewport without remounting this
-  // JS-only component. Watch only node additions/removals, never style changes.
+  // Reruns podem substituir o scroller ou alterar a legenda do mesmo botão.
+  // Observar somente nós e conteúdo textual: nossos atributos CSS não geram
+  // mutações recursivas nem comunicações com Python.
   const structure = new MutationObserver(queueBind);
-  structure.observe(document.body, { childList: true, subtree: true });
+  structure.observe(document.body, {
+    childList: true, characterData: true, subtree: true,
+  });
   window.addEventListener("resize", schedule, { signal: abort.signal });
   bind();
 
@@ -83,6 +135,7 @@ export default function () {
     if (frame) cancelAnimationFrame(frame);
     if (locatorFrame) cancelAnimationFrame(locatorFrame);
     structure.disconnect();
+    actionButton?.removeEventListener("pointerleave", onActionLeave);
     mutations?.disconnect();
     resizes.disconnect();
     clear(panel);

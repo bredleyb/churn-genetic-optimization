@@ -256,13 +256,34 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   font-family:inherit!important;font-size:inherit!important;
   line-height:inherit!important;font-weight:inherit!important;
 }
-.st-key-dashboard-client-footer button:hover:not(:disabled) {
+/* O hover fica desarmado ao terminar o processamento enquanto o ponteiro
+   permanece sobre o botão. A saída do ponteiro o habilita novamente. */
+.st-key-dashboard-client-footer button:hover:not(:disabled):not([data-n3-hover-ready="false"]) {
   background:var(--n3-secondary)!important;border-color:var(--n3-secondary)!important;
 }
+/* O estado ocupado é cinza médio, separado do hover cinza-claro. */
 .st-key-dashboard-client-footer [data-testid="stButton"] button[kind="primary"]:disabled,
 .st-key-dashboard-client-footer button:disabled {
-  background:var(--n3-secondary)!important;border-color:var(--n3-secondary)!important;
-  color:var(--n3-surface)!important;opacity:1!important;cursor:default!important;
+  background:var(--n3-outline)!important;border-color:var(--n3-outline)!important;
+  color:var(--n3-text)!important;opacity:1!important;cursor:default!important;
+}
+/* As reticências evoluem somente no navegador, com largura reservada para
+   não deslocar o texto. A legenda sem pontos continua acessível no botão. */
+.st-key-dashboard-client-footer button[data-n3-prediction-state="running"] p::after {
+  content:".";
+  display:inline-block;min-width:1.7em;text-align:left;white-space:pre;
+  font-family:inherit!important;font-size:inherit!important;line-height:inherit!important;
+  animation:n3-calculating-ellipsis 1.35s linear infinite;
+}
+@keyframes n3-calculating-ellipsis {
+  0%,32.99% {content:".";}
+  33%,65.99% {content:"..";}
+  66%,100% {content:"...";}
+}
+@media(prefers-reduced-motion:reduce) {
+  .st-key-dashboard-client-footer button[data-n3-prediction-state="running"] p::after {
+    animation:none!important;content:"...";
+  }
 }
 .st-key-dashboard-client-footer button:focus-visible {outline:2px solid #fff!important;outline-offset:3px!important;}
 .st-key-dashboard-client-fields button[kind="tertiary"],
@@ -1368,7 +1389,7 @@ def _request_prediction() -> None:
 def _prediction_button_label() -> str:
     """Única origem da legenda do botão conforme o estado da execução."""
     if st.session_state.get("prediction_running", False):
-        return "Calculando..."
+        return "Calculando"
     if st.session_state.get("workflow_run") is not None:
         return "Recalcular previsão"
     return "Calcular previsão"
