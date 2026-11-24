@@ -1,4 +1,4 @@
-# Seleção de características com algoritmo genético para previsão de churn
+## Seleção de características com algoritmo genético para previsão de churn
 
 Este estudo verifica se um **algoritmo genético** consegue reduzir as variáveis de entrada de uma
 **regressão logística** que prevê o cancelamento de clientes (*customer churn*) sem perder poder preditivo.
