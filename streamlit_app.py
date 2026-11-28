@@ -1623,6 +1623,27 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         log(f"[FIM] Referência F1={base_metrics['f1']:.4f} · "
             f"Genético F1={genetic_metrics['f1']:.4f} · "
             f"{genetic_result.evaluated_subsets} subconjuntos distintos")
+        summary = {
+            "baseline": base_metrics,
+            "genetico": genetic_metrics,
+            "baseline_cv_f1": baseline_cv["f1"]["media"],
+            "genetic_cv_f1": genetic_result.best_cv_f1,
+            "baseline_count": len(FEATURE_COLUMNS),
+            "genetic_count": len(genetic_result.selected_features),
+            "test_count": len(x_test),
+            "reduction_pct": 100 * (len(FEATURE_COLUMNS) - len(genetic_result.selected_features))
+                             / len(FEATURE_COLUMNS),
+        }
+        run = {
+            "customer": customer,
+            "predictions": predictions,
+            "summary": summary,
+            "history": history,
+            "chromosome": genetic_result.chromosome,
+            "events": events,
+            "evaluated_subsets": genetic_result.evaluated_subsets,
+            "elapsed_seconds": genetic_result.elapsed_seconds,
+        }
     except Exception:
         fail_attempt(attempt, perf_counter())
         message = ("CSV não encontrado em data/raw/. Adicione o arquivo e tente novamente."
@@ -1630,37 +1651,18 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
                    "Não foi possível concluir a execução. Verifique os dados e tente novamente.")
         st.session_state["prediction_error"] = message
         events.append("[ERRO] " + message)
-        _render_failed_attempt(attempt, slots, allow_download=False)
+        # O rerun de main renderiza a falha e habilita o log parcial.
+        # Não registrar novamente os widgets da tentativa em andamento.
         return
 
-    summary = {
-        "baseline": base_metrics,
-        "genetico": genetic_metrics,
-        "baseline_cv_f1": baseline_cv["f1"]["media"],
-        "genetic_cv_f1": genetic_result.best_cv_f1,
-        "baseline_count": len(FEATURE_COLUMNS),
-        "genetic_count": len(genetic_result.selected_features),
-        "test_count": len(x_test),
-        "reduction_pct": 100 * (len(FEATURE_COLUMNS) - len(genetic_result.selected_features))
-                         / len(FEATURE_COLUMNS),
-    }
-    run = {
-        "customer": customer,
-        "predictions": predictions,
-        "summary": summary,
-        "history": history,
-        "chromosome": genetic_result.chromosome,
-        "events": events,
-        "evaluated_subsets": genetic_result.evaluated_subsets,
-        "elapsed_seconds": genetic_result.elapsed_seconds,
-    }
     attempt["phase"] = "complete"
     st.session_state["workflow_run"] = run
     st.session_state["prediction_error"] = None
-    _render_finished_run(run, slots)
+    # main libera o Cliente e solicita um rerun. Os downloads desabilitados
+    # já foram registrados neste ciclo; a conclusão é renderizada no próximo.
 
 
-def _render_failed_attempt(attempt: dict, slots: dict, *, allow_download: bool = True) -> None:
+def _render_failed_attempt(attempt: dict, slots: dict) -> None:
     _render_workspace_heading("error", slot=slots["heading"])
     _render_prediction_comparison(None, "error", slot=slots["comparison"])
     _render_status("error", attempt, slot=slots["status"])
@@ -1669,7 +1671,8 @@ def _render_failed_attempt(attempt: dict, slots: dict, *, allow_download: bool =
                        customer=attempt["customer"])
     _history_chart(attempt["history"], slot=slots["chart"])
     _render_metrics(None, slots)
-    _render_downloads(attempt["events"], slots, enabled=allow_download)
+    _render_downloads(attempt["events"], slots,
+                      enabled=not st.session_state.get("prediction_running", False))
 
 
 def _request_prediction() -> None:
