@@ -115,4 +115,4 @@ def test_generation_log_uses_real_search_record():
         "caracteristicas": 12,
     })
     assert line == ("Geração 03 | F1 (CV): 0,6015 | "
-                    "aptidão: 0,5889 | características: 12")
+                    "fitness: 0,5889 | características: 12")

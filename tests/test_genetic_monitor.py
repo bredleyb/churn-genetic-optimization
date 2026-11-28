@@ -52,11 +52,11 @@ def test_evaluation_logs_are_formatted_without_invented_progress():
         "avaliados": 5,
     }
     assert format_evaluation_line({**base, "etapa": "inicio"}) == (
-        "[G02] indivíduo 04/24 | avaliando 2/19 características | CV: 3 partições"
+        "[G02] indivíduo 04/24 | avaliando 2/19 características | CV: 3 folds"
     )
     assert format_evaluation_line({**base, "etapa": "fim", "f1_cv": .6015,
                                    "aptidao": .599395}) == (
-        "[G02] indivíduo 04/24 | F1: 0,6015 | aptidão: 0,5994 | subconjunto 5"
+        "[G02] indivíduo 04/24 | F1: 0,6015 | fitness: 0,5994 | subconjunto 5"
     )
     with pytest.raises(ValueError, match="desconhecida"):
         format_evaluation_line({**base, "etapa": "cache"})

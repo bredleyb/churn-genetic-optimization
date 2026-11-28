@@ -311,6 +311,44 @@ export default function () {
     if (target) { window[predictionTabKey] = target.textContent.trim(); target.click(); target.focus(); }
   };
 
+  // Estado de leitura independente por console. Não mexer na posição
+  // de abas ocultas; restaurar quando voltarem a ter área visível.
+  const logKey = Symbol.for("n3.log.reading");
+  const reading = window[logKey] ??= {
+    terminal: {element:null,count:0,top:0,follow:true},
+    monitor: {element:null,count:0,top:0,follow:true},
+  };
+  const logSelectors = {terminal:".n3-terminal-log", monitor:".churn-console-lines"};
+  const logVisible = el => Boolean(el?.getClientRects().length && el.clientHeight);
+  const onLogScroll = event => {
+    for (const [kind, selector] of Object.entries(logSelectors)) {
+      const el = event.target;
+      if (!(el instanceof Element) || !el.matches(selector) || !logVisible(el)) continue;
+      const state = reading[kind];
+      state.top = el.scrollTop;
+      state.follow = kind === "terminal"
+        ? el.scrollHeight - el.clientHeight - el.scrollTop <= 4
+        : el.scrollTop <= 4;
+    }
+  };
+  const syncLogs = () => {
+    for (const [kind, selector] of Object.entries(logSelectors)) {
+      const el = document.querySelector(selector);
+      if (!logVisible(el)) continue;
+      const state = reading[kind];
+      const count = Number(el.dataset.n3LogCount || 0);
+      if (count < state.count) { state.top = 0; state.follow = true; }
+      if (el !== state.element || count !== state.count) {
+        el.scrollTop = state.follow
+          ? (kind === "terminal" ? el.scrollHeight : 0)
+          : state.top;
+        state.element = el;
+        state.count = count;
+        state.top = el.scrollTop;
+      }
+    }
+  };
+
   const clear = element => {
     element?.style.removeProperty("--n3-client-shadow-top");
     element?.style.removeProperty("--n3-client-shadow-bottom");
@@ -332,6 +370,7 @@ export default function () {
     if (abort.signal.aborted) return;
     syncPredictionButton();
     syncPredictionTab();
+    syncLogs();
     syncValidation();
     focusInvalidField();
     const nextPanel = document.querySelector(".st-key-dashboard-client");
@@ -366,12 +405,13 @@ export default function () {
   const structure = new MutationObserver(queueBind);
   structure.observe(document.body, {
     childList: true, characterData: true, subtree: true,
-    attributes: true, attributeFilter: ["disabled", "data-run-state", "aria-selected", "hidden"],
+    attributes: true, attributeFilter: ["disabled", "data-run-state", "aria-selected", "hidden", "data-n3-log-count"],
   });
   document.addEventListener("click", onPredictionClick, { signal: abort.signal });
   document.addEventListener("click", onValidationClick, { signal: abort.signal });
   document.addEventListener("click", onWorkspaceNavigation, { signal: abort.signal });
-  window.addEventListener("resize", schedule, { signal: abort.signal });
+  document.addEventListener("scroll", onLogScroll, {capture:true, passive:true, signal:abort.signal});
+  window.addEventListener("resize", queueBind, { signal: abort.signal });
   document.addEventListener("pointermove", onNumberPointerMove,
     { capture:true, signal:abort.signal });
   document.addEventListener("pointerdown", onNumberPointerDown,

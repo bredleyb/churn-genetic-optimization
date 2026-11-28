@@ -49,3 +49,38 @@ def impact_values(summary: dict | None) -> dict:
         "recall_pp": 100 * (genetic["recall"] - base["recall"]),
         "fn": genetic["matriz_confusao"][1][0] - base["matriz_confusao"][1][0],
     }
+
+
+def metric_sections(summary: dict | None) -> list[tuple[str, list[tuple[str, str, str]]]]:
+    """Dez pares numéricos; ausência é explicitamente representada."""
+    def format_value(value, kind):
+        if value is None:
+            return "—"
+        if kind == "integer":
+            return f"{int(value):,}".replace(",", ".")
+        if kind == "percent":
+            return f"{100 * float(value):.2f}".replace(".", ",") + "%"
+        return f"{float(value):.4f}".replace(".", ",")
+
+    source = summary or {}
+    base, genetic = source.get("baseline", {}), source.get("genetico", {})
+    tests = [
+        (label, format_value(base.get(key), kind), format_value(genetic.get(key), kind))
+        for key, label, kind in (
+            ("f1", "F1-score", "decimal"), ("precision", "Precisão", "percent"),
+            ("recall", "Recall", "percent"), ("accuracy", "Acurácia", "percent"),
+            ("roc_auc", "ROC-AUC", "decimal"),
+        )
+    ]
+    cv = [("F1 médio (CV)", format_value(source.get("baseline_cv_f1"), "decimal"),
+           format_value(source.get("genetic_cv_f1"), "decimal"))]
+    matrix = []
+    for label, row, col in (("Verdadeiros negativos", 0, 0), ("Falsos positivos", 0, 1),
+                            ("Falsos negativos", 1, 0), ("Verdadeiros positivos", 1, 1)):
+        matrix.append((label, format_value(base["matriz_confusao"][row][col] if "matriz_confusao" in base else None, "integer"),
+                       format_value(genetic["matriz_confusao"][row][col] if "matriz_confusao" in genetic else None, "integer")))
+    return [("Conjunto de teste", tests), ("Validação cruzada", cv), ("Matriz de confusão", matrix)]
+
+
+def log_bytes(events: list[str]) -> bytes:
+    return ("\n".join(events) + "\n").encode("utf-8") if events else b""

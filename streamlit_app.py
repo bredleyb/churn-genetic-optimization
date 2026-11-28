@@ -16,7 +16,8 @@ from src.evaluation import evaluate_test
 from src.genetic import GeneticConfig, select_features
 from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
-from src.panel_values import generation_series, impact_values, probability_values, status_values
+from src.panel_values import (generation_series, impact_values, log_bytes, metric_sections,
+                              probability_values, status_values)
 from src.workflow_state import (
     fail_attempt, finish_search, new_attempt, record_evaluation,
     record_generation, start_search, view_state,
@@ -572,7 +573,7 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .n3-chart-legend span {display:inline-flex;gap:5px;align-items:center;}
 .n3-chart-legend i {width:18px;height:2px;background:var(--n3-text);display:inline-block;}
 .n3-chart-legend .n3-f1-key {background:#A6A9AE;}
-.churn-chart-line.n3-f1-line {stroke:#A6A9AE;stroke-width:1.8;}
+.churn-chart-line.n3-f1-line {stroke:#A6A9AE;stroke-width:1.8;stroke-dasharray:5 4;}
 .n3-chart-point {outline:none;cursor:help;}
 .n3-chart-point:focus-visible .n3-chart-dot {stroke:#79A9F5;stroke-width:2;vector-effect:non-scaling-stroke;}
 .n3-chart-dot {fill:var(--n3-text);}
@@ -863,6 +864,41 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
   white-space:nowrap!important;
 }
 
+/* I4: mesmas superfícies, conteúdo semântico e rolagem interna do log. */
+.n3-metrics,.n3-methodology {display:flex;flex-direction:column;gap:12px;min-width:0;}
+.n3-metrics-header,.n3-method-card,.n3-metrics-summary,.n3-metrics-table {
+  background:var(--n3-control);border:1px solid var(--n3-line);border-radius:6px;padding:12px 16px;
+}
+.n3-metrics-header h3,.n3-methodology h3,.n3-method-card h4 {margin:0 0 6px;font-size:15px;font-weight:600;}
+.n3-metrics-header p,.n3-method-card p,.n3-metrics-summary p {margin:4px 0;font-size:13px;line-height:1.5;color:var(--n3-secondary);}
+.n3-metrics-table {width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:14px;overflow-wrap:anywhere;}
+.n3-metrics-table th,.n3-metrics-table td {padding:9px 8px;border-bottom:1px solid var(--n3-line);text-align:left;height:40px;vertical-align:middle;}
+.n3-metrics-table tr:last-child th,.n3-metrics-table tr:last-child td {border-bottom:0;}
+.n3-metrics-table thead th {font-size:13px;color:var(--n3-secondary);}
+.n3-metrics-table th:first-child {width:44%;}
+.n3-metrics-table tbody th {font-weight:400;}
+.n3-metrics-table td {font-variant-numeric:tabular-nums;font-weight:600;text-align:right;}
+.n3-metrics-table thead th:not(:first-child) {text-align:right;}
+.n3-metrics-section {margin:0 0 5px;font-size:15px;font-weight:600;}
+.n3-metrics-note {font-size:12px;color:var(--n3-muted);margin:7px 0 0;line-height:1.4;}
+.n3-method-stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.n3-method-stats div {background:var(--n3-control);border:1px solid var(--n3-line);border-radius:6px;padding:10px 12px;min-width:0;}
+.n3-method-stats strong {display:block;font-size:22px;font-variant-numeric:tabular-nums;}
+.n3-method-stats span {font-size:12px;color:var(--n3-muted);}
+.n3-method-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.n3-formula {font-size:15px;color:var(--n3-text);font-weight:600;}
+.n3-log-notice {font-size:12px;color:var(--n3-muted);margin:5px 0;}
+.n3-terminal-log,.churn-console-lines {background:#0A0B0D;user-select:text;white-space:pre-wrap;overflow-wrap:anywhere;}
+.n3-terminal-log {height:clamp(150px,54dvh,650px);max-height:none;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;}
+.n3-terminal-log:focus-visible,.churn-console-lines:focus-visible {outline:2px solid #79A9F5;outline-offset:-2px;}
+@media(max-width:620px) {
+  .n3-method-stats,.n3-method-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .n3-metrics-table {font-size:12px;padding:4px;}
+  .n3-metrics-table th,.n3-metrics-table td {padding:7px 4px;}
+  .n3-metrics-table thead th {font-size:11px;}
+  .n3-method-card,.n3-metrics-header,.n3-metrics-summary {padding:10px;}
+  .n3-terminal-log {height:180px;}
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -1232,31 +1268,44 @@ def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> Non
     slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _render_console(events: list[str], *, slot, complete: bool = False) -> None:
-    # Exibir últimas mensagens no início visível; o histórico integral segue disponível no download.
-    visible = list(reversed(events[-9:]))
+def _render_console(events: list[str], *, slot, message: str = "") -> None:
+    # A janela do Monitor contém exclusivamente os últimos eventos reais.
     rows = []
-    for line in visible:
+    for line in reversed(events[-9:]):
         kind = ("is-result" if line.startswith("[FIM]") else
                 "is-step" if line.startswith("[GERAÇÃO]") else "")
         rows.append(f'<span class="churn-log-line {kind}">{escape(line)}</span>')
+    notice = f'<p class="n3-log-notice">{escape(message)}</p>' if message else ""
     markup = ('<section class="churn-console" aria-label="Eventos da busca genética">'
-              '<div class="churn-console-lines" role="log" aria-live="polite">'
+              + notice + f'<div class="churn-console-lines" role="region" aria-label="Eventos recentes" '
+              f'tabindex="0" data-n3-log-count="{len(events)}">'
               + "".join(rows) + '</div></section>')
     slot.markdown(markup, unsafe_allow_html=True)
 
 
 def _render_logs(events: list[str], slots: dict, *, historical: bool = False,
                  message: str = "") -> None:
-    _render_console([*events, message] if message else events,
-                    slot=slots["console"])
+    _render_console(events, slot=slots["console"], message=message)
     title = "Última execução" if historical else "Log da execução"
-    body = "\n".join(events) if events else (message or "Aguardando início da execução.")
+    notice = f'<p class="n3-log-notice">{escape(message)}</p>' if message else ""
+    body = "\n".join(events)
     slots["terminal"].markdown(
         f'<section aria-label="{title}"><div class="churn-section-top"><h3>{title}</h3></div>'
-        f'<div class="n3-terminal-log" role="region" aria-label="Log cronológico" tabindex="0">{escape(body)}</div></section>',
+        f'{notice}<div class="n3-terminal-log" role="region" aria-label="Log cronológico" '
+        f'tabindex="0" data-n3-log-count="{len(events)}">{escape(body)}</div></section>',
         unsafe_allow_html=True,
     )
+
+
+def _render_downloads(events: list[str], slots: dict, *, enabled: bool) -> None:
+    data = log_bytes(events)
+    for key, location in (("monitor_log", "log"), ("terminal_log", "terminal_download")):
+        slots[location].download_button(
+            "Baixar log", data, file_name="execucao-genetica.log",
+            mime="text/plain; charset=utf-8", key=key,
+            type="tertiary", disabled=not enabled or not events, on_click="ignore",
+            help="Baixar os eventos completos da tentativa (UTF-8)",
+        )
 
 
 def _render_metrics(run: dict | None, slots: dict, *, historical: bool = False) -> None:
@@ -1317,7 +1366,7 @@ def _history_chart(history: list[dict], *, slot, historical: bool = False) -> No
             f'<circle cx="{x(generation):.2f}" cy="{y(f1):.2f}" r="3" fill="#A6A9AE"/></g>'
         )
     grid = ''.join(f'<line x1="0" y1="{i*60}" x2="1000" y2="{i*60}"/>' for i in range(5))
-    title = "Evolução genética · execução anterior" if historical else "Evolução genética"
+    title = "Evolução da seleção genética · execução anterior" if historical else "Evolução da seleção genética"
     labels = "".join(f'<span>{(floor + (ceiling-floor)*tick/4):.2f}</span>'.replace(".", ",")
                      for tick in range(4, -1, -1))
     markup = (
@@ -1360,29 +1409,91 @@ def _render_impact(run: dict | None, *, slot, historical: bool = False) -> None:
 
 
 def _render_technical(run: dict | None, *, slot, historical: bool = False,
-                      link_metrics: bool = True) -> None:
-    if run is None:
-        metrics = (("Referência", "—"), ("Genético", "—"), ("ΔF1", "—"))
-        summary = "F1 no teste reservado · 20% dos dados"
-    else:
-        data = run["summary"]
-        base_f1, gen_f1 = data["baseline"]["f1"], data["genetico"]["f1"]
-        metrics = (("Referência", f"{base_f1:.4f}".replace(".", ",")),
-                   ("Genético", f"{gen_f1:.4f}".replace(".", ",")),
-                   ("ΔF1", f"{gen_f1-base_f1:+.4f}".replace(".", ",")))
-        summary = (f'{data["reduction_pct"]:.1f}% de redução · '
-                   f'{run["evaluated_subsets"]} subconjuntos · '
-                   f'{data["test_count"]} clientes no teste')
-    rows = "".join(f'<div class="churn-metric"><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>'
-                   for label,value in metrics)
-    slot.markdown('<section class="churn-technical" aria-label="Métricas de teste">'
-                  '<div class="churn-section-top"><h3>' +
-                  ('Métricas · execução anterior' if historical else 'Desempenho no teste reservado') +
-                  '</h3></div>'
-                  f'<dl class="churn-metrics">{rows}</dl><div class="churn-technical-note">{escape(summary)}</div>' +
-                  ('<a class="n3-workspace-link" href="#n3-workspace-metrics" data-n3-prediction-tab="Métricas">Ver métricas</a>'
-                   if link_metrics else '') +
-                  '</section>', unsafe_allow_html=True)
+                      link_metrics: bool = False) -> None:
+    data = run["summary"] if run is not None else None
+    folds = GeneticConfig().cv_folds
+    test_count = f'{data["test_count"]:,}'.replace(",", ".") if data is not None else "—"
+    sections = []
+    for title, rows in metric_sections(data):
+        lines = "".join(
+            f'<tr><th scope="row">{escape(label)}</th><td>{escape(base)}</td><td>{escape(genetic)}</td></tr>'
+            for label, base, genetic in rows
+        )
+        note = (f'<p class="n3-metrics-note">Fitness: F1 médio em {folds} folds estratificados, '
+                'com penalização pelo número de características.</p>') if title == "Validação cruzada" else ""
+        sections.append(
+            f'<section><h4 class="n3-metrics-section">{title}</h4>'
+            f'<table class="n3-metrics-table" aria-label="{title}">'
+            '<thead><tr><th scope="col">Indicador</th><th scope="col">Referência</th>'
+            '<th scope="col">Seleção genética</th></tr></thead>'
+            f'<tbody>{lines}</tbody></table>{note}</section>'
+        )
+    summary = "Aguardando avaliação completa."
+    if data is not None:
+        delta = impact_values(data)
+        reduction = f'{data["reduction_pct"]:.1f}'.replace(".", ",")
+        recall = f'{delta["recall_pp"]:+.2f}'.replace(".", ",")
+        fn = delta["fn"]
+        fn_text = (f"{fn} cancelamentos adicionais não identificados" if fn > 0 else
+                   f"{abs(fn)} cancelamentos não identificados a menos" if fn < 0 else
+                   "Sem diferença de cancelamentos não identificados")
+        summary = (f'−{reduction}% de características ({data["baseline_count"]} → {data["genetic_count"]}) '
+                   f'· {recall} p.p. de recall · {fn_text}.')
+    title = "Métricas · execução anterior" if historical else "Avaliação dos modelos"
+    slot.markdown(
+        f'<section class="n3-metrics" aria-label="{title}"><header class="n3-metrics-header">'
+        f'<h3>{title}</h3><p>Validação cruzada: {folds} folds estratificados · '
+        f'Conjunto de teste: {test_count} clientes · Classe positiva: cancelamento.</p></header>'
+        + "".join(sections) +
+        f'<section class="n3-metrics-summary"><h4 class="n3-metrics-section">Resumo</h4><p>{escape(summary)}</p></section></section>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_methodology() -> None:
+    config = GeneticConfig()
+    n = len(FEATURE_COLUMNS)
+    def percent(value):
+        return f"{100 * value:g}".replace(".", ",") + "%"
+    stats = (("7.043", "Clientes"), (str(n), "Características originais"),
+             ("26,54%", "Cancelamentos"), (str(config.random_state), "Seed"))
+    indicators = "".join(f'<div><strong>{value}</strong><span>{label}</span></div>'
+                         for value, label in stats)
+    pipeline = (
+        ("1 · Preparação dos dados",
+         "Exclusão do identificador. Imputação por mediana e moda, one-hot e padronização numérica. "
+         "Ajuste do pré-processamento apenas no treino de cada fold e no desenvolvimento final."),
+        ("2 · Treino e avaliação",
+         "Divisão estratificada 80/20; no estudo original, 5.634 clientes no desenvolvimento e 1.409 no teste. "
+         "Regressão logística nos dois modelos, mesmo conjunto de teste reservado e cancelamento como classe positiva."),
+        ("3 · Seleção genética",
+         f"{n} bits, {config.population_size} indivíduos, {config.generations} gerações, "
+         f"torneio de {config.tournament_size}, cruzamento de um ponto ({percent(config.crossover_rate)}), "
+         f"mutação por indivíduo ({percent(config.mutation_rate)}), inversão de 1/{n} por bit, "
+         f"elitismo {config.elite_count} e CV estratificada de {config.cv_folds} folds."),
+        ("4 · Função de fitness",
+         f"Fitness = F1 médio (CV) − {str(config.penalty).replace('.', ',')} × k/{n}. "
+         "k é o número de características selecionadas; penalização favorece subconjuntos menores."),
+    )
+    limitations = (
+        ("Validação e generalização", "Uma divisão e uma busca; outras amostras e seeds podem alterar os resultados. A seleção por CV também pode introduzir viés."),
+        ("Simplificação e desempenho", "A busca não garante ótimo global. Reduzir características pode diminuir a detecção de cancelamentos."),
+        ("Representatividade", "O dataset registra gênero em Female/Male e não contempla todos os grupos. Excluir gênero não elimina essa limitação."),
+        ("Interpretação", "A previsão é uma estimativa probabilística baseada em associações. Não estabelece relações causais."),
+    )
+    def cards(items):
+        return "".join(f'<section class="n3-method-card"><h4>{escape(title)}</h4><p>{escape(body)}</p></section>'
+                       for title, body in items)
+    st.markdown(
+        '<section class="n3-methodology" aria-label="Metodologia">'
+        '<p class="n3-metrics-note">Base de referência do estudo: Telco Customer Churn (Kaggle). '
+        'Quantidades históricas do dataset original; características e Seed da configuração atual.</p>'
+        f'<div class="n3-method-stats">{indicators}</div>'
+        '<h3>Pipeline experimental</h3>'
+        f'<div class="n3-method-grid">{cards(pipeline)}</div><h3>Limitações</h3>'
+        f'<div class="n3-method-grid">{cards(limitations)}</div></section>',
+        unsafe_allow_html=True,
+    )
 
 
 def _render_idle(slots: dict, *, status: str = "idle") -> None:
@@ -1392,6 +1503,7 @@ def _render_idle(slots: dict, *, status: str = "idle") -> None:
     message = ("Execução bloqueada pela validação dos dados."
                if status == "invalid" else "Aguardando início da execução.")
     _render_logs([], slots, message=message)
+    _render_downloads([], slots, enabled=False)
     _render_chromosome(None, "Aguardando avaliação", slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
     _render_metrics(None, slots)
@@ -1414,18 +1526,7 @@ def _render_finished_run(run: dict, slots: dict) -> None:
                        slot=slots["chromosome"], customer=run["customer"])
     _history_chart(run["history"], slot=slots["chart"], historical=historical)
     _render_metrics(run, slots, historical=historical)
-    if run.get("events"):
-        slots["log"].download_button(
-            "Baixar log", "\n".join(run["events"]) + "\n",
-            file_name="execucao-genetica.log", mime="text/plain",
-            key="download_full_log", type="tertiary",
-            help="Baixar o histórico completo da execução genética",
-        )
-        slots["terminal_download"].download_button(
-            "Baixar log", "\n".join(run["events"]) + "\n",
-            file_name="execucao-genetica.log", mime="text/plain",
-            key="download_terminal_log", type="tertiary", on_click="ignore",
-        )
+    _render_downloads(run["events"], slots, enabled=not st.session_state.get("prediction_running", False))
 
 
 def _execute_full_workflow(customer: dict, slots: dict) -> None:
@@ -1442,6 +1543,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
                        slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
     _render_metrics(None, slots)
+    _render_downloads([], slots, enabled=False)
 
     def log(message: str) -> None:
         events.append(message)
@@ -1486,7 +1588,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         log(f"[DIVISÃO] {len(dataset)} clientes · {len(x_dev)} desenvolvimento · "
             f"{len(x_test)} teste reservado")
         phase("Validando a referência",
-              f"[CV] Regressão logística · {config.cv_folds} partições")
+              f"[CV] Regressão logística · {config.cv_folds} folds")
         baseline_cv = evaluate_cv(x_dev, y_dev, n_splits=config.cv_folds,
                                   random_state=config.random_state)
         log(f"[CV] F1 médio de referência: {baseline_cv['f1']['media']:.4f}")
@@ -1567,17 +1669,7 @@ def _render_failed_attempt(attempt: dict, slots: dict, *, allow_download: bool =
                        customer=attempt["customer"])
     _history_chart(attempt["history"], slot=slots["chart"])
     _render_metrics(None, slots)
-    if allow_download and attempt["events"]:
-        slots["log"].download_button(
-            "Baixar log", "\n".join(attempt["events"]) + "\n",
-            file_name="execucao-genetica.log", mime="text/plain",
-            key="download_partial_log", type="tertiary",
-        )
-        slots["terminal_download"].download_button(
-            "Baixar log", "\n".join(attempt["events"]) + "\n",
-            file_name="execucao-genetica.log", mime="text/plain",
-            key="download_partial_terminal_log", type="tertiary", on_click="ignore",
-        )
+    _render_downloads(attempt["events"], slots, enabled=allow_download)
 
 
 def _request_prediction() -> None:
@@ -1725,16 +1817,7 @@ def _workspace_slots() -> dict:
         with metrics:
             metrics_slot = st.empty()
         with methodology:
-            st.markdown(
-                "### Metodologia\n"
-                "Telco Customer Churn (Kaggle). Regressão logística de referência e "
-                "regressão logística com seleção genética de características. "
-                "Divisão estratificada 80/20, com teste reservado. "
-                "Imputação, padronização e one-hot ajustados apenas nos dados de treino."
-                "\n\nO experimento utiliza uma busca genética com penalização pelo número "
-                "de características e validação cruzada. A previsão é uma estimativa "
-                "de cancelamento, sujeita às limitações de generalização da base."
-            )
+            _render_methodology()
     return {
         "heading": heading, "comparison": comparison, "chart": chart,
         "chromosome": chromosome, "technical": technical, "status": status_slot,
