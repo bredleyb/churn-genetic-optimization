@@ -349,6 +349,107 @@ export default function () {
     }
   };
 
+  // Um único tooltip portado para body, com texto fornecido pelo Python.
+  const tip = document.createElement("div");
+  tip.id = "n3-workspace-tooltip";
+  tip.className = "n3-tooltip";
+  tip.setAttribute("role", "tooltip");
+  tip.hidden = true;
+  const tipTitle = document.createElement("strong");
+  const tipBody = document.createElement("p");
+  tip.append(tipTitle, tipBody);
+  document.body.append(tip);
+  let tipAnchor = null, tipTimer = 0, tipPinned = false, tipMode = "";
+  const findTip = target => target instanceof Element ? target.closest("[data-n3-tip]") : null;
+  const cancelTipClose = () => { if (tipTimer) clearTimeout(tipTimer); tipTimer = 0; };
+  const closeTip = () => {
+    cancelTipClose();
+    if (tipAnchor) {
+      tipAnchor.removeAttribute("data-n3-tip-open");
+      const ids = (tipAnchor.getAttribute("aria-describedby") || "").split(/\s+/).filter(x => x && x !== tip.id);
+      if (ids.length) tipAnchor.setAttribute("aria-describedby", ids.join(" "));
+      else tipAnchor.removeAttribute("aria-describedby");
+    }
+    tipAnchor = null;
+    tipPinned = false;
+    tipMode = "";
+    tip.hidden = true;
+  };
+  const placeTip = () => {
+    if (!tipAnchor) return;
+    if (!tipAnchor.isConnected || !tipAnchor.getClientRects().length) { closeTip(); return; }
+    const r = tipAnchor.getBoundingClientRect();
+    const clipping = tipAnchor.closest('[role="tabpanel"]')?.getBoundingClientRect();
+    const top = Math.max(0, clipping?.top ?? 0), bottom = Math.min(innerHeight, clipping?.bottom ?? innerHeight);
+    if (r.bottom <= top || r.top >= bottom || r.right <= 0 || r.left >= innerWidth) { closeTip(); return; }
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    const x = Math.max(8, Math.min(innerWidth - w - 8, r.left + (r.width-w)/2));
+    const preferred = r.bottom + 6 + h <= innerHeight-8 ? r.bottom + 6 : r.top-h-6;
+    const y = Math.max(8, Math.min(innerHeight - h - 8, preferred));
+    tip.style.left = x + "px";
+    tip.style.top = y + "px";
+  };
+  const openTip = (anchor, mode) => {
+    if (!anchor) return;
+    cancelTipClose();
+    if (tipAnchor !== anchor) closeTip();
+    tipAnchor = anchor;
+    tipMode = mode;
+    tipPinned = mode === "click";
+    tip.dataset.kind = anchor.dataset.n3Tip;
+    tipTitle.textContent = anchor.dataset.n3TipTitle || "";
+    tipBody.textContent = anchor.dataset.n3TipBody || "";
+    anchor.setAttribute("data-n3-tip-open","true");
+    const ids = new Set((anchor.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean));
+    ids.add(tip.id);
+    anchor.setAttribute("aria-describedby", Array.from(ids).join(" "));
+    tip.hidden = false;
+    placeTip();
+  };
+  const deferTipClose = () => {
+    cancelTipClose();
+    if (tipPinned || tipMode === "focus") return;
+    tipTimer = setTimeout(closeTip, 180);
+  };
+  const onTipOver = event => {
+    if (event.pointerType === "touch") return;
+    if (tip.contains(event.target)) { cancelTipClose(); return; }
+    const anchor = findTip(event.target);
+    if (anchor && anchor !== tipAnchor) openTip(anchor, "hover");
+    else if (anchor) cancelTipClose();
+  };
+  const onTipOut = event => {
+    if (!tipAnchor || event.pointerType === "touch") return;
+    if (tipAnchor.contains(event.relatedTarget) || tip.contains(event.relatedTarget)) return;
+    if (tipAnchor.contains(event.target) || tip.contains(event.target)) deferTipClose();
+  };
+  const onTipFocus = event => {
+    const anchor = findTip(event.target);
+    if (anchor) openTip(anchor, "focus");
+    else if (tipAnchor && !tip.contains(event.target)) closeTip();
+  };
+  const onTipBlur = event => {
+    if (tipAnchor && tipAnchor.contains(event.target) && !tipAnchor.contains(event.relatedTarget) && !tip.contains(event.relatedTarget)) closeTip();
+  };
+  const onTipClick = event => {
+    const anchor = findTip(event.target);
+    if (anchor) {
+      if (tipAnchor === anchor && tipPinned) closeTip();
+      else openTip(anchor, "click");
+    } else if (tipAnchor && !tip.contains(event.target)) closeTip();
+  };
+  const onTipKey = event => {
+    if (event.key === "Escape" && tipAnchor) { closeTip(); event.preventDefault(); }
+    else if (["Enter"," "].includes(event.key)) {
+      const anchor = findTip(event.target);
+      if (anchor && anchor.tagName.toLowerCase() !== "button") {
+        event.preventDefault();
+        if (tipAnchor === anchor && tipPinned) closeTip();
+        else openTip(anchor,"click");
+      }
+    }
+  };
+
   const clear = element => {
     element?.style.removeProperty("--n3-client-shadow-top");
     element?.style.removeProperty("--n3-client-shadow-bottom");
@@ -371,6 +472,7 @@ export default function () {
     syncPredictionButton();
     syncPredictionTab();
     syncLogs();
+    placeTip();
     syncValidation();
     focusInvalidField();
     const nextPanel = document.querySelector(".st-key-dashboard-client");
@@ -410,6 +512,13 @@ export default function () {
   document.addEventListener("click", onPredictionClick, { signal: abort.signal });
   document.addEventListener("click", onValidationClick, { signal: abort.signal });
   document.addEventListener("click", onWorkspaceNavigation, { signal: abort.signal });
+  document.addEventListener("pointerover", onTipOver, {signal:abort.signal});
+  document.addEventListener("pointerout", onTipOut, {signal:abort.signal});
+  document.addEventListener("focusin", onTipFocus, {signal:abort.signal});
+  document.addEventListener("focusout", onTipBlur, {signal:abort.signal});
+  document.addEventListener("click", onTipClick, {signal:abort.signal});
+  document.addEventListener("keydown", onTipKey, {signal:abort.signal});
+  document.addEventListener("scroll", placeTip, {capture:true,passive:true,signal:abort.signal});
   document.addEventListener("scroll", onLogScroll, {capture:true, passive:true, signal:abort.signal});
   window.addEventListener("resize", queueBind, { signal: abort.signal });
   document.addEventListener("pointermove", onNumberPointerMove,
@@ -424,6 +533,8 @@ export default function () {
     if (frame) cancelAnimationFrame(frame);
     if (locatorFrame) cancelAnimationFrame(locatorFrame);
     structure.disconnect();
+    closeTip();
+    tip.remove();
     for (const [input, saved] of markedFields) restoreMark(input, saved);
     setNumberStepperHover(null);
     actionButton?.removeEventListener("pointerleave", onActionLeave);

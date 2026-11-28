@@ -951,6 +951,26 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
   /* Calhas equivalentes em altura natural, sem recortar o rodapé. */
   .st-key-dashboard-client-fields {overflow-y:auto!important;}
 }
+/* Tooltips em camada independente: nunca recortar nos painéis roláveis. */
+.n3-info-trigger {display:inline-grid;place-items:center;vertical-align:middle;width:24px;height:24px;margin-left:4px;padding:0;border:0;background:transparent;color:var(--n3-secondary);cursor:help;border-radius:4px;flex:none;}
+.n3-info-trigger svg {width:18px;height:18px;}
+.n3-info-trigger:hover {color:var(--n3-text);background:var(--n3-elevated);}
+.n3-info-trigger:focus-visible,.churn-bit[data-n3-tip]:focus-visible {outline:2px solid #79A9F5;outline-offset:1px;}
+.n3-tooltip {position:fixed;z-index:10000;box-sizing:border-box;width:220px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);overflow:auto;background:#202124;color:#D8D8D8;border:1px solid #383A3E;border-radius:5px;padding:7px 11px;font:12px/16px var(--n3-font-ui,"Segoe UI",sans-serif);box-shadow:0 4px 12px #0008;overflow-wrap:anywhere;user-select:text;}
+.n3-tooltip[hidden] {display:none!important;}
+.n3-tooltip[data-kind="info"] {width:256px;padding:10px 12px;}
+.n3-tooltip strong {display:block;color:#F5F5F5;font-size:13px;line-height:18px;font-weight:600;margin-bottom:2px;}
+.n3-tooltip[data-kind="info"] strong {font-size:14px;margin-bottom:4px;}
+.n3-tooltip p {font:inherit;margin:0;white-space:pre-line;}
+.churn-bit:not([data-n3-tip]) {cursor:default;}
+.churn-bit[data-n3-tip] {cursor:help;}
+.n3-chart-hit {fill:transparent;pointer-events:all;}
+.n3-chart-guide {stroke:#65686D;stroke-width:1;vector-effect:non-scaling-stroke;visibility:hidden;}
+.n3-chart-point[data-n3-tip-open="true"] .n3-chart-guide,.n3-chart-point:focus-visible .n3-chart-guide {visibility:visible;}
+.n3-chart-point[data-n3-tip-open="true"] .n3-chart-dot,.n3-chart-point:focus-visible .n3-chart-dot {stroke:#F5F5F5;stroke-width:2;vector-effect:non-scaling-stroke;}
+@media(max-width:389px) {
+  .churn-chromosome .churn-bit {height:29px;}
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -1275,6 +1295,21 @@ def _render_status(status: str, data: dict | None, *, slot, phase: str = "") -> 
     )
 
 
+def _tooltip_attributes(title: str, body: str, *, kind: str = "analytic") -> str:
+    return (f'data-n3-tip="{kind}" data-n3-tip-title="{escape(title, quote=True)}" '
+            f'data-n3-tip-body="{escape(body, quote=True)}"')
+
+
+def _info_tooltip(title: str, body: str) -> str:
+    return (f'<button type="button" class="n3-info-trigger" '
+            f'aria-label="{escape("Informações: " + title, quote=True)}" '
+            f'{_tooltip_attributes(title, body, kind="info")}>'
+            '<svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">'
+            '<path d="M16 2a14 14 0 1 0 0 28 14 14 0 0 0 0-28zm0 26a12 12 0 1 1 0-24 12 12 0 0 1 0 24z"/>'
+            '<path d="M14 14h3v10h-2v-8h-1z"/><circle cx="16" cy="9" r="1.5"/>'
+            '</svg></button>')
+
+
 def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> None:
     """Usa probabilidade de churn e classe real, sem reaproveitar previsões antigas."""
     ready = run is not None and status == "complete"
@@ -1295,7 +1330,13 @@ def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> Non
             fill = f'<div class="n3-risk-fill {semantic}" style="width:{probability:.8f}%"></div>'
             accessible = f"Probabilidade de cancelamento: {probability:.2f}%".replace(".", ",")
         return (f'<div class="churn-model" aria-label="{escape(model)}">'
-                f'<div class="churn-model-name">{escape(model)}</div>'
+                f'<div class="churn-model-name">{escape(model)}'
+                + _info_tooltip(model, (
+                    "Regressão logística com as 19 características originais."
+                    if model == "Referência" else
+                    "Regressão logística com as características escolhidas pela busca genética."
+                ) + " O valor exibido é a probabilidade de cancelamento. Limiar: 50%; a classe é retornada pelo estimador.")
+                + '</div>'
                 f'<div class="churn-model-detail">{escape(details)}</div>'
                 f'<div class="churn-prediction-value {value_class}">{value}</div>'
                 f'<div class="churn-outcome {semantic}">{escape(outcome or "Probabilidade de cancelamento")}</div>'
@@ -1375,15 +1416,20 @@ def _render_chromosome(chromosome: tuple[int, ...] | None, title: str, *, slot,
             raw = customer[name]
             value = "Indisponível" if raw is None else label_for(str(raw))
         state = "Ainda indisponível" if bit is None else ("Incluída" if bit else "Excluída")
-        description = f"Gene {i + 1} · {LABELS[name]} · Valor: {value} · {state}"
+        heading = f"Gene {i + 1} · {LABELS[name]}"
+        description = f"Valor: {value} · {state}"
+        attrs = (_tooltip_attributes(heading, description) + ' tabindex="0"'
+                 if bit is not None else "")
         bits.append(
-            f'<span class="churn-bit {"is-on" if bit else ""}" tabindex="0" '
-            f'title="{escape(description, quote=True)}" aria-label="{escape(description, quote=True)}">'
+            f'<span class="churn-bit {"is-on" if bit else ""}" {attrs} '
+            f'aria-label="{escape(heading + " · " + description, quote=True)}">'
             f'{"—" if bit is None else bit}</span>'
         )
     count = "—" if chromosome is None else str(sum(chromosome))
     markup = ('<section class="churn-chromosome" aria-label="Cromossomo de 19 características">'
-              f'<div class="churn-section-top"><h3>{escape(title)}</h3>'
+              f'<div class="churn-section-top"><h3>{escape(title)}'
+              + _info_tooltip("Subconjunto", "Cada gene corresponde a uma característica original. 1 indica inclusão; 0, exclusão; —, ausência de candidato. O valor pertence ao cliente da execução exibida.")
+              + '</h3>'
               f'<span class="churn-selection-count">{count} / 19</span></div>'
               f'<div class="churn-bits">{"".join(bits)}</div>'
               '<div class="churn-chromosome-note">1 = incluída · 0 = excluída</div></section>')
@@ -1410,10 +1456,15 @@ def _history_chart(history: list[dict], *, slot, historical: bool = False) -> No
                  f'<polyline class="churn-chart-line n3-fitness-line" points="{points(2)}"/>')
     markers = []
     for generation, f1, fitness in series:
-        label = f"Geração {generation} · F1 (CV): {f1:.4f} · Fitness: {fitness:.4f}".replace(".", ",")
+        heading = f"Geração {generation}"
+        body = f"F1 (CV): {f1:.4f} · Fitness: {fitness:.4f}".replace(".", ",")
+        half = 500 / max(1, total - 1)
+        left, right = max(0, x(generation) - half), min(1000, x(generation) + half)
         markers.append(
-            f'<g class="n3-chart-point" tabindex="0" role="img" aria-label="{escape(label, quote=True)}">'
-            f'<title>{escape(label)}</title>'
+            f'<g class="n3-chart-point" tabindex="0" role="img" '
+            f'aria-label="{escape(heading + " · " + body, quote=True)}" {_tooltip_attributes(heading, body)}>'
+            f'<rect class="n3-chart-hit" x="{left:.2f}" y="0" width="{right-left:.2f}" height="240"/>'
+            f'<line class="n3-chart-guide" x1="{x(generation):.2f}" x2="{x(generation):.2f}" y1="0" y2="240"/>'
             f'<circle cx="{x(generation):.2f}" cy="{y(fitness):.2f}" r="4" class="n3-chart-dot"/>'
             f'<circle cx="{x(generation):.2f}" cy="{y(f1):.2f}" r="3" fill="#A6A9AE"/></g>'
         )
@@ -1452,7 +1503,9 @@ def _render_impact(run: dict | None, *, slot, historical: bool = False) -> None:
         rows.append(f'<div class="churn-metric"><dt>{label}</dt><dd class="{semantic}">{display}</dd></div>')
     title = "Impacto · execução anterior" if historical else "Impacto da seleção"
     slot.markdown(
-        f'<section class="n3-impact" aria-label="{title}"><div class="churn-section-top"><h3>{title}</h3></div>'
+        f'<section class="n3-impact" aria-label="{title}"><div class="churn-section-top"><h3>{title}'
+        + _info_tooltip("Impacto da seleção", "Diferenças entre seleção genética e referência no teste reservado. ΔF1 e ΔRecall negativos indicam pior desempenho; ΔFN positivo indica mais cancelamentos não identificados. Reduzir características não garante ganho preditivo.")
+        + '</h3></div>'
         f'<dl class="churn-metrics">{"".join(rows)}</dl>'
         '<div class="churn-technical-note">Genético − referência · teste reservado</div>'
         '<a class="n3-workspace-link" href="#n3-workspace-metrics" data-n3-prediction-tab="Métricas">Ver métricas</a></section>',

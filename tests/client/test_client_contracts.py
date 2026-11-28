@@ -162,13 +162,14 @@ def test_shared_css_tokens_and_scroll_contract(client_app):
         "--n3-secondary:#D8D8D8", "--n3-field-height:42px",
         "--n3-field-radius:4px", "--n3-field-text-size:14px",
         "--n3-client-content-inset:10px", "--n3-client-action-height:48px",
-        "--n3-client-action-height:44px", "--n3-profile-button-size:32px",
+        "--n3-profile-button-size:32px",
         "--n3-profile-button-size:28px", "--n3-profile-button-size:26px",
         "scrollbar-gutter:stable both-edges",
         "padding-inline:var(--n3-client-content-inset)",
         "var(--n3-client-shadow-top,0)", "var(--n3-client-shadow-bottom,0)",
     ):
         assert token in css, token
+    assert "--n3-client-action-height:44px" not in css
     assert ".st-key-dashboard-client-fields,\n.st-key-dashboard-client-footer {" in css
     assert 'stLayoutWrapper"]:has(.st-key-dashboard-client-footer)::before' in css
     assert ".st-key-dashboard-client-footer::before {" not in css
