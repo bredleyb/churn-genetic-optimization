@@ -43,6 +43,8 @@ _COMPONENT_CSS = """
 }
 /* O input seleciona somente dígitos; o sufixo ocupa a mesma caixa ao lado
    sem pertencer ao texto editável. Isso elimina a gestão manual do caret. */
+.n3-tenure[data-n3-invalid="true"] label {color:#79A9F5;}
+.n3-tenure[data-n3-invalid="true"] .n3-tenure-field {border-color:#79A9F5;}
 .n3-tenure-field input {box-sizing:content-box;flex:0 0 auto;min-width:0;
   width:calc(var(--n3-tenure-digit-count,1)*1ch);
   height:100%;padding:0 0 0 10px;outline:0;border:0;border-radius:0;

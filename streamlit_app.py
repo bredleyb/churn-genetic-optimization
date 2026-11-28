@@ -264,6 +264,22 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   font-size:var(--n3-field-text-size)!important;line-height:var(--n3-field-text-line)!important;
   transform:translateY(var(--n3-field-text-shift))!important;
 }
+.st-key-dashboard-client [data-n3-invalid="true"] [data-testid="stWidgetLabel"] p,
+.st-key-dashboard-client [data-n3-invalid="true"] label p {
+  color:#79A9F5!important;
+}
+.st-key-dashboard-client [data-testid="stSelectbox"][data-n3-invalid="true"] [role="group"],
+.st-key-dashboard-client [data-testid="stNumberInput"][data-n3-invalid="true"]
+  :is([data-testid="stNumberInputContainer"],[data-baseweb="input"]) {
+  border-color:#79A9F5!important;
+}
+.st-key-dashboard-client-footer a.n3-validation-jump {
+  color:#79A9F5!important;font-size:12px;line-height:17px;
+  display:inline-flex;align-items:center;min-height:24px;text-decoration:underline;
+}
+.st-key-dashboard-client-footer a.n3-validation-jump:focus-visible {
+  outline:2px solid #79A9F5;outline-offset:2px;
+}
 /* O botão real de expansão é o StyledOpenButton do Streamlit.
    Estilizar o próprio botão garante que o hover seja visível. */
 .st-key-dashboard-client [data-testid="stSelectbox"] button[aria-haspopup="listbox"] {
@@ -1193,10 +1209,19 @@ def _render_client_feedback(errors: dict[str, str]) -> None:
         location = f" ({tab})" if tab else ""
         count = len(errors)
         prefix = "1 campo inválido" if count == 1 else f"{count} campos inválidos"
+        descriptors = "".join(
+            f'<span hidden id="n3-validation-{escape(feature)}" '
+            f'data-n3-error-label="{escape(LABELS[feature], quote=True)}" '
+            f'data-n3-error-tab="{escape(next((n for n, fs in DETAIL_TABS.items() if feature in fs), ""), quote=True)}">'
+            f'{escape(detail)}</span>'
+            for feature, detail in errors.items()
+        )
         st.markdown(
-            '<div class="n3-client-validation" role="status" '
+            '<div class="n3-client-validation" id="n3-client-validation" role="status" '
             'style="color:#79A9F5;font-size:12px;line-height:17px">'
-            f'{prefix} · {escape(LABELS[first] + location)}: {escape(message)}</div>',
+            f'{prefix} · {escape(LABELS[first] + location)}: {escape(message)} '
+            '<a class="n3-validation-jump" href="#n3-client-validation">Corrigir</a>'
+            f'{descriptors}</div>',
             unsafe_allow_html=True,
         )
     elif st.session_state.get("prediction_error") and (

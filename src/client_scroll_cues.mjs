@@ -178,6 +178,108 @@ export default function () {
     if (next.dataset.n3HoverReady !== ready) next.dataset.n3HoverReady = ready;
   };
 
+  // Os erros vêm da validação Python, inclusive quando a aba está oculta.
+  // Nenhum evento de edição é sintetizado; o foco só muda por ação explícita.
+  const markedFields = new Map();
+  const findErrorField = label => {
+    const client = document.querySelector(".st-key-dashboard-client");
+    if (!client) return null;
+    const locate = root => Array.from(root.querySelectorAll("input[aria-label]"))
+      .find(input => input.getAttribute("aria-label") === label);
+    let input = locate(client);
+    if (!input && label === "Tempo como cliente") {
+      const tenure = client.querySelector(".st-key-dashboard-tenure-control");
+      for (const host of tenure?.querySelectorAll("*") ?? []) {
+        if (host.shadowRoot && (input = locate(host.shadowRoot))) break;
+      }
+    }
+    if (!input) return null;
+    const group = input.closest('[data-testid="stSelectbox"],[data-testid="stNumberInput"],.n3-tenure');
+    return group ? {input, group} : null;
+  };
+  const restoreMark = (input, saved) => {
+    saved.group.removeAttribute("data-n3-invalid");
+    for (const [name, old] of Object.entries(saved.attributes)) {
+      if (old === null) input.removeAttribute(name);
+      else input.setAttribute(name, old);
+    }
+    markedFields.delete(input);
+  };
+  const validationMarkers = () => Array.from(document.querySelectorAll(
+    ".n3-client-validation [data-n3-error-label]"
+  ));
+  const syncValidation = () => {
+    const active = new Set();
+    for (const marker of validationMarkers()) {
+      const field = findErrorField(marker.dataset.n3ErrorLabel);
+      if (!field) continue;
+      const {input, group} = field;
+      active.add(input);
+      if (!markedFields.has(input)) {
+        markedFields.set(input, {group, attributes: {
+          "aria-invalid": input.getAttribute("aria-invalid"),
+          "aria-describedby": input.getAttribute("aria-describedby"),
+          "aria-description": input.getAttribute("aria-description"),
+        }});
+      }
+      group.dataset.n3Invalid = "true";
+      input.setAttribute("aria-invalid", "true");
+      const saved = markedFields.get(input);
+      if (input.getRootNode() === marker.getRootNode()) {
+        const ids = new Set((saved.attributes["aria-describedby"] || "").split(/\s+/).filter(Boolean));
+        ids.add(marker.id);
+        input.setAttribute("aria-describedby", Array.from(ids).join(" "));
+      } else {
+        input.setAttribute("aria-description", marker.textContent);
+      }
+    }
+    for (const [input, saved] of markedFields) {
+      if (!active.has(input)) restoreMark(input, saved);
+    }
+  };
+  const jumpKey = Symbol.for("n3.client.validationJump");
+  const jump = window[jumpKey] ??= {label: null, tab: null, expires: 0};
+  const focusInvalidField = () => {
+    if (!jump.label) return;
+    if (Date.now() > jump.expires) {
+      jump.label = null;
+      return;
+    }
+    const client = document.querySelector(".st-key-dashboard-client");
+    if (!client || client.inert) return;
+    if (jump.tab) {
+      const tab = Array.from(client.querySelectorAll('[role="tab"]'))
+        .find(item => item.textContent.trim() === jump.tab);
+      if (!tab || tab.getAttribute("aria-selected") !== "true") return;
+    }
+    const field = findErrorField(jump.label);
+    if (!field || !field.input.getClientRects().length) return;
+    jump.label = null;
+    field.group.scrollIntoView({block: "nearest", inline: "nearest", behavior: "instant"});
+    // Controles dependentes desabilitados não podem receber foco.
+    const focus = field.input.disabled
+      ? client.querySelector('[role="tab"][aria-selected="true"]') : field.input;
+    focus?.focus({preventScroll: true});
+  };
+  const onValidationClick = event => {
+    const link = event.target instanceof Element
+      ? event.target.closest("a.n3-validation-jump") : null;
+    if (!link) return;
+    event.preventDefault();
+    const marker = validationMarkers()[0];
+    if (!marker) return;
+    jump.label = marker.dataset.n3ErrorLabel;
+    jump.tab = marker.dataset.n3ErrorTab;
+    jump.expires = Date.now() + 5000;
+    const client = document.querySelector(".st-key-dashboard-client");
+    if (jump.tab) {
+      const tab = Array.from(client?.querySelectorAll('[role="tab"]') ?? [])
+        .find(item => item.textContent.trim() === jump.tab);
+      if (tab && tab.getAttribute("aria-selected") !== "true") tab.click();
+    }
+    queueBind();
+  };
+
   const clear = element => {
     element?.style.removeProperty("--n3-client-shadow-top");
     element?.style.removeProperty("--n3-client-shadow-bottom");
@@ -198,6 +300,8 @@ export default function () {
     locatorFrame = 0;
     if (abort.signal.aborted) return;
     syncPredictionButton();
+    syncValidation();
+    focusInvalidField();
     const nextPanel = document.querySelector(".st-key-dashboard-client");
     const nextScrolling = nextPanel?.querySelector(".st-key-dashboard-client-fields");
     if (nextScrolling === scrolling && nextPanel === panel) {
@@ -230,9 +334,10 @@ export default function () {
   const structure = new MutationObserver(queueBind);
   structure.observe(document.body, {
     childList: true, characterData: true, subtree: true,
-    attributes: true, attributeFilter: ["disabled", "data-run-state"],
+    attributes: true, attributeFilter: ["disabled", "data-run-state", "aria-selected", "hidden"],
   });
   document.addEventListener("click", onPredictionClick, { signal: abort.signal });
+  document.addEventListener("click", onValidationClick, { signal: abort.signal });
   window.addEventListener("resize", schedule, { signal: abort.signal });
   document.addEventListener("pointermove", onNumberPointerMove,
     { capture:true, signal:abort.signal });
@@ -246,6 +351,7 @@ export default function () {
     if (frame) cancelAnimationFrame(frame);
     if (locatorFrame) cancelAnimationFrame(locatorFrame);
     structure.disconnect();
+    for (const [input, saved] of markedFields) restoreMark(input, saved);
     setNumberStepperHover(null);
     actionButton?.removeEventListener("pointerleave", onActionLeave);
     mutations?.disconnect();

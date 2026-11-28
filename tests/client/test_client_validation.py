@@ -50,7 +50,11 @@ def test_invalid_hidden_field_disables_cta_and_recovers(client_app, monkeypatch)
     app.main()
     assert ui.button_options("Calcular previsão")["disabled"] is True
     assert app._current_customer() is None
-    assert any("Método de pagamento (Conta)" in text for text in ui.markup)
+    feedback = next(text for text in ui.markup if "Método de pagamento (Conta)" in text)
+    assert 'data-n3-error-label="Método de pagamento"' in feedback
+    assert 'data-n3-error-tab="Conta"' in feedback
+    assert 'class="n3-validation-jump"' in feedback
+    assert 'id="n3-validation-PaymentMethod"' in feedback
     ui.session_state["field_PaymentMethod"] = original
     app._remember_field("PaymentMethod")
     ui.reset_render()
