@@ -116,6 +116,12 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
     await expect(client(page)).not.toHaveAttribute('data-n3-interaction-locked','true');
     await expect(button).toHaveCSS('background-color','rgb(245, 245, 245)');
     await expect(page.locator('.churn-comparison .churn-model')).toHaveCount(2);
+    await expect(page.locator('.n3-status .n3-status-title')).toHaveText('Cancelamento previsto');
+    await expect(page.locator('.n3-status .n3-subset-count')).toHaveText('121');
+    await expect(page.locator('.n3-status .n3-feature-count')).toHaveText('9/19');
+    await expect(page.locator('.n3-status [role="progressbar"]')).toHaveAttribute('aria-valuenow','15');
+    await expect(page.locator('.n3-risk-fill')).toHaveCount(2);
+    await expect(page.locator('.n3-risk-threshold')).toHaveCount(2);
     await expect(page.locator('.churn-run-check')).toBeVisible();
     await screenshot(page,info,'CL-B03-concluido');
 
@@ -124,6 +130,8 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
       .toBeVisible();
     await expect(page.locator('.churn-comparison .churn-state'))
       .toHaveText('Dados alterados');
+    await expect(page.locator('.n3-risk-fill')).toHaveCount(0);
+    await expect(page.locator('.n3-status .n3-status-title')).toHaveText('Dados alterados');
     await expect(button).toContainText('Recalcular previsão');
     await expect(button).toBeEnabled();
     await ensureNoException(page);

@@ -15,6 +15,7 @@ from src.evaluation import evaluate_test
 from src.genetic import GeneticConfig, select_features
 from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
+from src.panel_values import probability_values, status_values
 from src.workflow_state import (
     fail_attempt, finish_search, new_attempt, record_evaluation,
     record_generation, start_search, view_state,
@@ -495,6 +496,46 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .st-key-dashboard-monitor-section {height:100%!important;min-height:0!important;overflow:auto!important;scrollbar-color:var(--n3-outline) transparent;scrollbar-width:thin;}
 .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section),
 .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {height:100%!important;min-height:0!important;overflow:hidden!important;}
+.n3-status {box-sizing:border-box;display:grid;grid-template-columns:minmax(175px,1.3fr) minmax(130px,2fr) minmax(85px,.65fr) minmax(105px,.75fr);align-items:center;min-height:90px;background:var(--n3-control);border:1px solid var(--n3-line);border-radius:6px;padding:12px 0;gap:0;}
+.n3-status > div {min-width:0;padding:0 14px;}
+.n3-status > div+div {border-left:1px solid var(--n3-line);}
+.n3-status-identity {display:flex;gap:12px;align-items:center;}
+.n3-status-icon {flex:0 0 34px;width:34px;height:34px;border:1px solid currentColor;border-radius:50%;display:grid;place-items:center;font-size:23px;line-height:1;color:var(--n3-muted);}
+.n3-status-icon.is-negative {color:var(--n3-negative);}
+.n3-status-icon.is-positive {color:var(--n3-positive);}
+.n3-status-icon.is-error {color:#E94B75;}
+.n3-status-icon.is-invalid {color:#79A9F5;}
+.n3-status-icon.is-stale {color:#E6C35C;}
+.n3-status-title {font-size:15px;font-weight:600;line-height:20px;overflow-wrap:anywhere;}
+.n3-status-note {font-size:12px;color:var(--n3-muted);line-height:17px;}
+.n3-status-number {font-size:22px;font-weight:600;line-height:29px;font-variant-numeric:tabular-nums;}
+.n3-status-segments {display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:3px;margin-top:8px;}
+.n3-status-segments span {height:10px;background:var(--n3-surface-alt);border-radius:2px;}
+.n3-status-segments span.is-done {background:var(--n3-text);}
+.n3-risk-scale {display:flex;justify-content:space-between;font-size:12px;color:var(--n3-muted);font-variant-numeric:tabular-nums;margin-top:5px;}
+.n3-risk-track {position:relative;height:10px;margin-top:10px;background:linear-gradient(to right,#222A25 0 50%,#2C2324 50% 100%);border-radius:3px;}
+.n3-risk-fill {height:100%;border-radius:3px;background:var(--n3-positive);}
+.n3-risk-fill.is-negative {background:var(--n3-negative);}
+.n3-risk-threshold {position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--n3-secondary);z-index:1;}
+.n3-prob-suffix {font-size:24px;}
+.churn-prediction-value.is-unavailable {font-size:24px;overflow-wrap:anywhere;line-height:1.5;}
+.churn-comparison .churn-models {gap:16px;}
+.churn-comparison .churn-model {box-sizing:border-box;min-height:146px;background:var(--n3-control);border:1px solid var(--n3-line);border-radius:6px;padding:12px 20px;}
+.churn-comparison .churn-model+.churn-model {border:1px solid var(--n3-line);padding:12px 20px;}
+@media(max-width:1150px) {
+  .n3-status {grid-template-columns:repeat(2,minmax(0,1fr));row-gap:12px;}
+  .n3-status > div:nth-child(3) {border-left:0;}
+  .churn-comparison .churn-model,.churn-comparison .churn-model+.churn-model {padding:10px 12px;}
+}
+@media(max-width:620px) {
+  .n3-status > div {padding:0 8px;}
+  .n3-status-identity {gap:6px;}
+  .n3-status-icon {width:26px;height:26px;flex-basis:26px;font-size:16px;}
+  .n3-status-title {font-size:13px;}
+  .churn-comparison .churn-models {gap:8px;}
+  .churn-comparison .churn-model,.churn-comparison .churn-model+.churn-model {padding:8px;}
+  .churn-prediction-value.is-unavailable {font-size:16px;}
+}
 /* Predição: dois resultados em uma comparação contínua. */
 .churn-comparison {margin:0;padding:0 0 12px;border-bottom:1px solid var(--n3-line);}
 .churn-section-top {display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 8px;min-width:0;}
@@ -1069,25 +1110,77 @@ def _render_workspace_heading(status: str, *, slot) -> None:
     )
 
 
-def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> None:
-    """Comparação dos modelos, com aviso apenas em caso de erro ou dados alterados."""
-    ready = run is not None and status == "complete"
-    count = run["summary"]["genetic_count"] if run is not None else None
-    unavailable = {
-        "stale": ("Desatualizada", "", ""),
-        "invalid": ("Indisponível", "", ""),
-        "error": ("Indisponível", "", ""),
-    }.get(status, ("—", "Aguardando", ""))
-    reference = _format_probability(run["predictions"]["baseline"]) if ready else unavailable
-    genetic = _format_probability(run["predictions"]["genetico"]) if ready else unavailable
+def _render_status(status: str, data: dict | None, *, slot, phase: str = "") -> None:
+    values = status_values(data, now=perf_counter())
+    title, symbol, semantic = {
+        "idle": ("Aguardando", "—", ""),
+        "running": ("Em execução", "↻", ""),
+        "stale": ("Dados alterados", "!", "is-stale"),
+        "invalid": ("Dados inválidos", "!", "is-invalid"),
+        "error": ("Falha na execução", "×", "is-error"),
+        "complete": ("Previsão concluída", "✓", ""),
+    }[status]
+    if status == "complete" and data is not None:
+        _, outcome, semantic = probability_values(data["predictions"]["genetico"])
+        title = "Cancelamento previsto" if outcome == "Cancelamento" else "Permanência prevista"
+        symbol = "!" if outcome == "Cancelamento" else "✓"
+    elapsed = values["elapsed"]
+    time = "—" if elapsed is None else f"{elapsed:.1f} s".replace(".", ",")
+    historical = status in ("stale", "invalid") and data is not None
+    time_label = "Última execução" if historical else "Tempo da busca"
+    completed = values["generations"]
+    total = GeneticConfig().generations
+    selected = values["selected"]
+    count = "—" if selected is None else f"{selected}/{len(FEATURE_COLUMNS)}"
+    reduction = "" if selected is None else f" · −{values['reduction']:.1f}%".replace(".", ",")
+    segments = "".join(
+        f'<span class="{"is-done" if i < completed else ""}" aria-hidden="true"></span>'
+        for i in range(total)
+    )
+    slot.markdown(
+        f'<section class="n3-status" data-n3-status="{status}" aria-label="Status da previsão">'
+        f'<div class="n3-status-identity"><span class="n3-status-icon {semantic}" aria-hidden="true">{symbol}</span>'
+        f'<div><div class="n3-status-title" role="status">{escape(title)}</div>'
+        f'<div class="n3-status-note">{escape(time_label)} · <span class="n3-search-time">{time}</span></div></div></div>'
+        f'<div><div class="n3-status-note">{escape(phase or ("Última execução" if historical else "Gerações"))}</div>'
+        f'<div class="n3-status-number">{completed}/{total}</div>'
+        f'<div class="n3-status-segments" role="progressbar" aria-label="Gerações concluídas" '
+        f'aria-valuemin="0" aria-valuemax="{total}" aria-valuenow="{completed}">{segments}</div></div>'
+        f'<div><div class="n3-status-number n3-subset-count">{values["subsets"]}</div>'
+        '<div class="n3-status-note">Subconjuntos</div></div>'
+        f'<div><div class="n3-status-number n3-feature-count">{count}</div>'
+        f'<div class="n3-status-note">Características{reduction}</div></div></section>',
+        unsafe_allow_html=True,
+    )
 
-    def result(model: str, details: str, entry: tuple[str, str, str]) -> str:
-        value, outcome, semantic = entry
+
+def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> None:
+    """Usa probabilidade de churn e classe real, sem reaproveitar previsões antigas."""
+    ready = run is not None and status == "complete"
+    count = run["summary"]["genetic_count"] if ready else None
+    unavailable = {"stale": "Desatualizada", "invalid": "Indisponível",
+                   "error": "Indisponível"}.get(status, "—")
+
+    def result(model: str, details: str, entry: dict | None) -> str:
+        probability, outcome, semantic = probability_values(entry)
+        if probability is None:
+            value = escape(unavailable)
+            value_class = "is-unavailable"
+            fill = ""
+            accessible = "Probabilidade ainda indisponível"
+        else:
+            value = f"{probability:.2f}".replace(".", ",") + '<span class="n3-prob-suffix">%</span>'
+            value_class = ""
+            fill = f'<div class="n3-risk-fill {semantic}" style="width:{probability:.8f}%"></div>'
+            accessible = f"Probabilidade de cancelamento: {probability:.2f}%".replace(".", ",")
         return (f'<div class="churn-model" aria-label="{escape(model)}">'
                 f'<div class="churn-model-name">{escape(model)}</div>'
                 f'<div class="churn-model-detail">{escape(details)}</div>'
-                f'<div class="churn-prediction-value">{escape(value)}</div>'
-                f'<div class="churn-outcome {semantic}">{escape(outcome)}</div></div>')
+                f'<div class="churn-prediction-value {value_class}">{value}</div>'
+                f'<div class="churn-outcome {semantic}">{escape(outcome or "Probabilidade de cancelamento")}</div>'
+                f'<div class="n3-risk-track" role="img" aria-label="{escape(accessible, quote=True)}">'
+                f'{fill}<span class="n3-risk-threshold" aria-hidden="true"></span></div>'
+                '<div class="n3-risk-scale" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div></div>')
 
     alert = (
         '<div class="churn-state" role="status">Dados alterados</div>'
@@ -1097,10 +1190,11 @@ def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> Non
         '<div class="churn-state" role="status">Dados inválidos</div>'
         if status == "invalid" else ""
     )
+    predictions = run["predictions"] if ready else {}
     markup = ('<section class="churn-comparison" aria-label="Comparação dos modelos">'
               f'{alert}<div class="churn-models">'
-              + result("Referência", "19 características", reference)
-              + result("Seleção genética", f"{count}/19 características" if count is not None else "Aguardando seleção", genetic)
+              + result("Referência", "19 características", predictions.get("baseline"))
+              + result("Seleção genética", f"{count}/19 características" if count is not None else "Aguardando seleção", predictions.get("genetico"))
               + '</div></section>')
     slot.markdown(markup, unsafe_allow_html=True)
 
@@ -1221,9 +1315,8 @@ def _render_technical(run: dict | None, *, slot, historical: bool = False,
 
 def _render_idle(slots: dict, *, status: str = "idle") -> None:
     _render_workspace_heading(status, slot=slots["heading"])
+    _render_status(status, None, slot=slots["status"])
     _render_prediction_comparison(None, status, slot=slots["comparison"])
-    slots["phase"].markdown("", unsafe_allow_html=True)
-    slots["progress"].empty()
     message = ("Execução bloqueada pela validação dos dados."
                if status == "invalid" else "Aguardando início da execução.")
     _render_logs([], slots, message=message)
@@ -1238,9 +1331,7 @@ def _render_finished_run(run: dict, slots: dict) -> None:
     historical = status != "complete"
     _render_workspace_heading(status, slot=slots["heading"])
     _render_prediction_comparison(run, status, slot=slots["comparison"])
-    label = "Última execução · 15 gerações concluídas" if historical else "15 gerações concluídas"
-    slots["phase"].markdown(f'<span class="churn-phase">{label}</span>', unsafe_allow_html=True)
-    slots["progress"].progress(1.0, text="Geração 15 de 15")
+    _render_status(status, run, slot=slots["status"])
     notice = ""
     if historical:
         notice = ("[VALIDAÇÃO] Dados inválidos. Nenhuma nova execução iniciada."
@@ -1274,7 +1365,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
     events = attempt["events"]
     history = attempt["history"]
     _render_prediction_comparison(None, "running", slot=slots["comparison"])
-    slots["progress"].progress(0.0, text=f"Geração 0 de {config.generations}")
+    _render_status("running", attempt, slot=slots["status"], phase="Preparando os dados")
     _render_chromosome(None, "Aguardando avaliação",
                        slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
@@ -1284,13 +1375,20 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         events.append(message)
         _render_logs(events, slots)
 
+    current_phase = "Preparando os dados"
+
+    def update_status() -> None:
+        _render_status("running", attempt, slot=slots["status"], phase=current_phase)
+
     def phase(label: str, message: str) -> None:
-        slots["phase"].markdown(f'<div class="churn-phase">{escape(label)}</div>',
-                                unsafe_allow_html=True)
+        nonlocal current_phase
+        current_phase = label
+        update_status()
         log(message)
 
     def on_evaluation(record: dict[str, object]) -> None:
         record_evaluation(attempt, record)
+        update_status()
         if record["etapa"] == "inicio":
             chromosome = tuple(int(bit) for bit in record["cromossomo"])
             _render_chromosome(
@@ -1302,13 +1400,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 
     def on_generation(record: dict[str, int | float]) -> None:
         record_generation(attempt, record)
-        number = int(record["geracao"])
-        slots["phase"].markdown(
-            f'<div class="churn-phase">Seleção genética · geração {number} de '
-            f'{config.generations}</div>', unsafe_allow_html=True,
-        )
-        slots["progress"].progress(number / config.generations,
-                                   text=f"Geração {number} de {config.generations}")
+        update_status()
         log("[GERAÇÃO] " + format_generation_line(record))
         _history_chart(history, slot=slots["chart"])
 
@@ -1330,6 +1422,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
               f"[AG] {config.population_size} indivíduos · "
               f"{config.generations} gerações · {len(FEATURE_COLUMNS)} genes")
         start_search(attempt, perf_counter())
+        update_status()
         genetic_result = select_features(
             x_dev, y_dev, config, on_generation=on_generation,
             on_evaluation=on_evaluation,
@@ -1396,10 +1489,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
 def _render_failed_attempt(attempt: dict, slots: dict, *, allow_download: bool = True) -> None:
     _render_workspace_heading("error", slot=slots["heading"])
     _render_prediction_comparison(None, "error", slot=slots["comparison"])
-    slots["phase"].error("Execução interrompida")
-    completed = len(attempt["history"])
-    total = GeneticConfig().generations
-    slots["progress"].progress(completed / total, text=f"Geração {completed} de {total}")
+    _render_status("error", attempt, slot=slots["status"])
     _render_logs(attempt["events"], slots)
     _render_chromosome(attempt["chromosome"], "Análise de subconjunto", slot=slots["chromosome"])
     _history_chart(attempt["history"], slot=slots["chart"])
@@ -1546,6 +1636,7 @@ def _workspace_slots() -> dict:
         )
         with panel:
             with st.container(key="dashboard-prediction-panel", border=False):
+                status_slot = st.empty()
                 comparison = st.empty()
                 with st.container(key="dashboard-analysis-section", border=False):
                     chart = st.empty()
@@ -1554,7 +1645,7 @@ def _workspace_slots() -> dict:
                     technical = st.empty()
                 with st.container(key="dashboard-monitor-section", border=False):
                     st.markdown('<div class="churn-monitor-title">Monitor</div>', unsafe_allow_html=True)
-                    phase, progress, console, log = (st.empty() for _ in range(4))
+                    console, log = st.empty(), st.empty()
         with terminal:
             terminal_download = st.empty()
             terminal_log = st.empty()
@@ -1573,8 +1664,8 @@ def _workspace_slots() -> dict:
             )
     return {
         "heading": heading, "comparison": comparison, "chart": chart,
-        "chromosome": chromosome, "technical": technical, "phase": phase,
-        "progress": progress, "console": console, "log": log,
+        "chromosome": chromosome, "technical": technical, "status": status_slot,
+        "console": console, "log": log,
         "terminal": terminal_log, "terminal_download": terminal_download,
         "metrics": metrics_slot,
     }
