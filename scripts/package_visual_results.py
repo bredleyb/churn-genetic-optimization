@@ -49,7 +49,10 @@ def _summary(report_file: Path) -> dict:
     except (ValueError, UnicodeError, OSError) as exc:
         return {"disponivel": False, "erro": str(exc)}
     stats = report.get("stats", {})
+    metadata = report.get("config", {}).get("metadata", {})
     return {
+        "git_head_testado": metadata.get("gitHead"),
+        "arquivos_versionados_sem_alteracoes": metadata.get("trackedTreeClean"),
         "disponivel": True,
         "aprovados": stats.get("expected"),
         "falhas": stats.get("unexpected"),
@@ -70,7 +73,9 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
 
     candidates = []
     archived = set()
-    for source, destination in SOURCES:
+    specs = tuple((path.relative_to(root).as_posix(), f"configuracao/{path.name}")
+                  for path in sorted((root / "tests" / "visual").glob("*.spec.mjs")))
+    for source, destination in (*SOURCES, *specs):
         path = root / source
         for file, relative in _files_in(path):
             if relative is not None:
@@ -95,12 +100,12 @@ def package(project_root: Path, *, exit_code: int | None, mode: str) -> Path:
         "modo": mode,
         "status": "aprovado" if exit_code == 0 else ("falhou" if exit_code is not None else "nao_informado"),
         "codigo_saida_testes": exit_code,
-        "larguras_previstas_px": [1440, 1366, 1280, 1024, 768, 390],
-        "resolucoes_previstas": ["1440x900", "1366x768", "1280x720", "1024x768", "768x900", "390x900"],
+        "larguras_previstas_px": [1440, 1366, 1280, 1024, 768, 390, 320],
+        "resolucoes_previstas": ["1440x768", "1440x900", "1366x768", "1280x720", "1024x768", "768x1024", "768x900", "390x844", "390x900", "320x720"],
         "estados_previstos": ["inicial", "processamento", "concluido", "alterado",
                               "perfil_editado", "rolagem_inicio", "rolagem_meio", "rolagem_fim"],
         "roteiro": "configuracao/roteiro_testes_cliente.md",
-        "escopo": "auditoria do painel Cliente; resultados de ML têm suíte Python separada",
+        "escopo": "auditoria Cliente e Previsão; resultados de ML também têm suíte Python separada",
         "resumo_playwright": _summary(root / "results" / "playwright-results.json"),
         "arquivos": [name for _, name in candidates],
     }

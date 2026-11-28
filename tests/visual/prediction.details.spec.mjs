@@ -31,7 +31,11 @@ test('PR-T02 execução real, métricas, log integral UTF-8 e histórico', async
   await expect(download).toBeDisabled();
   await expect(page.locator('.churn-workspace-heading')).toHaveAttribute('data-run-state','complete',{timeout:120000});
   await expect(download).toBeEnabled();
-  const log=await page.locator('.n3-terminal-log').textContent();
+  const logRegion=page.locator('.n3-terminal-log');
+  const log=await logRegion.textContent();
+  // O monitor acompanha o final; uma leitura manual no início deve ser preservada.
+  await expect.poll(()=>logRegion.evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop)).toBeLessThanOrEqual(4);
+  await logRegion.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event('scroll'));});
   expect(log.startsWith('[EXECUÇÃO] Processamento iniciado.')).toBeTruthy();
   expect(log).toContain('[FIM]');
   const pending=page.waitForEvent('download');
@@ -47,6 +51,7 @@ test('PR-T02 execução real, métricas, log integral UTF-8 e histórico', async
   await replaceMonths(page,4);
   await expect(page.locator('.n3-metrics-header h3')).toHaveText('Métricas · execução anterior');
   await tabs.getByRole('tab',{name:'Terminal',exact:true}).click();
-  await expect(page.locator('.n3-terminal-log')).toHaveText(log);
+  await expect(logRegion).toHaveText(log);
+  await expect.poll(()=>logRegion.evaluate(el=>el.scrollTop)).toBeLessThanOrEqual(4);
   await ensureNoException(page);
 });

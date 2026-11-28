@@ -16,7 +16,7 @@ A busca genética reduziu as variáveis de **19 para 9 (−52,6%)**, com perda p
 |---|---:|---:|
 | **F1-score** | **0,6040** | 0,5869 |
 | Precisão | 0,6572 | 0,6463 |
-| Revocação | 0,5588 | 0,5374 |
+| Recall | 0,5588 | 0,5374 |
 | Acurácia | 0,8055 | 0,7991 |
 | ROC-AUC | 0,8419 | 0,8401 |
 
@@ -34,13 +34,13 @@ Matrizes de confusão, variáveis escolhidas e discussão: **[docs/resultados_ex
 CSV Telco (7.043 clientes)
   └─ divisão estratificada 80/20 (seed 42)
        ├─ desenvolvimento (5.634) ─┬─ referência: regressão logística com as 19 características
-       │                           └─ algoritmo genético: escolhe o subconjunto (CV estratificada, 3 partições)
+       │                           └─ algoritmo genético: escolhe o subconjunto (CV estratificada, 3 folds)
        └─ teste (1.409) ─────────── avaliação final dos dois modelos, usada uma única vez
 ```
 
 - **Pré-processamento:** um `ColumnTransformer` ajustado só nas partições de treino. Faz imputação pela mediana e padronização nas variáveis numéricas (`tenure`, `MonthlyCharges`, `TotalCharges`) e imputação pela moda com *one-hot* nas 16 categóricas. `SeniorCitizen` é tratada como categórica.
 - **Cromossomo:** 19 bits, um por característica original. Quando uma característica categórica é selecionada, todas as colunas *one-hot* dela entram juntas.
-- **Aptidão:** F1 médio na validação cruzada menos `λ = 0,02` vezes a fração de características usadas.
+- **Fitness:** F1 médio na validação cruzada menos `λ = 0,02` vezes a fração de características usadas.
 - **Parâmetros:** 24 indivíduos, 15 gerações, torneio de 3, cruzamento de um ponto (p = 0,8), mutação por indivíduo (p = 0,2, com inversão de cada bit a `1/19`), elitismo de 1. Cromossomos vazios são proibidos e avaliações repetidas ficam em cache.
 
 ---
@@ -50,7 +50,9 @@ CSV Telco (7.043 clientes)
 É preciso ter **Python 3.10+**. Os comandos abaixo são para PowerShell e devem ser executados na raiz do repositório.
 
 ```powershell
-py -m venv .venv
+git clone https://github.com/bredleyb/churn-genetic-optimization.git
+cd churn-genetic-optimization
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
@@ -58,11 +60,16 @@ python -m pip install -r requirements.txt
 **Dados:** baixe o [Telco Customer Churn (Kaggle, blastchar)](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)
 e salve o arquivo em `data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv`. O CSV não é versionado. Detalhes em [data/README.md](data/README.md).
 
-Depois rode o experimento completo e abra o dashboard:
+Abra o dashboard. Ele inicia em espera e executa o experimento quando o usuário solicita a previsão.
 
 ```powershell
-python -m scripts.compare_models          # treina, seleciona e avalia os dois modelos
-python -m streamlit run streamlit_app.py  # dashboard interativo
+python -m streamlit run streamlit_app.py
+```
+
+Para gerar os modelos e relatórios locais necessários à CLI, execute separadamente:
+
+```powershell
+python -m scripts.compare_models
 ```
 
 ### Todos os comandos
@@ -85,7 +92,9 @@ Os artefatos em `results/` são gerados localmente e não são versionados.
 Os arquivos em [examples/](examples/) trazem perfis fictícios com as 19 características originais, sem `customerID` e sem `Churn`.
 
 ```powershell
+python -m scripts.compare_models
 python -m scripts.predict --cliente examples/cliente_exemplo.json
+python -m scripts.predict --cliente examples/cliente_exemplo_2.json
 ```
 
 | Perfil | Referência | Seleção genética | Previsão |
@@ -101,33 +110,34 @@ e `TotalCharges` aceita `null`. Carregue apenas arquivos `.joblib` gerados pelo 
 
 ## Dashboard
 
-[streamlit_app.py](streamlit_app.py) reúne a previsão e o experimento em um painel monocromático pensado para projeção
-(resolução prioritária: 1280 × 720). O verde e o vermelho aparecem só nos estados Permanência e Cancelamento.
+[streamlit_app.py](streamlit_app.py) apresenta a comparação dos dois modelos em um painel escuro responsivo, com fontes e ícones locais.
 
-- **Cliente:** formulário com as 19 características em abas (Perfil, Conta, Serviços, Extras) e até 5 perfis por sessão. Os perfis 1 e 2 são protegidos.
-- **Comparação:** probabilidades de cancelamento dos dois modelos para o cliente atual.
-- **Gráfico:** evolução do melhor F1 em validação cruzada ao longo das gerações.
-- **Características e teste:** cromossomo de 19 bits, F1 de teste, ΔF1 e taxa de redução.
-- **Monitor:** eventos reais do algoritmo genético, com download do log completo.
+- **Cliente:** 19 características, organizadas em campos principais e quatro subabas. Até cinco perfis independentes por sessão; exemplos 1 e 2 protegidos contra exclusão.
+- **Painel:** estado e tempo da busca, gerações, subconjuntos, probabilidades de cancelamento com limiar de 50%, evolução de F1 (CV) e fitness, cromossomo, impacto e monitor.
+- **Terminal:** eventos cronológicos da tentativa e exportação integral UTF-8, inclusive de tentativas interrompidas.
+- **Métricas:** avaliação no conjunto de teste reservado, F1 médio em CV e matrizes de confusão.
+- **Metodologia:** dataset, pré-processamento, parâmetros e limitações.
 
-**Calcular previsão** executa o experimento inteiro com a configuração original, sem sobrescrever os modelos salvos em `results/`.
+**Calcular previsão** executa a configuração científica original. Durante o cálculo, o formulário fica bloqueado; falhas liberam os controles para uma nova tentativa. Editar uma entrada efetiva torna o resultado desatualizado e oculta probabilidades anteriores. Retornar aos mesmos valores recupera o resultado disponível. Trocar abas não inicia outro experimento. A GUI não sobrescreve modelos ou relatórios salvos em `results/`.
+
+Em desktop, Cliente e Previsão ficam lado a lado; abaixo de 1024 px ficam empilhados. As áreas de rolagem e os tooltips permitem inspecionar o conteúdo em telas estreitas. Recursos de acessibilidade incluem foco visível, teclado, toque e movimento reduzido.
+
+Para demonstração, execute o Exemplo 1, abra Métricas e Terminal e depois selecione o Exemplo 2. Os percentuais devem ser coerentes com os resultados acima. O tempo de busca depende do equipamento. Caso a GUI apresente problema, use os comandos CLI de previsão após gerar os modelos.
 
 ---
 
 ## Testes
 
 ```powershell
-python -m pytest -q                 # dados, modelo, algoritmo genético, avaliação e painel Cliente
+python -m pytest -q                 # ciência, estado, formulário, interface e evidências
 
 npm install
 npx playwright install chromium
-npm run test:visual                 # testes de navegador no painel Cliente (porta 8517)
+npm run test:visual                 # testes Cliente e Previsão (porta 8517)
 npm run test:visual:report          # abre o relatório HTML
 ```
 
-Os testes Playwright cobrem layout, tipografia, foco, rolagem, interação e responsividade em seis resoluções.
-Cada rodada salva as evidências em `results/testes-visuais-para-revisao.zip`. O teste E2E `CL-B03` precisa do CSV
-original e é marcado como *skipped* quando o arquivo não existe. Os requisitos e critérios de aceite estão em [docs/roteiro_testes_cliente.md](docs/roteiro_testes_cliente.md).
+Os testes Playwright cobrem campos, perfis, layout, tipografia, foco, rolagem, navegação, tooltips, execução real e responsividade de 320 a 1440 px, além de limiares intermediários. A regressão completa requer o CSV original. Cada rodada salva evidências em `results/testes-visuais-para-revisao.zip` e registra o commit testado no relatório. Os critérios do Cliente estão em [docs/roteiro_testes_cliente.md](docs/roteiro_testes_cliente.md); o roteiro de fechamento da aplicação está em [docs/validacao_aplicacao.md](docs/validacao_aplicacao.md).
 
 ---
 
@@ -141,7 +151,7 @@ original e é marcado como *skipped* quando o arquivo não existe. Os requisitos
 ├── tests/               # pytest (raiz e client/) e Playwright (visual/)
 ├── docs/                # análise, resultados, roteiro de testes, artigo e apresentação
 ├── data/                # instruções para obter o CSV (data/raw/ fica fora do Git)
-└── static/              # fonte Familjen Grotesk (SIL OFL 1.1)
+└── static/              # fontes locais, ícones Carbon e licenças
 ```
 
 ## Documentação

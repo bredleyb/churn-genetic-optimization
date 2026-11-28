@@ -14,12 +14,14 @@ def test_package_includes_evidence_and_excludes_local_training_data(tmp_path):
     (tmp_path / "results/playwright-report/index.html").write_text("relatório", encoding="utf-8")
     (tmp_path / "results/playwright-artifacts/diff.png").write_bytes(b"fakepng")
     (tmp_path / "results/playwright-results.json").write_text(json.dumps({
-        "stats": {"expected": 3, "unexpected": 1, "flaky": 0, "skipped": 0}
+        "stats": {"expected": 3, "unexpected": 1, "flaky": 0, "skipped": 0},
+        "config": {"metadata": {"gitHead": "a" * 40, "trackedTreeClean": True}},
     }), encoding="utf-8")
     (tmp_path / "results/playwright-console.log").write_text("Teste falhou", encoding="utf-8")
     (tmp_path / "tests/visual/client.layout.spec.mjs-snapshots/client-01-inicial-1280x720-win32.png").write_bytes(b"ref")
     (tmp_path / "tests/visual/client.layout.spec.mjs-snapshots/dashboard-03-concluido-390-win32.png").write_bytes(b"obsoleto")
     (tmp_path / "tests/visual/client.layout.spec.mjs").write_text("teste", encoding="utf-8")
+    (tmp_path / "tests/visual/prediction.geometry.spec.mjs").write_text("previsão", encoding="utf-8")
     (tmp_path / "results/baseline.joblib").write_bytes(b"modelo privado")
     (tmp_path / "data/raw").mkdir(parents=True)
     (tmp_path / "data/raw/clientes.csv").write_text("dados locais", encoding="utf-8")
@@ -44,6 +46,9 @@ def test_package_includes_evidence_and_excludes_local_training_data(tmp_path):
         manifest = json.loads(zipped.read("manifesto.json"))
         assert manifest["status"] == "falhou"
         assert manifest["resumo_playwright"]["falhas"] == 1
+        assert manifest["resumo_playwright"]["git_head_testado"] == "a" * 40
+        assert manifest["resumo_playwright"]["arquivos_versionados_sem_alteracoes"] is True
+        assert "configuracao/prediction.geometry.spec.mjs" in names
 
 
 def test_package_created_even_when_reports_are_missing(tmp_path):

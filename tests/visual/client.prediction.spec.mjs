@@ -162,4 +162,11 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
     await expect(button).toBeEnabled();
     await ensureNoException(page);
     await screenshot(page,info,'CL-B03-dados-alterados');
+    // Voltar ao snapshot recupera as previsões sem nova execução.
+    await replaceMonths(page,3);
+    await expect(page.locator('.churn-workspace-heading')).toHaveAttribute('data-run-state','complete');
+    await expect(page.locator('.churn-prediction-value')).toHaveText(['82,04%','76,66%']);
+    await expect(page.locator('.n3-status .n3-subset-count')).toHaveText('121');
+    await expect(button).toBeEnabled();
+    await ensureNoException(page);
   });

@@ -117,8 +117,19 @@ for(const size of VIEWPORTS){
       const group=fieldGroup(page,label);
       await expect(group).toBeVisible();
       const rect=await measure(group);
-      near(rect.left,btn.left,name+' margem esquerda',2);
-      near(rect.right,btn.right,name+' margem direita',2);
+      if(size.width>=700&&size.width<1024){
+        expect(rect.left).toBeGreaterThanOrEqual(btn.left-2);
+        expect(rect.right).toBeLessThanOrEqual(btn.right+2);
+        near(rect.width,(btn.width-12)/2,name+' largura em duas colunas',3);
+        if(name==='Perfil'){
+          const senior=await measure(fieldGroup(page,'Pessoa idosa'));
+          near(rect.top,senior.top,'Perfil alinhamento horizontal',2);
+          near(senior.left-rect.right,12,'intervalo das colunas',2);
+        }
+      }else{
+        near(rect.left,btn.left,name+' margem esquerda',2);
+        near(rect.right,btn.right,name+' margem direita',2);
+      }
       near(rect.height,42,name+' altura',2);
       expect(await fields(page).evaluate(el=>el.scrollWidth-el.clientWidth),
         name+' overflow horizontal').toBeLessThanOrEqual(2);

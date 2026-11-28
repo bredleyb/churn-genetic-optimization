@@ -1,10 +1,19 @@
 import { defineConfig } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+
+function gitValue(args) {
+  try { return execFileSync('git',args,{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim(); }
+  catch { return null; }
+}
+const gitHead = gitValue(['rev-parse','HEAD']);
+const trackedChanges = gitValue(['status','--porcelain','--untracked-files=no']);
 
 // Porta independente da aplicação normalmente aberta em localhost:8501.
 const port = Number(process.env.VISUAL_TEST_PORT || 8517);
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
+  metadata: { gitHead, trackedTreeClean: trackedChanges===null?null:trackedChanges==='' },
   testDir: './tests/visual',
   testMatch: '**/*.spec.mjs',
   fullyParallel: false,

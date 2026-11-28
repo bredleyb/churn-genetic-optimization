@@ -1037,6 +1037,20 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 @media(max-width:699px) {
   .churn-comparison .churn-model,.churn-comparison .churn-model+.churn-model {padding:9px 12px;}
 }
+/* No tablet, os campos secundários também ocupam duas colunas.
+   Um único formulário e as mesmas chaves em todas as resoluções. */
+@media(min-width:700px) and (max-width:1023px) {
+  .st-key-dashboard-detail-tabs [class*="st-key-dashboard-detail-fields-"] {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    align-items:start!important;gap:10px 12px!important;
+  }
+  .st-key-dashboard-detail-tabs [class*="st-key-dashboard-detail-fields-"] > * {
+    min-width:0!important;width:100%!important;
+  }
+  .st-key-dashboard-detail-tabs [class*="st-key-dashboard-detail-fields-"] > :has([data-testid="stCheckbox"]) {
+    grid-column:1/-1;
+  }
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -1204,39 +1218,40 @@ def _render_client_details() -> None:
                        on_change="rerun")
         for name, tab in zip(DETAIL_TABS, tabs):
             with tab:
-                for feature in DETAIL_TABS[name]:
-                    if feature == "TotalCharges":
-                        # Campo numérico renderizado abaixo, com a opção de valor ausente.
-                        continue
-                    disabled = (
-                        feature == "MultipleLines"
-                        and st.session_state["customer_values"]["PhoneService"] == "No"
-                    ) or (
-                        feature in INTERNET_FEATURES
-                        and st.session_state["customer_values"]["InternetService"] == "No"
-                    )
-                    help_text = (
-                        "Indisponível quando o cliente não possui telefone."
-                        if feature == "MultipleLines" and disabled else
-                        "Indisponível sem serviço de internet."
-                        if feature in INTERNET_FEATURES and disabled else None
-                    )
-                    _select_field(feature, disabled=disabled, help_text=help_text)
+                with st.container(key=f"dashboard-detail-fields-{list(DETAIL_TABS).index(name)}", border=False):
+                    for feature in DETAIL_TABS[name]:
+                        if feature == "TotalCharges":
+                            # Campo numérico renderizado abaixo, com a opção de valor ausente.
+                            continue
+                        disabled = (
+                            feature == "MultipleLines"
+                            and st.session_state["customer_values"]["PhoneService"] == "No"
+                        ) or (
+                            feature in INTERNET_FEATURES
+                            and st.session_state["customer_values"]["InternetService"] == "No"
+                        )
+                        help_text = (
+                            "Indisponível quando o cliente não possui telefone."
+                            if feature == "MultipleLines" and disabled else
+                            "Indisponível sem serviço de internet."
+                            if feature in INTERNET_FEATURES and disabled else None
+                        )
+                        _select_field(feature, disabled=disabled, help_text=help_text)
 
-                if name == "Conta":
-                    _ensure_widget_field("total_missing")
-                    st.checkbox(
-                        "Total cobrado indisponível",
-                        key="field_total_missing",
-                        on_change=_remember_field, args=("total_missing",),
-                    )
-                    _ensure_widget_field("TotalCharges")
-                    st.number_input(
-                        LABELS["TotalCharges"], min_value=0.0, step=1.0,
-                        format="%.2f", key="field_TotalCharges",
-                        on_change=_remember_field, args=("TotalCharges",),
-                        disabled=st.session_state["field_total_missing"],
-                    )
+                    if name == "Conta":
+                        _ensure_widget_field("total_missing")
+                        st.checkbox(
+                            "Total cobrado indisponível",
+                            key="field_total_missing",
+                            on_change=_remember_field, args=("total_missing",),
+                        )
+                        _ensure_widget_field("TotalCharges")
+                        st.number_input(
+                            LABELS["TotalCharges"], min_value=0.0, step=1.0,
+                            format="%.2f", key="field_TotalCharges",
+                            on_change=_remember_field, args=("TotalCharges",),
+                            disabled=st.session_state["field_total_missing"],
+                        )
 
 
 def _validation_errors() -> dict[str, str]:
