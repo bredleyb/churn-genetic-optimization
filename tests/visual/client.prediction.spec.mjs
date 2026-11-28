@@ -7,6 +7,9 @@ test('CL-B01 função de estado do botão preserva as três legendas',()=>{
   expect(predictionButtonState('Calcular previsão',true)).toBe('unavailable');
   expect(predictionButtonState('Calculando',true)).toBe('running');
   expect(predictionButtonState('Recalcular previsão',false)).toBe('complete');
+  expect(predictionButtonState('Recalcular previsão',true)).toBe('unavailable');
+  expect(predictionButtonState('Tentar novamente',false)).toBe('retry');
+  expect(predictionButtonState('Tentar novamente',true)).toBe('unavailable');
 });
 
 test('CL-B02 estados cromáticos, reticências, retorno ao branco e movimento reduzido',

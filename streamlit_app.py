@@ -36,6 +36,7 @@ from src.ui_data import (
     PROFILE_FEATURES,
     PROFILE_FILES,
     align_services,
+    form_errors,
     format_evaluation_line,
     format_generation_line,
     label_for,
@@ -1172,11 +1173,39 @@ def _render_client_details() -> None:
                     )
 
 
+def _validation_errors() -> dict[str, str]:
+    return form_errors(_form_data())
+
+
 def _current_customer() -> dict | None:
+    if _validation_errors():
+        return None
     try:
         return model_input(_form_data())
     except ValueError:
         return None
+
+
+def _render_client_feedback(errors: dict[str, str]) -> None:
+    if errors:
+        first, message = next(iter(errors.items()))
+        tab = next((name for name, features in DETAIL_TABS.items() if first in features), None)
+        location = f" ({tab})" if tab else ""
+        count = len(errors)
+        prefix = "1 campo inválido" if count == 1 else f"{count} campos inválidos"
+        st.markdown(
+            '<div class="n3-client-validation" role="status" '
+            'style="color:#79A9F5;font-size:12px;line-height:17px">'
+            f'{prefix} · {escape(LABELS[first] + location)}: {escape(message)}</div>',
+            unsafe_allow_html=True,
+        )
+    elif st.session_state.get("prediction_error") and (
+        st.session_state.get("workflow_attempt") or {}
+    ).get("phase") == "failed":
+        st.markdown(
+            '<div role="status" style="color:#E94B75;font-size:12px;line-height:17px">'
+            f'{escape(st.session_state["prediction_error"])}</div>', unsafe_allow_html=True,
+        )
 
 
 def _is_stale(run: dict) -> bool:
@@ -1283,7 +1312,7 @@ def _render_chromosome(chromosome: tuple[int, ...] | None, title: str, *, slot) 
     slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _history_chart(history: list[dict], *, slot) -> None:
+def _history_chart(history: list[dict], *, slot, historical: bool = False) -> None:
     """SVG proporcional, sem bibliotecas de gráficos ou dependências de rede.
 
     A escala inicia em zero e permanece constante nas 15 gerações, evitando
@@ -1300,7 +1329,9 @@ def _history_chart(history: list[dict], *, slot) -> None:
     grid = ''.join(f'<line x1="0" y1="{i*60}" x2="1000" y2="{i*60}"/>' for i in range(5))
     markup = (
         '<section class="churn-chart" aria-label="Evolução do F1-score em validação cruzada">'
-        '<div class="churn-section-top"><h3>Evolução do F1-score</h3></div>'
+        '<div class="churn-section-top"><h3>' +
+        ('Evolução do F1-score · execução anterior' if historical else 'Evolução do F1-score') +
+        '</h3></div>' +
         '<div class="churn-chart-plot">'
         '<div class="churn-chart-axis-y">' +
         "".join(f'<span>{(ceiling * tick / 4):.1f}</span>'.replace(".", ",") for tick in range(4, -1, -1)) +
@@ -1317,7 +1348,7 @@ def _history_chart(history: list[dict], *, slot) -> None:
     slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _render_technical(run: dict | None, *, slot) -> None:
+def _render_technical(run: dict | None, *, slot, historical: bool = False) -> None:
     if run is None:
         metrics = (("Referência", "—"), ("Genético", "—"), ("ΔF1", "—"))
         summary = "F1 no teste reservado · 20% dos dados"
@@ -1333,17 +1364,21 @@ def _render_technical(run: dict | None, *, slot) -> None:
     rows = "".join(f'<div class="churn-metric"><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>'
                    for label,value in metrics)
     slot.markdown('<section class="churn-technical" aria-label="Métricas de teste">'
-                  '<div class="churn-section-top"><h3>Desempenho no teste reservado</h3></div>'
+                  '<div class="churn-section-top"><h3>' +
+                  ('Métricas · execução anterior' if historical else 'Desempenho no teste reservado') +
+                  '</h3></div>'
                   f'<dl class="churn-metrics">{rows}</dl><div class="churn-technical-note">{escape(summary)}</div>'
                   '</section>', unsafe_allow_html=True)
 
 
-def _render_idle(slots: dict) -> None:
-    _render_workspace_heading("idle", slot=slots["heading"])
-    _render_prediction_comparison(None, "idle", slot=slots["comparison"])
+def _render_idle(slots: dict, *, status: str = "idle") -> None:
+    _render_workspace_heading(status, slot=slots["heading"])
+    _render_prediction_comparison(None, status, slot=slots["comparison"])
     slots["phase"].markdown("", unsafe_allow_html=True)
     slots["progress"].empty()
-    _render_console([], slot=slots["console"])
+    message = ("Execução bloqueada pela validação dos dados."
+               if status == "invalid" else "Aguardando início da execução.")
+    _render_console([message], slot=slots["console"])
     _render_chromosome(None, "Aguardando avaliação", slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
     _render_technical(None, slot=slots["technical"])
@@ -1353,16 +1388,22 @@ def _render_finished_run(run: dict, slots: dict) -> None:
     status = view_state(running=False, customer=_current_customer(),
                         last_success=run, attempt=None)
     historical = status != "complete"
-    _render_workspace_heading("stale" if historical else "complete", slot=slots["heading"])
+    _render_workspace_heading(status, slot=slots["heading"])
     _render_prediction_comparison(run, status, slot=slots["comparison"])
-    slots["phase"].markdown('<span class="churn-phase">15 gerações concluídas</span>', unsafe_allow_html=True)
+    label = "Última execução · 15 gerações concluídas" if historical else "15 gerações concluídas"
+    slots["phase"].markdown(f'<span class="churn-phase">{label}</span>', unsafe_allow_html=True)
     slots["progress"].progress(1.0, text="Geração 15 de 15")
-    _render_console(run["events"], slot=slots["console"], complete=True)
+    events = run["events"]
+    if historical:
+        notice = ("[VALIDAÇÃO] Dados inválidos. Nenhuma nova execução iniciada."
+                  if status == "invalid" else "[ESTADO] Dados alterados. Execução anterior.")
+        events = [*events, notice]
+    _render_console(events, slot=slots["console"], complete=True)
     _render_chromosome(run["chromosome"],
                        "Subconjunto anterior" if historical else "Melhor cromossomo",
                        slot=slots["chromosome"])
-    _history_chart(run["history"], slot=slots["chart"])
-    _render_technical(run, slot=slots["technical"])
+    _history_chart(run["history"], slot=slots["chart"], historical=historical)
+    _render_technical(run, slot=slots["technical"], historical=historical)
     if run.get("events"):
         slots["log"].download_button(
             "Baixar log", "\n".join(run["events"]) + "\n",
@@ -1465,7 +1506,9 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
             f"{genetic_result.evaluated_subsets} subconjuntos distintos")
     except Exception:
         fail_attempt(attempt, perf_counter())
-        message = "Não foi possível concluir a execução. Verifique os dados e tente novamente."
+        message = ("CSV não encontrado em data/raw/. Adicione o arquivo e tente novamente."
+                   if not DATASET.is_file() else
+                   "Não foi possível concluir a execução. Verifique os dados e tente novamente.")
         st.session_state["prediction_error"] = message
         events.append("[ERRO] " + message)
         _render_failed_attempt(attempt, slots, allow_download=False)
@@ -1619,14 +1662,14 @@ def _render_client_panel() -> bool:
                                 on_change=_remember_field, args=("MonthlyCharges",))
         _render_client_details()
     with st.container(key="dashboard-client-footer", border=False):
+        errors = _validation_errors()
+        _render_client_feedback(errors)
         st.button(
             _prediction_button_label(), key="run_prediction",
             type="primary", use_container_width=True,
-            disabled=not DATASET.is_file() or st.session_state.get("prediction_running", False),
+            disabled=bool(errors) or st.session_state.get("prediction_running", False),
             on_click=_request_prediction,
         )
-        if not DATASET.is_file():
-            st.caption("CSV não encontrado em data/raw/")
     return bool(st.session_state.get("prediction_requested", False))
 
 
@@ -1721,15 +1764,23 @@ def main() -> None:
                             st.session_state["prediction_error"] = (
                                 "Dados do cliente inválidos. Revise os campos."
                             )
-                            _render_idle(slots)
-                            _render_workspace_heading("error", slot=slots["heading"])
-                            slots["technical"].error(st.session_state["prediction_error"])
+                            previous = st.session_state.get("workflow_run")
+                            if previous is not None:
+                                _render_finished_run(previous, slots)
+                            else:
+                                _render_idle(slots, status="invalid")
                         else:
                             _execute_full_workflow(customer, slots)
                     finally:
                         st.session_state["prediction_running"] = False
                     # Atualiza a legenda depois de concluir sem executar o modelo novamente.
                     st.rerun()
+                elif _current_customer() is None:
+                    previous = st.session_state.get("workflow_run")
+                    if previous is not None:
+                        _render_finished_run(previous, slots)
+                    else:
+                        _render_idle(slots, status="invalid")
                 elif (st.session_state.get("workflow_attempt") is not None
                       and st.session_state["workflow_attempt"]["phase"] == "failed"):
                     _render_failed_attempt(st.session_state["workflow_attempt"], slots)

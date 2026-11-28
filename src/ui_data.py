@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from src.data import FEATURE_COLUMNS
-from src.prediction import VALID_CATEGORIES, prepare_customer
+from src.prediction import VALID_CATEGORIES, prepare_customer, validate_customer_values
 
 
 PROFILE_FILES = {
@@ -110,6 +110,37 @@ def align_services(customer: dict, *, changed: str) -> dict:
                 if result[feature] == "No internet service":
                     result[feature] = "No"
     return result
+
+
+def form_errors(form_values: dict) -> dict[str, str]:
+    """Mensagens de formulário sem reproduzir valores inválidos na interface."""
+    effective = {name: form_values[name] for name in FEATURE_COLUMNS if name in form_values}
+    if form_values.get("total_missing") and "TotalCharges" in effective:
+        effective["TotalCharges"] = None
+    _, errors = validate_customer_values(effective)
+    messages = {}
+    for name in FEATURE_COLUMNS:
+        if name not in errors:
+            continue
+        if name not in effective:
+            message = "Preencha este campo."
+        elif name == "tenure":
+            message = "Informe um número inteiro de meses, de 0 a 999."
+        elif name in ("MonthlyCharges", "TotalCharges"):
+            message = "Informe um valor numérico, finito e não negativo."
+        elif name == "MultipleLines" and (
+            "incompatível" in errors[name] or "quando não há telefone" in errors[name]
+        ):
+            message = "Selecione uma opção compatível com o serviço telefônico."
+        elif name in INTERNET_FEATURES and "incompatível" in errors[name]:
+            message = "Selecione uma opção compatível com o serviço de internet."
+        else:
+            message = "Selecione uma opção válida."
+        messages[name] = message
+    # O limite de edição pertence somente à interface, sem alterar a CLI.
+    if "tenure" not in messages and effective.get("tenure", 0) > 999:
+        messages["tenure"] = "Informe um número inteiro de meses, de 0 a 999."
+    return {name: messages[name] for name in FEATURE_COLUMNS if name in messages}
 
 
 def model_input(form_values: dict) -> dict:

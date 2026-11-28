@@ -6,11 +6,11 @@ def _dataset_available(app, monkeypatch):
     monkeypatch.setattr(app, "DATASET", Path(__file__))
 
 
-def test_initial_action_and_missing_dataset(client_app, monkeypatch):
+def test_initial_action_and_missing_dataset(client_app, monkeypatch, tmp_path):
     app, ui = client_app
+    monkeypatch.setattr(app, "DATASET", tmp_path / "missing.csv")
     app.main()
-    disabled = not app.DATASET.is_file()
-    assert ui.button_options("Calcular previsão")["disabled"] is disabled
+    assert ui.button_options("Calcular previsão")["disabled"] is False
     assert app._prediction_button_label() == "Calcular previsão"
     assert ui.button_options("Calcular previsão")["key"] == "run_prediction"
     assert ui.button_options("Calcular previsão")["type"] == "primary"
@@ -73,10 +73,11 @@ def test_running_state_disables_clicks_and_uses_same_button_key(client_app, monk
 def test_invalid_client_clears_busy_state_and_reports_error(client_app, monkeypatch):
     app, ui = client_app
     _dataset_available(app, monkeypatch)
-    monkeypatch.setattr(app, "_current_customer", lambda: None)
     app.main()
+    # Defesa contra entrada inválida entre o clique e o processamento.
+    app._request_prediction()
+    monkeypatch.setattr(app, "_current_customer", lambda: None)
     ui.reset_render()
-    ui.click_next = "Calcular previsão"
     app.main()
     assert ui.reruns == 1
     assert ui.session_state["prediction_running"] is False

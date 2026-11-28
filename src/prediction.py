@@ -48,43 +48,65 @@ def prepare_customer(customer: dict) -> pd.DataFrame:
     if extra:
         raise ValueError("Características desconhecidas: " + ", ".join(extra))
 
+    validated, errors = validate_customer_values(customer)
+    if errors:
+        raise ValueError(next(iter(errors.values())))
+    return pd.DataFrame([validated], columns=FEATURE_COLUMNS)
+
+
+def validate_customer_values(customer: dict) -> tuple[dict, dict[str, str]]:
+    """Valida valores e dependências, acumulando erros por característica.
+
+    O chamador de domínio verifica o esquema completo. O formulário pode
+    apresentar todos os erros da mesma validação, inclusive de abas ocultas.
+    """
     validated = {}
+    errors = {}
     for name in FEATURE_COLUMNS:
+        if name not in customer:
+            errors[name] = f"Característica ausente: {name}."
+            continue
         value = customer[name]
         if name in VALID_CATEGORIES:
             if name == "SeniorCitizen" and type(value) is int and value in (0, 1):
                 value = str(value)
             if not isinstance(value, str) or value not in VALID_CATEGORIES[name]:
                 expected = ", ".join(repr(item) for item in VALID_CATEGORIES[name])
-                raise ValueError(f"Valor inválido para {name}: {value!r}. Aceitos: {expected}")
+                errors[name] = f"Valor inválido para {name}: {value!r}. Aceitos: {expected}"
+                continue
         elif name == "TotalCharges" and value is None:
             value = float("nan")
         else:
             if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ValueError(f"{name} deve ser um número não negativo.")
+                errors[name] = f"{name} deve ser um número não negativo."
+                continue
             if not math.isfinite(value) or value < 0:
-                raise ValueError(f"{name} deve ser um número não negativo e finito.")
+                errors[name] = f"{name} deve ser um número não negativo e finito."
+                continue
             if name == "tenure" and not float(value).is_integer():
-                raise ValueError("tenure deve representar uma quantidade inteira de meses.")
+                errors[name] = "tenure deve representar uma quantidade inteira de meses."
+                continue
         validated[name] = value
 
-    # Evita combinações impossíveis entre serviços e seus dependentes.
-    if validated["PhoneService"] == "No" and validated["MultipleLines"] != "No phone service":
-        raise ValueError("MultipleLines deve ser 'No phone service' quando não há telefone.")
-    if validated["PhoneService"] == "Yes" and validated["MultipleLines"] == "No phone service":
-        raise ValueError("MultipleLines é incompatível com PhoneService='Yes'.")
+    if "PhoneService" in validated and "MultipleLines" in validated:
+        if validated["PhoneService"] == "No" and validated["MultipleLines"] != "No phone service":
+            errors["MultipleLines"] = "MultipleLines deve ser 'No phone service' quando não há telefone."
+        if validated["PhoneService"] == "Yes" and validated["MultipleLines"] == "No phone service":
+            errors["MultipleLines"] = "MultipleLines é incompatível com PhoneService='Yes'."
 
     internet_dependent = (
         "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport",
         "StreamingTV", "StreamingMovies",
     )
-    without_internet = validated["InternetService"] == "No"
-    for name in internet_dependent:
-        is_unavailable = validated[name] == "No internet service"
-        if without_internet != is_unavailable:
-            raise ValueError(f"{name} é incompatível com InternetService.")
+    if "InternetService" in validated:
+        without_internet = validated["InternetService"] == "No"
+        for name in internet_dependent:
+            if name in validated:
+                is_unavailable = validated[name] == "No internet service"
+                if without_internet != is_unavailable:
+                    errors[name] = f"{name} é incompatível com InternetService."
 
-    return pd.DataFrame([validated], columns=FEATURE_COLUMNS)
+    return validated, errors
 
 
 def predict_customer(model, customer: dict) -> dict:

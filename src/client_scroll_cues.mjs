@@ -17,8 +17,10 @@ export function scrollCueStrengths(scrollTop, clientHeight, scrollHeight, rampPi
 export function predictionButtonState(label, disabled = false) {
   const text = String(label ?? "").trim();
   if (text === "Calculando" || text === "Calculando...") return "running";
+  if (disabled) return "unavailable";
   if (text === "Recalcular previsão") return "complete";
-  return disabled ? "unavailable" : "idle";
+  if (text === "Tentar novamente") return "retry";
+  return "idle";
 }
 
 /**
@@ -84,10 +86,10 @@ export default function () {
       // presente: não liberar o overlay ao observar esse estado transitório.
       const completed = busy.observedRunning && (
         state === "complete" || phase === "complete" ||
-        phase === "stale" || phase === "error"
+        phase === "stale" || phase === "error" || phase === "invalid"
       );
       const earlyError = !busy.observedRunning &&
-        currentHeading !== busy.startHeading && phase === "error";
+        currentHeading !== busy.startHeading && (phase === "error" || phase === "invalid");
       if (completed || earlyError) {
         busy.pending = false;
         busy.observedRunning = false;
@@ -104,7 +106,7 @@ export default function () {
     ) : null;
     if (!button || button.disabled) return;
     const state = predictionButtonState(button.textContent, false);
-    if (state !== "idle" && state !== "complete") return;
+    if (state !== "idle" && state !== "complete" && state !== "retry") return;
     busy.pending = true;
     busy.observedRunning = false;
     busy.startHeading = heading();
