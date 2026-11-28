@@ -36,3 +36,24 @@ def test_probability_uses_class_even_at_rounded_threshold():
 def test_probability_rejects_nonfinite_values():
     with pytest.raises(ValueError):
         probability_values({"classe": 1, "probabilidade_cancelamento": float("nan")})
+
+
+
+def test_generation_series_keeps_paired_values_and_observed_generations():
+    from src.panel_values import generation_series
+    rows = [{"geracao": 1, "melhor_f1_cv": .61, "melhor_aptidao": .59},
+            {"geracao": 3, "melhor_f1_cv": .60, "melhor_aptidao": .595}]
+    assert generation_series([]) == []
+    assert generation_series(rows) == [(1, .61, .59), (3, .60, .595)]
+
+
+def test_impact_uses_test_metrics_and_confusion_matrix():
+    from src.panel_values import impact_values
+    assert impact_values(None) == {"f1": None, "recall_pp": None, "fn": None}
+    result = impact_values({
+        "baseline": {"f1": .604, "recall": .5588, "matriz_confusao": [[926,109],[165,209]]},
+        "genetico": {"f1": .5869, "recall": .5374, "matriz_confusao": [[925,110],[173,201]]},
+    })
+    assert result["f1"] == pytest.approx(-.0171)
+    assert result["recall_pp"] == pytest.approx(-2.14)
+    assert result["fn"] == 8

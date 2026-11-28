@@ -122,6 +122,12 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
     await expect(page.locator('.n3-status [role="progressbar"]')).toHaveAttribute('aria-valuenow','15');
     await expect(page.locator('.n3-risk-fill')).toHaveCount(2);
     await expect(page.locator('.n3-risk-threshold')).toHaveCount(2);
+    await expect(page.locator('.n3-f1-line')).toHaveCount(1);
+    await expect(page.locator('.n3-fitness-line')).toHaveCount(1);
+    await expect(page.locator('.n3-chart-point')).toHaveCount(15);
+    await expect(page.locator('.churn-bit')).toHaveCount(19);
+    await expect(page.locator('.churn-bit.is-on')).toHaveCount(9);
+    await expect(page.locator('.n3-impact')).toContainText('+8');
     await expect(page.locator('.churn-run-check')).toBeVisible();
     await screenshot(page,info,'CL-B03-concluido');
 
@@ -131,6 +137,9 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
     await expect(page.locator('.churn-comparison .churn-state'))
       .toHaveText('Dados alterados');
     await expect(page.locator('.n3-risk-fill')).toHaveCount(0);
+    await expect(page.locator('.churn-chromosome')).toContainText('Subconjunto anterior');
+    await expect(page.locator('.churn-chart')).toContainText('execução anterior');
+    await expect(page.locator('.n3-impact')).toContainText('execução anterior');
     await expect(page.locator('.n3-status .n3-status-title')).toHaveText('Dados alterados');
     await expect(button).toContainText('Recalcular previsão');
     await expect(button).toBeEnabled();

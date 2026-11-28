@@ -3,6 +3,7 @@
 Execute: python -m streamlit run streamlit_app.py
 """
 
+import math
 from html import escape
 from pathlib import Path
 from time import perf_counter
@@ -15,7 +16,7 @@ from src.evaluation import evaluate_test
 from src.genetic import GeneticConfig, select_features
 from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
-from src.panel_values import probability_values, status_values
+from src.panel_values import generation_series, impact_values, probability_values, status_values
 from src.workflow_state import (
     fail_attempt, finish_search, new_attempt, record_evaluation,
     record_generation, start_search, view_state,
@@ -561,6 +562,31 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .churn-chart-line {fill:none;stroke:var(--n3-text);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;}
 .churn-chart-axis-x {display:flex;justify-content:space-between;color:var(--n3-secondary);font-size:13px;font-variant-numeric:tabular-nums;margin-top:3px;}
 .churn-chart-caption {color:var(--n3-muted);font-size:13px;line-height:1.35;min-height:17px;margin:4px 0 0 41px;}
+/* Cartões do resumo inferior, com a mesma superfície dos resultados. */
+.churn-chart,.churn-chromosome,.n3-impact,.st-key-dashboard-monitor-section {
+  box-sizing:border-box;background:var(--n3-control);border:1px solid var(--n3-line);
+  border-radius:6px;padding:12px 14px;
+}
+.churn-chart .churn-section-top {align-items:center;flex-wrap:wrap;gap:4px 12px;}
+.n3-chart-legend {display:flex;gap:14px;align-items:center;font-size:12px;color:var(--n3-secondary);}
+.n3-chart-legend span {display:inline-flex;gap:5px;align-items:center;}
+.n3-chart-legend i {width:18px;height:2px;background:var(--n3-text);display:inline-block;}
+.n3-chart-legend .n3-f1-key {background:#A6A9AE;}
+.churn-chart-line.n3-f1-line {stroke:#A6A9AE;stroke-width:1.8;}
+.n3-chart-point {outline:none;cursor:help;}
+.n3-chart-point:focus-visible .n3-chart-dot {stroke:#79A9F5;stroke-width:2;vector-effect:non-scaling-stroke;}
+.n3-chart-dot {fill:var(--n3-text);}
+.churn-chromosome .churn-bits {grid-template-columns:repeat(10,minmax(0,22px));gap:2px;justify-content:center;}
+.churn-chromosome .churn-bit {height:29px;cursor:help;font-weight:500;}
+.churn-bit:focus-visible {outline:2px solid #79A9F5;outline-offset:1px;}
+.churn-chromosome .churn-section-top {flex-wrap:wrap;gap:4px;}
+.n3-impact .churn-metrics {gap:6px;}
+.n3-impact .churn-metric dt {white-space:normal;}
+.n3-impact .churn-metric dd {font-size:18px;white-space:normal;}
+.n3-impact .is-negative {color:var(--n3-negative);}
+.n3-impact .is-positive {color:var(--n3-positive);}
+.n3-impact .n3-workspace-link {display:block;margin-top:10px;padding-top:9px;border-top:1px solid var(--n3-line);}
+.n3-impact .churn-technical-note {min-height:30px;}
 /* Características e resultados técnicos: nenhuma fila de KPI aninhados. */
 .churn-chromosome {min-width:0;}
 .churn-selection-count {font-size:15px;font-weight:600;color:var(--n3-text);font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -684,8 +710,15 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .st-key-dashboard-prediction-tabs [role="tabpanel"] [data-testid="stVerticalBlock"] {min-width:0!important;}
 .st-key-dashboard-prediction-panel {display:flex!important;flex-direction:column!important;gap:12px!important;min-width:0!important;}
 .st-key-dashboard-analysis-section {height:auto!important;min-height:0!important;overflow:visible!important;}
-.st-key-dashboard-analysis-section .churn-chart {height:clamp(160px,24dvh,270px);}
-.st-key-dashboard-selection-section {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;overflow:visible!important;}
+.st-key-dashboard-analysis-section .churn-chart {height:173px;}
+.st-key-dashboard-selection-section {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr)!important;gap:12px!important;overflow:visible!important;align-items:stretch!important;}
+.st-key-dashboard-selection-section > * {min-width:0!important;}
+.st-key-dashboard-selection-section .churn-chromosome,.st-key-dashboard-selection-section .n3-impact {min-height:190px;}
+.st-key-dashboard-selection-section .churn-chromosome .churn-bits {grid-template-columns:repeat(10,minmax(0,22px));}
+@media(max-width:1150px) {
+  .st-key-dashboard-selection-section {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  .st-key-dashboard-selection-section > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {grid-column:1/-1;}
+}
 .st-key-dashboard-monitor-section {height:auto!important;min-height:0!important;overflow:visible!important;}
 .st-key-dashboard-monitor-section .churn-console-lines {max-height:112px!important;}
 .n3-terminal-log {background:#0A0B0D;border:1px solid var(--n3-line);border-radius:4px;padding:10px;font:13px/1.5 Consolas,"Liberation Mono",monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55dvh;overflow:auto;user-select:text;}
@@ -1227,64 +1260,103 @@ def _render_logs(events: list[str], slots: dict, *, historical: bool = False,
 
 
 def _render_metrics(run: dict | None, slots: dict, *, historical: bool = False) -> None:
-    _render_technical(run, slot=slots["technical"], historical=historical)
+    _render_impact(run, slot=slots["technical"], historical=historical)
     _render_technical(run, slot=slots["metrics"], historical=historical, link_metrics=False)
 
 
-def _render_chromosome(chromosome: tuple[int, ...] | None, title: str, *, slot) -> None:
-    if chromosome is None:
-        bits = '<span class="churn-bit" aria-label="Ainda indisponível">—</span>' * len(FEATURE_COLUMNS)
-        count = "—"
-    else:
-        bits = "".join(
-            f'<span class="churn-bit {"is-on" if bit else ""}" '
-            f'title="{escape(LABELS[name])} — {"incluída" if bit else "excluída"}">'
-            f'{int(bit)}</span>'
-            for name, bit in zip(FEATURE_COLUMNS, chromosome)
+def _render_chromosome(chromosome: tuple[int, ...] | None, title: str, *, slot,
+                       customer: dict | None = None) -> None:
+    bits = []
+    for i, name in enumerate(FEATURE_COLUMNS):
+        bit = None if chromosome is None else int(chromosome[i])
+        value = "—"
+        if customer is not None:
+            raw = customer[name]
+            value = "Indisponível" if raw is None else label_for(str(raw))
+        state = "Ainda indisponível" if bit is None else ("Incluída" if bit else "Excluída")
+        description = f"Gene {i + 1} · {LABELS[name]} · Valor: {value} · {state}"
+        bits.append(
+            f'<span class="churn-bit {"is-on" if bit else ""}" tabindex="0" '
+            f'title="{escape(description, quote=True)}" aria-label="{escape(description, quote=True)}">'
+            f'{"—" if bit is None else bit}</span>'
         )
-        count = str(sum(chromosome))
+    count = "—" if chromosome is None else str(sum(chromosome))
     markup = ('<section class="churn-chromosome" aria-label="Cromossomo de 19 características">'
               f'<div class="churn-section-top"><h3>{escape(title)}</h3>'
               f'<span class="churn-selection-count">{count} / 19</span></div>'
-              f'<div class="churn-bits">{bits}</div>'
+              f'<div class="churn-bits">{"".join(bits)}</div>'
               '<div class="churn-chromosome-note">1 = incluída · 0 = excluída</div></section>')
     slot.markdown(markup, unsafe_allow_html=True)
 
 
 def _history_chart(history: list[dict], *, slot, historical: bool = False) -> None:
-    """SVG proporcional, sem bibliotecas de gráficos ou dependências de rede.
-
-    A escala inicia em zero e permanece constante nas 15 gerações, evitando
-    sugerir uma melhora maior por mudanças automáticas dos limites do eixo.
-    """
-    values = [max(0.0, min(1.0, float(item["melhor_f1_cv"]))) for item in history]
-    # Para resultados superiores a 0,8, ampliar o eixo em vez de truncar o dado.
-    ceiling = max(0.8, min(1.0, (int(max(values) * 5 + 0.999999) / 5) if values else 0.8))
-    points = " ".join(
-        f'{1000 * (i / 14):.2f},{240 * (1 - value / ceiling):.2f}'
-        for i, value in enumerate(values)
-    )
-    line = (f'<polyline class="churn-chart-line" points="{points}"/>' if values else '')
+    """Desenha os pares medidos, na mesma escala, sem preencher gerações ausentes."""
+    series = generation_series(history)
+    observed = [value for _, f1, fitness in series for value in (f1, fitness)]
+    # Faixa inicial conforme a referência; ampliar quando necessário.
+    lower = min(0.56, min(observed, default=0.56))
+    upper = max(0.64, max(observed, default=0.64))
+    floor = math.floor(lower * 50) / 50
+    ceiling = math.ceil(upper * 50) / 50
+    total = GeneticConfig().generations
+    def x(generation): return 1000 * (generation - 1) / max(1, total - 1)
+    def y(value): return 240 * (1 - (value - floor) / (ceiling - floor))
+    def points(index):
+        return " ".join(f'{x(row[0]):.2f},{y(row[index]):.2f}' for row in series)
+    lines = ""
+    if series:
+        lines = (f'<polyline class="churn-chart-line n3-f1-line" points="{points(1)}"/>'
+                 f'<polyline class="churn-chart-line n3-fitness-line" points="{points(2)}"/>')
+    markers = []
+    for generation, f1, fitness in series:
+        label = f"Geração {generation} · F1 (CV): {f1:.4f} · Fitness: {fitness:.4f}".replace(".", ",")
+        markers.append(
+            f'<g class="n3-chart-point" tabindex="0" role="img" aria-label="{escape(label, quote=True)}">'
+            f'<title>{escape(label)}</title>'
+            f'<circle cx="{x(generation):.2f}" cy="{y(fitness):.2f}" r="4" class="n3-chart-dot"/>'
+            f'<circle cx="{x(generation):.2f}" cy="{y(f1):.2f}" r="3" fill="#A6A9AE"/></g>'
+        )
     grid = ''.join(f'<line x1="0" y1="{i*60}" x2="1000" y2="{i*60}"/>' for i in range(5))
+    title = "Evolução genética · execução anterior" if historical else "Evolução genética"
+    labels = "".join(f'<span>{(floor + (ceiling-floor)*tick/4):.2f}</span>'.replace(".", ",")
+                     for tick in range(4, -1, -1))
     markup = (
-        '<section class="churn-chart" aria-label="Evolução do F1-score em validação cruzada">'
-        '<div class="churn-section-top"><h3>' +
-        ('Evolução do F1-score · execução anterior' if historical else 'Evolução do F1-score') +
-        '</h3></div>' +
-        '<div class="churn-chart-plot">'
-        '<div class="churn-chart-axis-y">' +
-        "".join(f'<span>{(ceiling * tick / 4):.1f}</span>'.replace(".", ",") for tick in range(4, -1, -1)) +
-        '</div>'
-        '<div class="churn-chart-plot-main">'
-        f'<svg class="churn-chart-svg" viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" '
-        f'aria-label="Evolução do F1 em validação cruzada; {len(values)} gerações">'
-        f'<g class="churn-chart-grid">{grid}</g>{line}</svg>'
+        '<section class="churn-chart" aria-label="Evolução do F1 e fitness em validação cruzada">'
+        f'<div class="churn-section-top"><h3>{title}</h3>'
+        '<div class="n3-chart-legend"><span><i class="n3-f1-key"></i>F1 (CV)</span><span><i></i>Fitness</span></div></div>'
+        '<div class="churn-chart-plot"><div class="churn-chart-axis-y">' + labels +
+        '</div><div class="churn-chart-plot-main">'
+        '<svg class="churn-chart-svg" viewBox="0 0 1000 240" preserveAspectRatio="none" '
+        f'role="group" aria-label="{len(series)} gerações observadas">'
+        f'<g class="churn-chart-grid">{grid}</g>{lines}{"".join(markers)}</svg>'
         '<div class="churn-chart-axis-x"><span>1</span><span>5</span><span>10</span><span>15</span></div>'
-        '</div></div>'
-        f'<div class="churn-chart-caption">{"Melhor F1 (CV): " + format(max(values), ".4f").replace(".", ",") if values else "Aguardando a primeira geração"}</div>'
-        '</section>'
+        '</div></div></section>'
     )
     slot.markdown(markup, unsafe_allow_html=True)
+
+
+def _render_impact(run: dict | None, *, slot, historical: bool = False) -> None:
+    values = impact_values(run["summary"] if run is not None else None)
+    rows = []
+    for key, label, decimals, unit in (("f1", "ΔF1", 4, ""),
+                                        ("recall_pp", "ΔRecall", 2, " pp"),
+                                        ("fn", "ΔFN", 0, "")):
+        value = values[key]
+        if value is None:
+            display, semantic = "—", ""
+        else:
+            display = f"{value:+.{decimals}f}".replace(".", ",") + unit
+            beneficial = value < 0 if key == "fn" else value > 0
+            semantic = "" if value == 0 else ("is-positive" if beneficial else "is-negative")
+        rows.append(f'<div class="churn-metric"><dt>{label}</dt><dd class="{semantic}">{display}</dd></div>')
+    title = "Impacto · execução anterior" if historical else "Impacto da seleção"
+    slot.markdown(
+        f'<section class="n3-impact" aria-label="{title}"><div class="churn-section-top"><h3>{title}</h3></div>'
+        f'<dl class="churn-metrics">{"".join(rows)}</dl>'
+        '<div class="churn-technical-note">Genético − referência · teste reservado</div>'
+        '<a class="n3-workspace-link" href="#n3-workspace-metrics" data-n3-prediction-tab="Métricas">Ver métricas</a></section>',
+        unsafe_allow_html=True,
+    )
 
 
 def _render_technical(run: dict | None, *, slot, historical: bool = False,
@@ -1339,7 +1411,7 @@ def _render_finished_run(run: dict, slots: dict) -> None:
     _render_logs(run["events"], slots, historical=historical, message=notice)
     _render_chromosome(run["chromosome"],
                        "Subconjunto anterior" if historical else "Melhor cromossomo",
-                       slot=slots["chromosome"])
+                       slot=slots["chromosome"], customer=run["customer"])
     _history_chart(run["history"], slot=slots["chart"], historical=historical)
     _render_metrics(run, slots, historical=historical)
     if run.get("events"):
@@ -1394,7 +1466,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
             _render_chromosome(
                 chromosome,
                 f"Geração {record['geracao']} · indivíduo {record['individuo']}",
-                slot=slots["chromosome"],
+                slot=slots["chromosome"], customer=attempt["customer"],
             )
         log(format_evaluation_line(record))
 
@@ -1491,7 +1563,8 @@ def _render_failed_attempt(attempt: dict, slots: dict, *, allow_download: bool =
     _render_prediction_comparison(None, "error", slot=slots["comparison"])
     _render_status("error", attempt, slot=slots["status"])
     _render_logs(attempt["events"], slots)
-    _render_chromosome(attempt["chromosome"], "Análise de subconjunto", slot=slots["chromosome"])
+    _render_chromosome(attempt["chromosome"], "Análise de subconjunto", slot=slots["chromosome"],
+                       customer=attempt["customer"])
     _history_chart(attempt["history"], slot=slots["chart"])
     _render_metrics(None, slots)
     if allow_download and attempt["events"]:
@@ -1643,9 +1716,9 @@ def _workspace_slots() -> dict:
                 with st.container(key="dashboard-selection-section", border=False):
                     chromosome = st.empty()
                     technical = st.empty()
-                with st.container(key="dashboard-monitor-section", border=False):
-                    st.markdown('<div class="churn-monitor-title">Monitor</div>', unsafe_allow_html=True)
-                    console, log = st.empty(), st.empty()
+                    with st.container(key="dashboard-monitor-section", border=False):
+                        st.markdown('<div class="churn-monitor-title">Monitor</div>', unsafe_allow_html=True)
+                        console, log = st.empty(), st.empty()
         with terminal:
             terminal_download = st.empty()
             terminal_log = st.empty()
