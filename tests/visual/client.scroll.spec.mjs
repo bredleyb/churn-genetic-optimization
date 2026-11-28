@@ -13,7 +13,7 @@ test('CL-S01 cálculo das duas sombras em limites e conteúdos curtos',()=>{
   expect(scrollCueStrengths(999,400,404)).toEqual({top:1,bottom:0});
 });
 
-for(const size of [{width:1024,height:768},{width:390,height:900}]){
+for(const size of [{width:1024,height:600},{width:390,height:600}]){
   test('CL-S02 rolagem, sombras, calhas e rodapé fixo '+size.width,async({page},info)=>{
     await openClient(page,size);
     await tabs(page).getByRole('tab',{name:'Serviços'}).click();

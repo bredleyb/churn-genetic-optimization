@@ -112,7 +112,7 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   position:fixed!important;top:var(--n3-page-pad)!important;right:var(--n3-page-pad)!important;
   bottom:var(--n3-page-pad)!important;left:var(--n3-page-pad)!important;
   box-sizing:border-box!important;display:grid!important;
-  grid-template-columns:clamp(300px,27vw,380px) minmax(0,1fr)!important;
+  grid-template-columns:366px minmax(0,1fr)!important;
   gap:12px!important;width:auto!important;height:auto!important;
   min-height:0!important;max-height:none!important;overflow:hidden!important;
 }
@@ -613,17 +613,13 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .st-key-dashboard-workspace [data-testid="stProgress"] p {font-size:12px!important;color:var(--n3-muted)!important;}
 .st-key-dashboard-monitor-section button[kind="tertiary"] {font-size:13px!important;color:var(--n3-secondary)!important;min-height:26px!important;padding:0 4px!important;}
 @media(max-width:1150px) {
-  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {grid-template-columns:310px minmax(0,1fr)!important;}
-  .churn-prediction-value {font-size:32px;}
+   .churn-prediction-value {font-size:32px;}
   .st-key-dashboard-selection-section {gap:12px!important;}
   .churn-bit {height:24px;font-size:11px;}
   .churn-metric dd {font-size:18px;}
 }
 @media(max-width:900px) {
-  :root {--n3-page-pad:10px;--n3-panel-pad:10px;}
-  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    grid-template-columns:270px minmax(0,1fr)!important;gap:8px!important;
-  }
+  :root {--n3-page-pad:12px;--n3-panel-pad:12px;}
   .st-key-dashboard-selection-section {grid-template-columns:1fr!important;overflow-y:auto!important;}
   .churn-model-name {font-size:15px;}
   .churn-prediction-value {font-size:27px;}
@@ -641,20 +637,9 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 }
 @media(max-width:620px) {
   :root {
-    --n3-page-pad:8px;--n3-panel-pad:8px;
-    --n3-client-action-height:44px;
+    --n3-page-pad:12px;--n3-panel-pad:12px;
+    --n3-client-action-height:48px;
   }
-  /* Grade de dois painéis com margens simétricas na viewport. */
-  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    position:fixed!important;display:grid!important;
-    grid-template-columns:minmax(0,1fr)!important;
-    grid-template-rows:minmax(0,36fr) minmax(0,64fr)!important;
-    gap:8px!important;box-sizing:border-box!important;
-    width:auto!important;height:auto!important;
-    max-height:calc(100dvh - var(--n3-page-pad) - var(--n3-page-pad))!important;
-    min-height:0!important;margin:0!important;overflow:hidden!important;align-content:stretch!important;
-  }
-  .st-key-dashboard-client,.st-key-dashboard-workspace {height:100%!important;max-height:100%!important;min-height:0!important;}
   .churn-panel-heading {font-size:14px!important;}
   .churn-comparison {padding-bottom:7px;}
   .churn-section-top h3 {font-size:14px;}
@@ -725,11 +710,6 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .n3-terminal-log {background:#0A0B0D;border:1px solid var(--n3-line);border-radius:4px;padding:10px;font:13px/1.5 Consolas,"Liberation Mono",monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55dvh;overflow:auto;user-select:text;}
 .n3-workspace-link {color:var(--n3-text)!important;font-size:13px;text-decoration:underline;}
 .n3-workspace-link:focus-visible {outline:2px solid var(--n3-text);outline-offset:2px;}
-@media(min-width:1366px) {
-  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
-    grid-template-columns:366px minmax(0,1fr)!important;
-  }
-}
 @media(max-width:1150px) {
   .st-key-dashboard-selection-section .churn-bits {grid-template-columns:repeat(10,minmax(0,1fr));}
 }
@@ -898,6 +878,78 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
   .n3-metrics-table thead th {font-size:11px;}
   .n3-method-card,.n3-metrics-header,.n3-metrics-summary {padding:10px;}
   .n3-terminal-log {height:180px;}
+}
+/* Contrato responsivo final: 12 px de margens e intervalo; Cliente
+   de 366 px no desktop. Em telas empilhadas a página principal rola. */
+@media(min-width:1024px) {
+  .st-key-dashboard-workspace {padding:12px 15px!important;gap:10px!important;}
+  .st-key-dashboard-prediction-panel {gap:10px!important;}
+}
+@media(min-width:1024px) and (max-width:1365px) {
+  .n3-status {grid-template-columns:repeat(2,minmax(0,1fr));row-gap:12px;}
+  .n3-status > div:nth-child(3) {border-left:0;}
+  .st-key-dashboard-selection-section {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  .st-key-dashboard-selection-section > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {grid-column:1/-1;}
+}
+@media(max-width:1023px) {
+  .stApp {height:100dvh!important;overflow:hidden!important;}
+  [data-testid="stMain"] {height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin;}
+  [data-testid="stMainBlockContainer"] {height:auto!important;min-height:100dvh!important;overflow:visible!important;}
+  [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {gap:0!important;}
+  /* A folha de estilo é injetada via Markdown e não ocupa uma linha visual. */
+  [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] > :is([data-testid="stElementContainer"],[data-testid="stLayoutWrapper"]):has(style):not(:has(.st-key-dashboard-shell)) {display:none!important;}
+  .st-key-dashboard-shell {height:auto!important;max-width:none!important;overflow:visible!important;}
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
+    position:static!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto!important;
+    width:100%!important;height:auto!important;max-height:none!important;gap:12px!important;
+    margin:0!important;overflow:visible!important;
+  }
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"],
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"],
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"] {
+    height:auto!important;max-height:none!important;min-width:0!important;overflow:visible!important;
+  }
+  .st-key-dashboard-workspace {height:auto!important;max-height:none!important;grid-template-rows:20px auto!important;gap:10px!important;padding:12px 15px!important;overflow:visible!important;}
+  .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-prediction-tabs),
+  .st-key-dashboard-prediction-tabs,
+  .st-key-dashboard-prediction-tabs [data-testid="stTabs"] {height:auto!important;max-height:none!important;overflow:visible!important;}
+  .st-key-dashboard-prediction-tabs [role="tabpanel"] {height:auto!important;max-height:none!important;overflow:visible!important;}
+  .st-key-dashboard-prediction-panel {gap:10px!important;}
+  .st-key-dashboard-prediction-tabs [role="tablist"] {gap:0!important;}
+  .st-key-dashboard-prediction-tabs [role="tab"] {padding:6px 8px!important;font-size:13px!important;}
+}
+@media(min-width:700px) and (max-width:1023px) {
+  .st-key-dashboard-client {height:auto!important;max-height:none!important;grid-template-rows:20px auto auto!important;}
+  .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-client-fields),
+  .st-key-dashboard-client-fields {height:auto!important;max-height:none!important;overflow:visible!important;}
+  .st-key-dashboard-client-fields {overflow-x:clip!important;overflow-y:visible!important;}
+  .st-key-dashboard-selection-section {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media(max-width:699px) {
+  .st-key-dashboard-client {height:min(744px,calc(100dvh - 24px))!important;max-height:none!important;}
+  .st-key-dashboard-selection-section {grid-template-columns:minmax(0,1fr)!important;}
+  .st-key-dashboard-selection-section > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {grid-column:auto;}
+  .n3-status {grid-template-columns:repeat(2,minmax(0,1fr));row-gap:10px;}
+  .n3-status > div:nth-child(1),.n3-status > div:nth-child(2) {grid-column:1/-1;border-left:0;}
+  .n3-status > div:nth-child(3) {border-left:0;}
+  .churn-comparison .churn-models {grid-template-columns:minmax(0,1fr);}
+  .st-key-dashboard-prediction-tabs [role="tablist"] {justify-content:space-between!important;}
+  .st-key-dashboard-prediction-tabs [role="tab"] {padding:6px 4px!important;font-size:12px!important;}
+  .churn-panel-heading {font-size:16px!important;}
+  .n3-method-grid {grid-template-columns:minmax(0,1fr);}
+}
+@media(max-width:389px) {
+  .st-key-dashboard-workspace {padding:12px 7px!important;}
+  .st-key-dashboard-client {padding:12px 11px!important;}
+  .st-key-dashboard-client-fields,.st-key-dashboard-client-footer {padding-inline:2px!important;}
+  .st-key-dashboard-detail-tabs [role="tab"] {padding:7px 4px!important;}
+  .st-key-dashboard-prediction-tabs [role="tab"] {padding:6px 2px!important;}
+  .n3-status-number {font-size:20px;}
+  .n3-metrics-table th:first-child {width:40%;}
+}
+@media(min-width:700px) and (max-width:1023px) {
+  /* Calhas equivalentes em altura natural, sem recortar o rodapé. */
+  .st-key-dashboard-client-fields {overflow-y:auto!important;}
 }
 </style>
 """,

@@ -6,21 +6,24 @@ for(const size of VIEWPORTS){
     await openClient(page,size);
     const panel=await measure(client(page)),scroll=await measure(fields(page));
     const foot=await measure(footer(page)),btn=await measure(action(page));
-    const edge = size.width<=620?8:(size.width<=900?10:12);
+    const edge = 12;
     const workspace = await measure(page.locator('.st-key-dashboard-workspace'));
     near(panel.left,edge,'padding externo esquerdo',2);
-    near(size.width-workspace.right,edge,'padding externo direito do dashboard',2);
     near(panel.top,edge,'padding superior do dashboard',2);
-    near(size.height-workspace.bottom,edge,'padding inferior do dashboard',2);
-    if(size.width<=620){
-      near(size.width-panel.right,edge,'largura do Cliente móvel',2);
-      expect(workspace.top).toBeGreaterThan(panel.bottom+2);
+    if(size.width<1024){
+      near(workspace.left,panel.left,'painéis empilhados',2);
+      near(workspace.right,panel.right,'largura dos painéis',2);
+      near(workspace.top-panel.bottom,12,'intervalo vertical',2);
+      if(size.width<700) near(panel.height,Math.min(744,size.height-24),'altura móvel',2);
+      else expect(panel.height).toBeGreaterThan(400);
     }else{
+      near(size.width-workspace.right,edge,'padding externo direito do dashboard',2);
+      near(size.height-workspace.bottom,edge,'padding inferior do dashboard',2);
+      near(panel.width,366,'largura Cliente desktop',2);
       near(panel.top,workspace.top,'painéis compartilham o topo',2);
       near(panel.bottom,workspace.bottom,'painéis compartilham a base',2);
-      expect(workspace.left-panel.right).toBeGreaterThanOrEqual(7);
+      near(workspace.left-panel.right,12,'intervalo horizontal',2);
     }
-    expect(panel.bottom).toBeLessThanOrEqual(size.height+1);
     const pageOverflow=await page.evaluate(()=>({
       x:document.documentElement.scrollWidth-window.innerWidth,
       y:document.documentElement.scrollHeight-window.innerHeight,
@@ -30,7 +33,7 @@ for(const size of VIEWPORTS){
     expect(foot.bottom).toBeLessThanOrEqual(panel.bottom+1);
     expect(btn.left).toBeGreaterThan(scroll.left+7);
     expect(btn.right).toBeLessThan(scroll.right-7);
-    expect(btn.height).toBe(size.width<=620?44:48);
+    expect(btn.height).toBe(48);
     await expect(profileCircles(page)).toHaveCount(3);
     await expect(profileActions(page)).toHaveCount(2);
     const label=await measure(page.locator('.churn-profile-label'));
@@ -76,9 +79,9 @@ for(const size of VIEWPORTS){
       near(rect.height,42,'altura padronizada',2);
       expect(rect.right).toBeLessThanOrEqual(scroll.right-6);
     }
-    if(size.width>620&&size.width<=900)for(const rect of [tenure,contract,internet,charge]){
-      near(rect.left,btn.left,'layout tablet',2);
-      near(rect.width,btn.width,'layout tablet largura',2);
+    if(size.width>=700&&size.width<1024){
+      expect(contract.left).toBeGreaterThan(tenure.right);
+      near(tenure.top,contract.top,'campos rápidos tablet',2);
     }
     const heading=await measure(page.getByRole('heading',{name:'Cliente',exact:true}));
     near(heading.cx,panel.cx,'título centralizado',2);
