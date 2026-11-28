@@ -15,6 +15,10 @@ from src.evaluation import evaluate_test
 from src.genetic import GeneticConfig, select_features
 from src.model import build_classifier, evaluate_cv
 from src.prediction import predict_customer
+from src.workflow_state import (
+    fail_attempt, finish_search, new_attempt, record_evaluation,
+    record_generation, start_search, view_state,
+)
 from src.tenure_control import render_tenure_control
 from src.client_scroll_cues import mount_client_scroll_cues
 from src.example_profiles import (
@@ -1007,6 +1011,7 @@ def _apply_profile(profile_name: str, *, preserve_previous: bool = True) -> None
     # A chave do componente textual de Tempo precisa mudar ao carregar valores.
     st.session_state["tenure_revision"] = st.session_state.get("tenure_revision", 0) + 1
     st.session_state["workflow_run"] = None
+    st.session_state["workflow_attempt"] = None
     st.session_state["prediction_error"] = None
 
 
@@ -1064,6 +1069,9 @@ def _remember_field(feature: str) -> None:
     saved[feature] = st.session_state[f"field_{feature}"]
     st.session_state["customer_values"] = saved
     st.session_state["prediction_error"] = None
+    attempt = st.session_state.get("workflow_attempt")
+    if attempt is not None and attempt["phase"] == "failed":
+        st.session_state["workflow_attempt"] = None
     _save_active_example()
 
 
@@ -1209,8 +1217,13 @@ def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> Non
     """Comparação dos modelos, com aviso apenas em caso de erro ou dados alterados."""
     ready = run is not None and status == "complete"
     count = run["summary"]["genetic_count"] if run is not None else None
-    reference = _format_probability(run["predictions"]["baseline"]) if ready else ("—", "Aguardando", "")
-    genetic = _format_probability(run["predictions"]["genetico"]) if ready else ("—", "Aguardando", "")
+    unavailable = {
+        "stale": ("Desatualizada", "", ""),
+        "invalid": ("Indisponível", "", ""),
+        "error": ("Indisponível", "", ""),
+    }.get(status, ("—", "Aguardando", ""))
+    reference = _format_probability(run["predictions"]["baseline"]) if ready else unavailable
+    genetic = _format_probability(run["predictions"]["genetico"]) if ready else unavailable
 
     def result(model: str, details: str, entry: tuple[str, str, str]) -> str:
         value, outcome, semantic = entry
@@ -1224,7 +1237,9 @@ def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> Non
         '<div class="churn-state" role="status">Dados alterados</div>'
         if status == "stale" else
         '<div class="churn-state is-error" role="status">Erro</div>'
-        if status == "error" else ""
+        if status == "error" else
+        '<div class="churn-state" role="status">Dados inválidos</div>'
+        if status == "invalid" else ""
     )
     markup = ('<section class="churn-comparison" aria-label="Comparação dos modelos">'
               f'{alert}<div class="churn-models">'
@@ -1248,16 +1263,21 @@ def _render_console(events: list[str], *, slot, complete: bool = False) -> None:
     slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _render_chromosome(chromosome: tuple[int, ...], title: str, *, slot) -> None:
-    bits = "".join(
-        f'<span class="churn-bit {"is-on" if bit else ""}" '
-        f'title="{escape(LABELS[name])} — {"incluída" if bit else "excluída"}">'
-        f'{int(bit)}</span>'
-        for name, bit in zip(FEATURE_COLUMNS, chromosome)
-    )
+def _render_chromosome(chromosome: tuple[int, ...] | None, title: str, *, slot) -> None:
+    if chromosome is None:
+        bits = '<span class="churn-bit" aria-label="Ainda indisponível">—</span>' * len(FEATURE_COLUMNS)
+        count = "—"
+    else:
+        bits = "".join(
+            f'<span class="churn-bit {"is-on" if bit else ""}" '
+            f'title="{escape(LABELS[name])} — {"incluída" if bit else "excluída"}">'
+            f'{int(bit)}</span>'
+            for name, bit in zip(FEATURE_COLUMNS, chromosome)
+        )
+        count = str(sum(chromosome))
     markup = ('<section class="churn-chromosome" aria-label="Cromossomo de 19 características">'
-              '<div class="churn-section-top"><h3>Características selecionadas</h3>'
-              f'<span class="churn-selection-count">{sum(chromosome)} / 19</span></div>'
+              f'<div class="churn-section-top"><h3>{escape(title)}</h3>'
+              f'<span class="churn-selection-count">{count} / 19</span></div>'
               f'<div class="churn-bits">{bits}</div>'
               '<div class="churn-chromosome-note">1 = incluída · 0 = excluída</div></section>')
     slot.markdown(markup, unsafe_allow_html=True)
@@ -1324,19 +1344,23 @@ def _render_idle(slots: dict) -> None:
     slots["phase"].markdown("", unsafe_allow_html=True)
     slots["progress"].empty()
     _render_console([], slot=slots["console"])
-    _render_chromosome(tuple(0 for _ in FEATURE_COLUMNS), "Aguardando avaliação", slot=slots["chromosome"])
+    _render_chromosome(None, "Aguardando avaliação", slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
     _render_technical(None, slot=slots["technical"])
 
 
 def _render_finished_run(run: dict, slots: dict) -> None:
-    stale = _is_stale(run)
-    _render_workspace_heading("stale" if stale else "complete", slot=slots["heading"])
-    _render_prediction_comparison(run, "stale" if stale else "complete", slot=slots["comparison"])
+    status = view_state(running=False, customer=_current_customer(),
+                        last_success=run, attempt=None)
+    historical = status != "complete"
+    _render_workspace_heading("stale" if historical else "complete", slot=slots["heading"])
+    _render_prediction_comparison(run, status, slot=slots["comparison"])
     slots["phase"].markdown('<span class="churn-phase">15 gerações concluídas</span>', unsafe_allow_html=True)
     slots["progress"].progress(1.0, text="Geração 15 de 15")
     _render_console(run["events"], slot=slots["console"], complete=True)
-    _render_chromosome(run["chromosome"], "Melhor cromossomo", slot=slots["chromosome"])
+    _render_chromosome(run["chromosome"],
+                       "Subconjunto anterior" if historical else "Melhor cromossomo",
+                       slot=slots["chromosome"])
     _history_chart(run["history"], slot=slots["chart"])
     _render_technical(run, slot=slots["technical"])
     if run.get("events"):
@@ -1352,12 +1376,13 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
     """Execução completa ao clicar em Calcular previsão; não altera arquivos salvos."""
     _render_workspace_heading("running", slot=slots["heading"])
     config = GeneticConfig()
-    started = perf_counter()
-    events: list[str] = []
-    history: list[dict] = []
+    attempt = new_attempt(customer)
+    st.session_state["workflow_attempt"] = attempt
+    events = attempt["events"]
+    history = attempt["history"]
     _render_prediction_comparison(None, "running", slot=slots["comparison"])
     slots["progress"].progress(0.0, text=f"Geração 0 de {config.generations}")
-    _render_chromosome(tuple(0 for _ in FEATURE_COLUMNS), "Aguardando avaliação",
+    _render_chromosome(None, "Aguardando avaliação",
                        slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
     _render_technical(None, slot=slots["technical"])
@@ -1372,6 +1397,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         log(message)
 
     def on_evaluation(record: dict[str, object]) -> None:
+        record_evaluation(attempt, record)
         if record["etapa"] == "inicio":
             chromosome = tuple(int(bit) for bit in record["cromossomo"])
             _render_chromosome(
@@ -1382,7 +1408,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         log(format_evaluation_line(record))
 
     def on_generation(record: dict[str, int | float]) -> None:
-        history.append(dict(record))
+        record_generation(attempt, record)
         number = int(record["geracao"])
         slots["phase"].markdown(
             f'<div class="churn-phase">Seleção genética · geração {number} de '
@@ -1394,6 +1420,7 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         _history_chart(history, slot=slots["chart"])
 
     try:
+        log("[EXECUÇÃO] Processamento iniciado.")
         phase("Preparando os dados", "[DADOS] Lendo o conjunto Telco Customer Churn")
         dataset = load_dataset(DATASET)
         x_dev, x_test, y_dev, y_test = split_dataset(
@@ -1409,10 +1436,14 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         phase("Buscando subconjuntos de características",
               f"[AG] {config.population_size} indivíduos · "
               f"{config.generations} gerações · {len(FEATURE_COLUMNS)} genes")
+        start_search(attempt, perf_counter())
         genetic_result = select_features(
             x_dev, y_dev, config, on_generation=on_generation,
             on_evaluation=on_evaluation,
         )
+        finish_search(attempt, genetic_result.elapsed_seconds)
+        attempt["chromosome"] = genetic_result.chromosome
+        attempt["evaluated_subsets"] = genetic_result.evaluated_subsets
         phase("Treinando os classificadores",
               "[TREINO] Ajustando os modelos com os dados de desenvolvimento")
         baseline = build_classifier()
@@ -1432,18 +1463,19 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         log(f"[FIM] Referência F1={base_metrics['f1']:.4f} · "
             f"Genético F1={genetic_metrics['f1']:.4f} · "
             f"{genetic_result.evaluated_subsets} subconjuntos distintos")
-    except (OSError, ValueError, RuntimeError, ImportError) as exc:
-        st.session_state["workflow_run"] = None
-        st.session_state["prediction_error"] = f"Não foi possível concluir: {exc}"
-        _render_workspace_heading("error", slot=slots["heading"])
-        _render_prediction_comparison(None, "error", slot=slots["comparison"])
-        slots["phase"].error("Execução interrompida")
-        slots["technical"].error(st.session_state["prediction_error"])
+    except Exception:
+        fail_attempt(attempt, perf_counter())
+        message = "Não foi possível concluir a execução. Verifique os dados e tente novamente."
+        st.session_state["prediction_error"] = message
+        events.append("[ERRO] " + message)
+        _render_failed_attempt(attempt, slots, allow_download=False)
         return
 
     summary = {
         "baseline": base_metrics,
         "genetico": genetic_metrics,
+        "baseline_cv_f1": baseline_cv["f1"]["media"],
+        "genetic_cv_f1": genetic_result.best_cv_f1,
         "baseline_count": len(FEATURE_COLUMNS),
         "genetic_count": len(genetic_result.selected_features),
         "test_count": len(x_test),
@@ -1458,11 +1490,31 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
         "chromosome": genetic_result.chromosome,
         "events": events,
         "evaluated_subsets": genetic_result.evaluated_subsets,
-        "elapsed_seconds": perf_counter() - started,
+        "elapsed_seconds": genetic_result.elapsed_seconds,
     }
+    attempt["phase"] = "complete"
     st.session_state["workflow_run"] = run
     st.session_state["prediction_error"] = None
     _render_finished_run(run, slots)
+
+
+def _render_failed_attempt(attempt: dict, slots: dict, *, allow_download: bool = True) -> None:
+    _render_workspace_heading("error", slot=slots["heading"])
+    _render_prediction_comparison(None, "error", slot=slots["comparison"])
+    slots["phase"].error("Execução interrompida")
+    completed = len(attempt["history"])
+    total = GeneticConfig().generations
+    slots["progress"].progress(completed / total, text=f"Geração {completed} de {total}")
+    _render_console(attempt["events"], slot=slots["console"])
+    _render_chromosome(attempt["chromosome"], "Análise de subconjunto", slot=slots["chromosome"])
+    _history_chart(attempt["history"], slot=slots["chart"])
+    _render_technical(None, slot=slots["technical"])
+    if allow_download and attempt["events"]:
+        slots["log"].download_button(
+            "Baixar log", "\n".join(attempt["events"]) + "\n",
+            file_name="execucao-genetica.log", mime="text/plain",
+            key="download_partial_log", type="tertiary",
+        )
 
 
 def _request_prediction() -> None:
@@ -1478,6 +1530,9 @@ def _prediction_button_label() -> str:
     """Única origem da legenda do botão conforme o estado da execução."""
     if st.session_state.get("prediction_running", False):
         return "Calculando"
+    attempt = st.session_state.get("workflow_attempt")
+    if attempt is not None and attempt["phase"] == "failed":
+        return "Tentar novamente"
     if st.session_state.get("workflow_run") is not None:
         return "Recalcular previsão"
     return "Calcular previsão"
@@ -1659,7 +1714,7 @@ def main() -> None:
             with st.container(key="dashboard-workspace", border=True):
                 slots = _workspace_slots()
                 if requested:
-                    st.session_state["workflow_run"] = None
+                    st.session_state["workflow_attempt"] = None
                     customer = _current_customer()
                     try:
                         if customer is None:
@@ -1675,6 +1730,9 @@ def main() -> None:
                         st.session_state["prediction_running"] = False
                     # Atualiza a legenda depois de concluir sem executar o modelo novamente.
                     st.rerun()
+                elif (st.session_state.get("workflow_attempt") is not None
+                      and st.session_state["workflow_attempt"]["phase"] == "failed"):
+                    _render_failed_attempt(st.session_state["workflow_attempt"], slots)
                 elif st.session_state.get("workflow_run") is not None:
                     _render_finished_run(st.session_state["workflow_run"], slots)
                 elif st.session_state.get("prediction_error"):

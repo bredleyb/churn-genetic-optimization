@@ -121,6 +121,12 @@ def model_input(form_values: dict) -> dict:
     result["TotalCharges"] = None if form_values.get("total_missing") else result["TotalCharges"]
     # A validação da aplicação é a mesma utilizada pela CLI.
     prepare_customer(result)
+    # Representação serializável e estável da entrada efetiva do modelo.
+    result["SeniorCitizen"] = str(result["SeniorCitizen"])
+    result["tenure"] = int(result["tenure"])
+    result["MonthlyCharges"] = float(result["MonthlyCharges"])
+    if result["TotalCharges"] is not None:
+        result["TotalCharges"] = float(result["TotalCharges"])
     return result
 
 
