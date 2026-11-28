@@ -11,6 +11,7 @@ from time import perf_counter
 import pandas as pd
 import streamlit as st
 
+from src.carbon_icons import carbon_icon
 from src.data import FEATURE_COLUMNS, load_dataset, split_dataset
 from src.evaluation import evaluate_test
 from src.genetic import GeneticConfig, select_features
@@ -100,10 +101,14 @@ html, body, #root {height:100%;overflow:hidden!important;background:var(--n3-bg)
   font-family:var(--n3-font-ui)!important;
 }
 /* Logs e bits continuam monoespaçados para manter as colunas alinhadas. */
+@font-face {font-family:"IBM Plex Mono";src:url("app/static/IBMPlexMono-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap;}
+@font-face {font-family:"Cascadia Mono";src:url("app/static/CascadiaMono-Variable.ttf") format("truetype");font-style:normal;font-weight:200 700;font-display:swap;}
+.stApp .churn-bit {font-family:"IBM Plex Mono",Consolas,"Liberation Mono",monospace!important;font-weight:400!important;}
 .stApp .churn-console-lines,
 .stApp .churn-console-lines *,
-.stApp .churn-bit {
-  font-family:Consolas,"Liberation Mono",monospace!important;
+.stApp .n3-terminal-log {
+  font-family:"Cascadia Mono",Consolas,"Liberation Mono",monospace!important;
+  font-weight:400!important;
 }
 .st-key-dashboard-shell {height:calc(100dvh - var(--n3-page-pad) - var(--n3-page-pad));width:100%;max-width:1680px;margin:auto;overflow:hidden;}
 /* A linha externa e seus wrappers são controlados; o Streamlit cria alturas automáticas. */
@@ -971,6 +976,33 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 @media(max-width:389px) {
   .churn-chromosome .churn-bit {height:29px;}
 }
+/* I5: tipografia local e geometria Carbon. */
+.n3-status-icon {width:42px;height:42px;flex-basis:42px;}
+.n3-status-icon svg {width:22px;height:22px;}
+.n3-info-trigger {width:24px;height:24px;}
+.n3-info-trigger svg {width:14px;height:14px;}
+.churn-chromosome .churn-bit {font-size:11px!important;line-height:16px!important;}
+.churn-console-lines,.churn-console-lines * {font-size:11px!important;line-height:14px!important;}
+.n3-terminal-log {font-size:13px!important;line-height:19px!important;}
+.churn-chart .churn-section-top h3,.churn-chromosome .churn-section-top h3,.n3-impact .churn-section-top h3 {font-size:15px;}
+.n3-chart-legend .n3-f1-key {background:repeating-linear-gradient(to right,#A6A9AE 0 5px,transparent 5px 8px);}
+.st-key-dashboard-profile-actions [data-testid="stIconMaterial"] {font-size:0!important;background:currentColor;mask-size:contain;mask-repeat:no-repeat;mask-position:center;}
+.st-key-dashboard-restore-action [data-testid="stIconMaterial"] {mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M20%2C10H7.8149l3.5874-3.5859L10%2C5%2C4%2C11%2C10%2C17l1.4023-1.4146L7.8179%2C12H20a6%2C6%2C0%2C0%2C1%2C0%2C12H12v2h8a8%2C8%2C0%2C0%2C0%2C0-16Z%22%2F%3E%3C%2Fsvg%3E");}
+.st-key-dashboard-delete-action [data-testid="stIconMaterial"] {mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%2212%22%20y%3D%2212%22%20width%3D%222%22%20height%3D%2212%22%2F%3E%3Crect%20x%3D%2218%22%20y%3D%2212%22%20width%3D%222%22%20height%3D%2212%22%2F%3E%3Cpath%20d%3D%22M4%2C6V8H6V28a2%2C2%2C0%2C0%2C0%2C2%2C2H24a2%2C2%2C0%2C0%2C0%2C2-2V8h2V6ZM8%2C28V8H24V28Z%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%222%22%20width%3D%228%22%20height%3D%222%22%2F%3E%3C%2Fsvg%3E");}
+.st-key-dashboard-profile-choices .st-key-create_example button {position:relative!important;}
+.st-key-dashboard-profile-choices .st-key-create_example button p {font-size:0!important;}
+.st-key-dashboard-profile-choices .st-key-create_example button::after {content:"";position:absolute;width:24px;height:24px;background:currentColor;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpolygon%20points%3D%2217%2C15%2017%2C8%2015%2C8%2015%2C15%208%2C15%208%2C17%2015%2C17%2015%2C24%2017%2C24%2017%2C17%2024%2C17%2024%2C15%20%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;pointer-events:none;}
+.st-key-dashboard-workspace [data-testid="stDownloadButton"] button {gap:6px!important;}
+.st-key-dashboard-workspace [data-testid="stDownloadButton"] button::before {content:"";display:block;width:16px;height:16px;background:currentColor;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M26%2C24v4H6V24H4v4H4a2%2C2%2C0%2C0%2C0%2C2%2C2H26a2%2C2%2C0%2C0%2C0%2C2-2h0V24Z%22%2F%3E%20%3Cpolygon%20points%3D%2226%2014%2024.59%2012.59%2017%2020.17%2017%202%2015%202%2015%2020.17%207.41%2012.59%206%2014%2016%2024%2026%2014%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;flex:none;}
+@media(min-width:1366px) {
+  .st-key-dashboard-selection-section .churn-chromosome,.st-key-dashboard-selection-section .n3-impact {min-height:210px;}
+  .st-key-dashboard-monitor-section {min-height:210px!important;}
+  .st-key-dashboard-monitor-section .churn-console-lines {max-height:132px!important;}
+}
+@media(max-width:699px) {
+  .n3-status-icon {width:34px;height:34px;flex-basis:34px;}
+  .n3-status-icon svg {width:20px;height:20px;}
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -1254,17 +1286,17 @@ def _render_workspace_heading(status: str, *, slot) -> None:
 def _render_status(status: str, data: dict | None, *, slot, phase: str = "") -> None:
     values = status_values(data, now=perf_counter())
     title, symbol, semantic = {
-        "idle": ("Aguardando", "—", ""),
-        "running": ("Em execução", "↻", ""),
-        "stale": ("Dados alterados", "!", "is-stale"),
-        "invalid": ("Dados inválidos", "!", "is-invalid"),
-        "error": ("Falha na execução", "×", "is-error"),
-        "complete": ("Previsão concluída", "✓", ""),
+        "idle": ("Aguardando", "play", ""),
+        "running": ("Em execução", "activity", ""),
+        "stale": ("Dados alterados", "renew", "is-stale"),
+        "invalid": ("Dados inválidos", "warning--alt", "is-invalid"),
+        "error": ("Falha na execução", "close", "is-error"),
+        "complete": ("Previsão concluída", "checkmark", ""),
     }[status]
     if status == "complete" and data is not None:
         _, outcome, semantic = probability_values(data["predictions"]["genetico"])
         title = "Cancelamento previsto" if outcome == "Cancelamento" else "Permanência prevista"
-        symbol = "!" if outcome == "Cancelamento" else "✓"
+        symbol = "warning--alt" if outcome == "Cancelamento" else "checkmark"
     elapsed = values["elapsed"]
     time = "—" if elapsed is None else f"{elapsed:.1f} s".replace(".", ",")
     historical = status in ("stale", "invalid") and data is not None
@@ -1280,7 +1312,7 @@ def _render_status(status: str, data: dict | None, *, slot, phase: str = "") -> 
     )
     slot.markdown(
         f'<section class="n3-status" data-n3-status="{status}" aria-label="Status da previsão">'
-        f'<div class="n3-status-identity"><span class="n3-status-icon {semantic}" aria-hidden="true">{symbol}</span>'
+        f'<div class="n3-status-identity"><span class="n3-status-icon {semantic}" aria-hidden="true">{carbon_icon(symbol)}</span>'
         f'<div><div class="n3-status-title" role="status">{escape(title)}</div>'
         f'<div class="n3-status-note">{escape(time_label)} · <span class="n3-search-time">{time}</span></div></div></div>'
         f'<div><div class="n3-status-note">{escape(phase or ("Última execução" if historical else "Gerações"))}</div>'
@@ -1304,10 +1336,7 @@ def _info_tooltip(title: str, body: str) -> str:
     return (f'<button type="button" class="n3-info-trigger" '
             f'aria-label="{escape("Informações: " + title, quote=True)}" '
             f'{_tooltip_attributes(title, body, kind="info")}>'
-            '<svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">'
-            '<path d="M16 2a14 14 0 1 0 0 28 14 14 0 0 0 0-28zm0 26a12 12 0 1 1 0-24 12 12 0 0 1 0 24z"/>'
-            '<path d="M14 14h3v10h-2v-8h-1z"/><circle cx="16" cy="9" r="1.5"/>'
-            '</svg></button>')
+            + carbon_icon("information") + '</button>')
 
 
 def _render_prediction_comparison(run: dict | None, status: str, *, slot) -> None:
