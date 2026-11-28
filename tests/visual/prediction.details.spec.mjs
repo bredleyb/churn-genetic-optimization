@@ -33,9 +33,12 @@ test('PR-T02 execução real, métricas, log integral UTF-8 e histórico', async
   await expect(download).toBeEnabled();
   const logRegion=page.locator('.n3-terminal-log');
   const log=await logRegion.textContent();
-  // O monitor acompanha o final; uma leitura manual no início deve ser preservada.
+  // O Terminal acompanha o final. Interação real de teclado deve suspender
+  // o acompanhamento e preservar a posição ao alternar abas/reruns.
   await expect.poll(()=>logRegion.evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop)).toBeLessThanOrEqual(4);
-  await logRegion.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event('scroll'));});
+  await logRegion.focus();
+  await page.keyboard.press('Home');
+  await expect.poll(()=>logRegion.evaluate(el=>el.scrollTop)).toBeLessThanOrEqual(4);
   expect(log.startsWith('[EXECUÇÃO] Processamento iniciado.')).toBeTruthy();
   expect(log).toContain('[FIM]');
   const pending=page.waitForEvent('download');
@@ -53,5 +56,9 @@ test('PR-T02 execução real, métricas, log integral UTF-8 e histórico', async
   await tabs.getByRole('tab',{name:'Terminal',exact:true}).click();
   await expect(logRegion).toHaveText(log);
   await expect.poll(()=>logRegion.evaluate(el=>el.scrollTop)).toBeLessThanOrEqual(4);
+  // Ao voltar ao final, o acompanhamento fica novamente disponível.
+  await logRegion.focus();
+  await page.keyboard.press('End');
+  await expect.poll(()=>logRegion.evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop)).toBeLessThanOrEqual(4);
   await ensureNoException(page);
 });

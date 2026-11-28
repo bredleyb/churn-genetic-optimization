@@ -314,38 +314,77 @@ export default function () {
   // Estado de leitura independente por console. Não mexer na posição
   // de abas ocultas; restaurar quando voltarem a ter área visível.
   const logKey = Symbol.for("n3.log.reading");
+  const freshReading = () => ({element:null,count:0,top:0,follow:true,intentUntil:0});
   const reading = window[logKey] ??= {
-    terminal: {element:null,count:0,top:0,follow:true},
-    monitor: {element:null,count:0,top:0,follow:true},
+    terminal: freshReading(), monitor: freshReading(), phase: null,
   };
   const logSelectors = {terminal:".n3-terminal-log", monitor:".churn-console-lines"};
   const logVisible = el => Boolean(el?.getClientRects().length && el.clientHeight);
-  const onLogScroll = event => {
+  const logKind = target => {
+    if (!(target instanceof Element)) return null;
     for (const [kind, selector] of Object.entries(logSelectors)) {
-      const el = event.target;
-      if (!(el instanceof Element) || !el.matches(selector) || !logVisible(el)) continue;
-      const state = reading[kind];
+      if (target.closest(selector)) return kind;
+    }
+    return null;
+  };
+  const logAtEdge = (kind, el) => kind === "terminal"
+    ? el.scrollHeight - el.clientHeight - el.scrollTop <= 4
+    : el.scrollTop <= 4;
+
+  // Alterações de layout, scroll anchoring e atualizações do React também
+  // emitem scroll. Somente uma interação de leitura altera a intenção.
+  let dragLog = null;
+  const onLogIntent = event => {
+    const kind = logKind(event.target);
+    if (!kind) return;
+    if (event.type === "keydown" &&
+        !["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"," "].includes(event.key)) return;
+    if (event.type === "pointerdown") dragLog = kind;
+    reading[kind].intentUntil = performance.now() + 700;
+  };
+  const onLogDrag = () => {
+    if (dragLog) reading[dragLog].intentUntil = performance.now() + 700;
+  };
+  const stopLogDrag = () => { dragLog = null; };
+  const onLogScroll = event => {
+    const el = event.target, kind = logKind(el);
+    if (!kind || !logVisible(el)) return;
+    const state = reading[kind];
+    // Um evento atrasado de uma versão anterior do DOM não é leitura manual.
+    if (el !== state.element || Number(el.dataset.n3LogCount || 0) !== state.count) return;
+    if (performance.now() <= (state.intentUntil || 0)) {
       state.top = el.scrollTop;
-      state.follow = kind === "terminal"
-        ? el.scrollHeight - el.clientHeight - el.scrollTop <= 4
-        : el.scrollTop <= 4;
+      state.follow = logAtEdge(kind, el);
+    } else if (state.follow && !logAtEdge(kind, el)) {
+      queueBind();
     }
   };
   const syncLogs = () => {
+    const phase = heading()?.dataset.runState;
+    if (phase === "running" && reading.phase !== "running") {
+      reading.terminal = freshReading();
+      reading.monitor = freshReading();
+    }
+    reading.phase = phase;
     for (const [kind, selector] of Object.entries(logSelectors)) {
       const el = document.querySelector(selector);
       if (!logVisible(el)) continue;
       const state = reading[kind];
       const count = Number(el.dataset.n3LogCount || 0);
-      if (count < state.count) { state.top = 0; state.follow = true; }
-      if (el !== state.element || count !== state.count) {
-        el.scrollTop = state.follow
-          ? (kind === "terminal" ? el.scrollHeight : 0)
-          : state.top;
-        state.element = el;
-        state.count = count;
-        state.top = el.scrollTop;
+      if (count < state.count) {
+        state.top = 0; state.follow = true; state.intentUntil = 0;
       }
+      const updated = el !== state.element || count !== state.count;
+      state.element = el;
+      state.count = count;
+      // A altura pode estabilizar depois da mutação observada; reaplicar o
+      // acompanhamento quando necessário, inclusive após mostrar uma aba.
+      if (state.follow && (updated || performance.now() > (state.intentUntil || 0))) {
+        if (!logAtEdge(kind, el)) el.scrollTop = kind === "terminal" ? el.scrollHeight : 0;
+      } else if (updated) {
+        el.scrollTop = state.top;
+      }
+      state.top = el.scrollTop;
     }
   };
 
@@ -520,6 +559,14 @@ export default function () {
   document.addEventListener("keydown", onTipKey, {signal:abort.signal});
   document.addEventListener("scroll", placeTip, {capture:true,passive:true,signal:abort.signal});
   document.addEventListener("scroll", onLogScroll, {capture:true, passive:true, signal:abort.signal});
+  for (const type of ["wheel","touchmove","pointerdown","keydown"]) {
+    document.addEventListener(type, onLogIntent, {capture:true,passive:true,signal:abort.signal});
+  }
+  document.addEventListener("pointermove", onLogDrag, {capture:true,passive:true,signal:abort.signal});
+  for (const type of ["pointerup","pointercancel"]) {
+    document.addEventListener(type, stopLogDrag, {capture:true,passive:true,signal:abort.signal});
+  }
+  window.addEventListener("blur", stopLogDrag, {signal:abort.signal});
   window.addEventListener("resize", queueBind, { signal: abort.signal });
   document.addEventListener("pointermove", onNumberPointerMove,
     { capture:true, signal:abort.signal });

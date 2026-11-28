@@ -873,7 +873,7 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
 .n3-method-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .n3-formula {font-size:15px;color:var(--n3-text);font-weight:600;}
 .n3-log-notice {font-size:12px;color:var(--n3-muted);margin:5px 0;}
-.n3-terminal-log,.churn-console-lines {background:#0A0B0D;user-select:text;white-space:pre-wrap;overflow-wrap:anywhere;}
+.n3-terminal-log,.churn-console-lines {background:#0A0B0D;user-select:text;white-space:pre-wrap;overflow-wrap:anywhere;overflow-anchor:none;scroll-behavior:auto;}
 .n3-terminal-log {height:clamp(150px,54dvh,650px);max-height:none;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;}
 .n3-terminal-log:focus-visible,.churn-console-lines:focus-visible {outline:2px solid #79A9F5;outline-offset:-2px;}
 @media(max-width:620px) {
