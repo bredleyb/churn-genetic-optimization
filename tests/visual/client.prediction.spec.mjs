@@ -107,6 +107,9 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
     await page.keyboard.type('175');
     await expect(charge).toHaveValue(originalCharge);
     await expect(charge).not.toBeFocused();
+    // Ctrl+A fora do input seleciona a página. Limpar apenas a seleção
+    // da evidência, após verificar a proteção da entrada.
+    await page.evaluate(()=>window.getSelection()?.removeAllRanges());
     await screenshot(page,info,'CL-B03-processando');
     await expect(page.locator('.churn-workspace-heading[data-run-state="complete"]'))
       .toBeVisible({timeout:600000});
@@ -142,6 +145,7 @@ test('CL-B03 integração real: cálculo, conclusão, legenda e dados alterados'
     await page.keyboard.press('Escape');
     await expect(page.locator('.n3-impact')).toContainText('+8');
     await expect(page.locator('.churn-run-check')).toBeVisible();
+    await page.evaluate(()=>window.getSelection()?.removeAllRanges());
     await screenshot(page,info,'CL-B03-concluido');
 
     await replaceMonths(page,4);

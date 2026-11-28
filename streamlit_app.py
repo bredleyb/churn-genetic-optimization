@@ -1003,6 +1003,40 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
   .n3-status-icon {width:34px;height:34px;flex-basis:34px;}
   .n3-status-icon svg {width:20px;height:20px;}
 }
+/* Auditoria de capturas: wrappers devem acompanhar a altura intrínseca dos
+   cartões. Somente o painel de aba é rolável; nunca comprimir seus filhos. */
+.st-key-dashboard-prediction-panel {height:auto!important;min-height:min-content!important;flex-shrink:0!important;gap:10px!important;}
+.st-key-dashboard-prediction-panel > * {flex:0 0 auto!important;min-height:auto!important;height:auto!important;overflow:visible!important;}
+.st-key-dashboard-prediction-panel > [data-testid="stLayoutWrapper"] > * {min-height:auto!important;}
+.st-key-dashboard-prediction-panel [data-testid="stMarkdownContainer"]:has(.n3-status,.churn-comparison,.churn-chart,.churn-chromosome,.n3-impact) {margin:0!important;padding:0!important;}
+.st-key-dashboard-selection-section {height:auto!important;min-height:min-content!important;overflow:visible!important;display:grid!important;}
+.st-key-dashboard-selection-section > * {min-height:auto!important;height:auto!important;overflow:visible!important;}
+.st-key-dashboard-prediction-panel .churn-section-top h3 {padding:0!important;margin:0!important;line-height:24px!important;}
+.st-key-dashboard-prediction-panel .churn-section-top {min-height:24px;margin-bottom:8px;}
+.st-key-dashboard-prediction-panel .churn-comparison {padding:0;border:0;}
+.churn-comparison .churn-model,.churn-comparison .churn-model+.churn-model {padding:9px 14px;min-height:146px;}
+.churn-model-name {line-height:24px;}
+.churn-model-detail {font-size:12px;line-height:16px;}
+.churn-prediction-value {line-height:36px;margin-top:2px;}
+.churn-outcome {font-size:14px;line-height:18px;}
+.n3-risk-track {height:8px;margin-top:6px;}
+.n3-risk-scale {line-height:14px;margin-top:3px;}
+.churn-chart-plot {min-height:0;flex:1 1 0;}
+.churn-chart-plot-main {min-height:0;position:relative;padding-bottom:18px;}
+.churn-chart-svg {height:100%;min-height:0;flex:1 1 0;}
+.churn-chart-axis-y {position:relative;display:block;padding:0;margin:0 0 18px;flex:none;}
+.churn-chart-axis-y span {position:absolute;right:0;line-height:14px;transform:translateY(-50%);}
+.churn-chart-axis-x {position:absolute;left:0;right:0;bottom:0;height:14px;line-height:14px;margin:0;}
+.churn-chart-axis-x span {position:absolute;transform:translateX(-50%);}
+.churn-chart-axis-x span:first-child {transform:none;}
+.churn-chart-axis-x span:last-child {transform:translateX(-100%);}
+@media(min-width:1366px) {
+  .st-key-dashboard-workspace {gap:0!important;}
+  .st-key-dashboard-prediction-tabs [role="tabpanel"] {padding-top:6px!important;}
+}
+@media(max-width:699px) {
+  .churn-comparison .churn-model,.churn-comparison .churn-model+.churn-model {padding:9px 12px;}
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -1499,8 +1533,13 @@ def _history_chart(history: list[dict], *, slot, historical: bool = False) -> No
         )
     grid = ''.join(f'<line x1="0" y1="{i*60}" x2="1000" y2="{i*60}"/>' for i in range(5))
     title = "Evolução da seleção genética · execução anterior" if historical else "Evolução da seleção genética"
-    labels = "".join(f'<span>{(floor + (ceiling-floor)*tick/4):.2f}</span>'.replace(".", ",")
-                     for tick in range(4, -1, -1))
+    labels = "".join(
+        f'<span style="top:{(4-tick)*25}%">{(floor + (ceiling-floor)*tick/4):.2f}</span>'.replace(
+            f'{(floor + (ceiling-floor)*tick/4):.2f}', f'{(floor + (ceiling-floor)*tick/4):.2f}'.replace(".", ","))
+        for tick in range(4, -1, -1)
+    )
+    x_labels = "".join(f'<span style="left:{100*(g-1)/max(1,total-1):.5f}%">{g}</span>'
+                       for g in (1, 5, 10, total))
     markup = (
         '<section class="churn-chart" aria-label="Evolução do F1 e fitness em validação cruzada">'
         f'<div class="churn-section-top"><h3>{title}</h3>'
@@ -1510,7 +1549,7 @@ def _history_chart(history: list[dict], *, slot, historical: bool = False) -> No
         '<svg class="churn-chart-svg" viewBox="0 0 1000 240" preserveAspectRatio="none" '
         f'role="group" aria-label="{len(series)} gerações observadas">'
         f'<g class="churn-chart-grid">{grid}</g>{lines}{"".join(markers)}</svg>'
-        '<div class="churn-chart-axis-x"><span>1</span><span>5</span><span>10</span><span>15</span></div>'
+        f'<div class="churn-chart-axis-x">{x_labels}</div>'
         '</div></div></section>'
     )
     slot.markdown(markup, unsafe_allow_html=True)

@@ -25,6 +25,12 @@ for (const size of [{width:1440,height:768},{width:768,height:1024},{width:390,h
       await expect(content).toBeVisible();
       expect(await content.evaluate(el=>el.scrollWidth-el.clientWidth),'overflow de '+name).toBeLessThanOrEqual(2);
       expect(await page.locator('[data-testid="stMain"]').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(2);
+      if(size.width<1024){
+        const first=content.locator(
+          name==='Painel'?'.n3-status':name==='Terminal'?'.n3-terminal-log':name==='Métricas'?'.n3-metrics-header':'.n3-method-stats'
+        );
+        await first.scrollIntoViewIfNeeded();
+      }
       await screenshot(page,info,'PR-R01-'+name+'-'+size.width);
     }
     await ensureNoException(page);
