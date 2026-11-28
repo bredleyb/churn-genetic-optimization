@@ -604,264 +604,66 @@ body:has([data-testid="stSelectboxVirtualDropdown"])
   .churn-console-lines {font-size:12px;max-height:46px;min-height:24px;}
 }
 
-/* Duas apresentações do mesmo estado: grade completa no projetor, abas no celular. */
+/* A navegação e o conteúdo compartilham uma única estrutura em todas as larguras.
+   O painel Cliente mantém a geometria da baseline até a revisão responsiva. */
 .st-key-dashboard-workspace {
   grid-template-columns:minmax(0,1fr)!important;
-  grid-template-rows:20px auto minmax(0,1fr)!important;
+  grid-template-rows:20px minmax(0,1fr)!important;
+  min-height:0!important;
 }
-.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"] {
-  width:100%!important;min-width:0!important;
+.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-prediction-tabs),
+.st-key-dashboard-prediction-tabs {
+  width:100%!important;height:100%!important;min-height:0!important;overflow:hidden!important;
 }
-/* O Streamlit conserva o wrapper da versão móvel. Em desktop ele criava
-   uma quarta linha implícita, empurrando o monitor para fora do painel. */
-.st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail) {
-  display:none!important;
+.st-key-dashboard-prediction-tabs [data-testid="stTabs"] {
+  display:flex!important;flex-direction:column!important;min-height:0!important;
+  height:100%!important;overflow:hidden!important;gap:0!important;
 }
-.st-key-dashboard-desktop-detail {
-  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
-  width:100%!important;max-width:100%!important;
-  grid-template-rows:minmax(145px,1fr) auto minmax(115px,19dvh)!important;
-  gap:10px!important;height:100%!important;min-height:0!important;overflow:hidden!important;
+.st-key-dashboard-prediction-tabs [role="tablist"] {
+  flex:0 0 auto!important;display:flex!important;gap:4px!important;
+  overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:thin;
+  min-height:40px!important;flex-wrap:nowrap!important;
 }
-.st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"] {min-height:0!important;overflow:hidden!important;}
-.st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section),
-.st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {height:100%!important;min-height:0!important;}
-.st-key-dashboard-mobile-detail {display:none!important;}
+.st-key-dashboard-prediction-tabs [role="tab"] {
+  flex:0 0 auto!important;white-space:nowrap!important;
+  padding:7px 12px!important;min-height:36px!important;
+  font-size:14px!important;color:var(--n3-secondary)!important;
+}
+.st-key-dashboard-prediction-tabs [role="tab"][aria-selected="true"] {
+  color:var(--n3-text)!important;font-weight:600!important;
+}
+.st-key-dashboard-prediction-tabs [role="tab"]:focus-visible {
+  outline:2px solid var(--n3-text)!important;outline-offset:-3px!important;
+}
+.st-key-dashboard-prediction-tabs [role="tabpanel"] {
+  flex:1 1 auto!important;min-height:0!important;min-width:0!important;
+  overflow-y:auto!important;overflow-x:hidden!important;padding-top:12px!important;
+  scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;
+}
+.st-key-dashboard-prediction-tabs [role="tabpanel"] [data-testid="stVerticalBlock"] {min-width:0!important;}
+.st-key-dashboard-prediction-panel {display:flex!important;flex-direction:column!important;gap:12px!important;min-width:0!important;}
+.st-key-dashboard-analysis-section {height:auto!important;min-height:0!important;overflow:visible!important;}
+.st-key-dashboard-analysis-section .churn-chart {height:clamp(160px,24dvh,270px);}
+.st-key-dashboard-selection-section {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;overflow:visible!important;}
+.st-key-dashboard-monitor-section {height:auto!important;min-height:0!important;overflow:visible!important;}
+.st-key-dashboard-monitor-section .churn-console-lines {max-height:112px!important;}
+.n3-terminal-log {background:#0A0B0D;border:1px solid var(--n3-line);border-radius:4px;padding:10px;font:13px/1.5 Consolas,"Liberation Mono",monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55dvh;overflow:auto;user-select:text;}
+.n3-workspace-link {color:var(--n3-text)!important;font-size:13px;text-decoration:underline;}
+.n3-workspace-link:focus-visible {outline:2px solid var(--n3-text);outline-offset:2px;}
+@media(min-width:1366px) {
+  .st-key-dashboard-shell [data-testid="stHorizontalBlock"]:has(.st-key-dashboard-client):has(.st-key-dashboard-workspace) {
+    grid-template-columns:366px minmax(0,1fr)!important;
+  }
+}
 @media(max-width:1150px) {
- .st-key-dashboard-desktop-detail {grid-template-rows:minmax(120px,1fr) auto minmax(100px,17dvh)!important;gap:8px!important;}
-}
-@media(max-height:760px) and (min-width:621px) {
- .st-key-dashboard-desktop-detail {grid-template-rows:minmax(105px,1fr) auto minmax(90px,16dvh)!important;gap:6px!important;}
+  .st-key-dashboard-selection-section .churn-bits {grid-template-columns:repeat(10,minmax(0,1fr));}
 }
 @media(max-width:620px) {
- .st-key-dashboard-workspace {grid-template-rows:20px auto minmax(0,1fr)!important;}
- .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-desktop-detail) {display:none!important;}
- .st-key-dashboard-desktop-detail {display:none!important;}
- .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-mobile-detail) {
-   display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important;
- }
- .st-key-dashboard-mobile-detail {display:block!important;height:100%!important;min-height:0!important;overflow:hidden!important;}
- .st-key-dashboard-mobile-detail [data-testid="stTabs"] {height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;}
- .st-key-dashboard-mobile-detail [role="tablist"] {height:41px!important;min-height:41px!important;}
- .st-key-dashboard-mobile-detail [role="tab"] {font-size:15px!important;color:var(--n3-secondary)!important;}
- .st-key-dashboard-mobile-detail [role="tab"][aria-selected="true"] {color:var(--n3-text)!important;}
- .st-key-dashboard-mobile-detail [role="tabpanel"] {
-    height:calc(100% - 42px)!important;max-height:calc(100% - 42px)!important;
-    min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
-    scrollbar-width:thin;scrollbar-color:var(--n3-outline) transparent;
- }
- .st-key-dashboard-mobile-detail .churn-chart {height:190px;}
- .st-key-dashboard-mobile-detail .churn-technical {padding-top:12px;border-top:1px solid var(--n3-line);margin-top:10px;}
- .st-key-dashboard-mobile-detail .churn-chromosome {padding-top:10px;border-top:1px solid var(--n3-line);margin-top:8px;}
- .st-key-dashboard-mobile-detail .churn-console-lines {max-height:210px!important;min-height:100px;}
- .st-key-dashboard-mobile-detail .churn-monitor-title {display:none;}
+  .st-key-dashboard-prediction-tabs [role="tablist"] {gap:0!important;min-height:36px!important;}
+  .st-key-dashboard-prediction-tabs [role="tab"] {padding:6px 7px!important;font-size:12px!important;}
+  .st-key-dashboard-selection-section {grid-template-columns:minmax(0,1fr)!important;}
+  .st-key-dashboard-analysis-section .churn-chart {height:180px;}
 }
-
-/* A seção do gráfico precisa preencher o trilho do grid. Os wrappers Markdown
-   do Streamlit usavam altura intrínseca, fazendo o SVG sobrepor as métricas. */
-.st-key-dashboard-analysis-section > [data-testid="stElementContainer"],
-.st-key-dashboard-analysis-section [data-testid="stMarkdown"],
-.st-key-dashboard-analysis-section [data-testid="stMarkdown"] > div,
-.st-key-dashboard-analysis-section [data-testid="stMarkdownContainer"] {
-  box-sizing:border-box!important;
-  height:100%!important;max-height:100%!important;min-height:0!important;
-  overflow:hidden!important;
-}
-.st-key-dashboard-analysis-section .churn-chart {
-  height:100%!important;max-height:100%!important;min-height:0!important;
-  overflow:hidden!important;
-}
-
-/* 1280x720 é o formato prioritário de projeção. Comprimir o gráfico e o
-   monitor na mesma coluna vertical reduz a leitura; a faixa inferior usa
-   seleção à esquerda e console à direita, ambos com altura própria. */
-@media (min-width:1000px) and (max-height:760px) {
-  .st-key-dashboard-desktop-detail {
-    grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr)!important;
-    grid-template-rows:minmax(0,1fr) minmax(150px,23dvh)!important;
-    gap:8px 12px!important;
-  }
-  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section) {
-    grid-column:1 / -1!important;grid-row:1!important;
-  }
-  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-selection-section) {
-    grid-column:1!important;grid-row:2!important;
-    height:100%!important;max-height:100%!important;
-    min-height:0!important;overflow:hidden!important;
-  }
-  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {
-    grid-column:2!important;grid-row:2!important;
-  }
-  /* Características e F1 compartilham a largura da faixa inferior.
-     O conteúdo não deve impor uma altura maior que a linha disponível. */
-  .st-key-dashboard-selection-section {
-    box-sizing:border-box!important;
-    width:100%!important;height:100%!important;max-height:100%!important;
-    min-height:0!important;display:grid!important;
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-    grid-template-rows:minmax(0,1fr)!important;
-    gap:12px!important;overflow:hidden!important;
-  }
-  .st-key-dashboard-selection-section > [data-testid="stElementContainer"] {
-    min-width:0!important;min-height:0!important;max-height:100%!important;
-    overflow:hidden!important;
-  }
-  .st-key-dashboard-selection-section .churn-bits {
-    grid-template-columns:repeat(10,minmax(0,1fr))!important;
-  }
-  .st-key-dashboard-selection-section .churn-section-top {
-    gap:6px!important;margin-bottom:5px!important;
-  }
-  /* O último passo da execução acrescenta um botão de download ao monitor.
-     No projetor, o botão compartilha a linha do título e a fase textual
-     redundante é omitida (a geração continua no indicador de progresso). */
-  .st-key-dashboard-monitor-section {
-    position:relative!important;overflow:hidden!important;
-  }
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-phase) {
-    display:none!important;
-  }
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stDownloadButton"]) {
-    position:absolute!important;top:0!important;right:0!important;
-    width:auto!important;max-width:50%!important;z-index:1!important;
-  }
-  .st-key-dashboard-monitor-section .churn-monitor-title {
-    padding-right:118px!important;
-  }
-  .st-key-dashboard-monitor-section [data-testid="stDownloadButton"] button {
-    min-height:26px!important;font-size:12px!important;padding:0 2px!important;
-  }
-}
-
-
-/* Painel técnico desktop: a área do console absorve o espaço restante.
-   O histórico longo rola dentro do console e não empurra outros painéis. */
-@media (min-width:621px) {
-  .st-key-dashboard-monitor-section {
-    box-sizing:border-box!important;position:relative!important;
-    display:flex!important;flex-direction:column!important;
-    gap:6px!important;min-height:0!important;overflow:hidden!important;
-  }
-  /* Progresso já informa a geração; remover a fase repetida economiza altura. */
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-phase),
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stEmpty"]) {
-    display:none!important;
-  }
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stDownloadButton"]) {
-    position:absolute!important;top:0!important;right:0!important;
-    width:auto!important;max-width:50%!important;z-index:2!important;
-  }
-  .st-key-dashboard-monitor-section .churn-monitor-title {
-    padding-right:120px!important;
-  }
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) {
-    flex:1 1 0px!important;min-height:0!important;max-height:100%!important;
-    overflow:hidden!important;
-  }
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) [data-testid="stMarkdown"],
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) [data-testid="stMarkdown"] > div,
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has(.churn-console) [data-testid="stMarkdownContainer"] {
-    box-sizing:border-box!important;height:100%!important;max-height:100%!important;
-    min-height:0!important;overflow:hidden!important;
-  }
-  /* O MarkdownContainer do Streamlit traz margem inferior de -16px.
-     Centralizado em um wrapper flex de altura integral, isso desloca o
-     console 8px para baixo, além do limite real do monitor. */
-  .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-console),
-  .st-key-dashboard-monitor-section [data-testid="stMarkdownContainer"]:has(.churn-monitor-title) {
-    margin-bottom:0!important;
-  }
-  .st-key-dashboard-monitor-section > [data-testid="stElementContainer"]:has([data-testid="stProgress"]) {
-    margin-top:2px!important;
-  }
-  .st-key-dashboard-monitor-section .churn-console {
-    box-sizing:border-box!important;height:100%!important;max-height:100%!important;
-    min-height:0!important;margin:0!important;overflow:hidden!important;
-  }
-  .st-key-dashboard-monitor-section .churn-console-lines {
-    box-sizing:border-box!important;height:100%!important;max-height:100%!important;
-    min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
-  }
-}
-
-/* Em desktop, a faixa inferior reúne as características e o monitor.
-   Aumenta a área útil do gráfico e impede as duas seções de se sobreporem. */
-@media (min-width:1000px) and (min-height:761px) {
-  .st-key-dashboard-desktop-detail {
-    grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr)!important;
-    grid-template-rows:minmax(0,1fr) minmax(186px,23dvh)!important;
-    gap:8px 12px!important;
-  }
-  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-analysis-section) {
-    grid-column:1 / -1!important;grid-row:1!important;height:100%!important;
-  }
-  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-selection-section) {
-    grid-column:1!important;grid-row:2!important;height:100%!important;
-    max-height:100%!important;min-height:0!important;overflow:hidden!important;
-  }
-  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-monitor-section) {
-    grid-column:2!important;grid-row:2!important;height:100%!important;
-    min-height:0!important;overflow:hidden!important;
-  }
-  .st-key-dashboard-selection-section {
-    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
-    grid-template-rows:minmax(0,1fr)!important;gap:12px!important;
-    height:100%!important;min-height:0!important;overflow:hidden!important;
-  }
-  .st-key-dashboard-selection-section .churn-bits {
-    grid-template-columns:repeat(10,minmax(0,1fr))!important;
-  }
-}
-
-/* Em 1024 px, manter as duas regiões técnicas na mesma faixa inferior.
-   Isso libera altura para mostrar o gráfico sem recortar seus eixos. */
-@media (min-width:1000px) and (max-width:1150px) and (min-height:761px) {
-  .st-key-dashboard-desktop-detail {
-    grid-template-rows:minmax(0,1fr) minmax(184px,24dvh)!important;
-  }
-  .st-key-dashboard-selection-section {
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-    grid-template-rows:minmax(0,1fr)!important;align-content:stretch!important;
-    gap:8px!important;
-  }
-  .st-key-dashboard-selection-section .churn-bits {
-    grid-template-columns:repeat(10,minmax(0,1fr))!important;
-  }
-  .st-key-dashboard-selection-section .churn-section-top {
-    flex-wrap:wrap!important;gap:4px!important;margin-bottom:6px!important;
-  }
-  .st-key-dashboard-selection-section .churn-metrics {
-    gap:4px!important;
-  }
-  .st-key-dashboard-selection-section .churn-metric dt {
-    white-space:normal!important;
-  }
-  .st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-chromosome),
-  .st-key-dashboard-selection-section [data-testid="stMarkdownContainer"]:has(.churn-technical) {
-    margin-bottom:0!important;
-  }
-}
-
-/* Tablet em paisagem: a seleção precisa acomodar também as métricas após
-   o cálculo. Manter console dentro de um trilho independente de 126px. */
-@media (min-width:621px) and (max-width:999px) and (min-height:800px) {
-  .st-key-dashboard-desktop-detail {
-    grid-template-rows:minmax(160px,1fr) minmax(255px,auto) minmax(125px,14dvh)!important;
-    gap:8px!important;
-  }
-  /* A faixa de 255px precisa ser ocupada pelo wrapper, que o Streamlit
-     deixava em altura automática; com isso as métricas não ficam cortadas. */
-  .st-key-dashboard-desktop-detail > [data-testid="stLayoutWrapper"]:has(.st-key-dashboard-selection-section) {
-    height:100%!important;max-height:100%!important;min-height:0!important;
-  }
-  .st-key-dashboard-selection-section {
-    grid-template-columns:minmax(0,1fr)!important;
-    height:100%!important;max-height:100%!important;
-    min-height:0!important;overflow:hidden!important;
-  }
-}
-
-/* Padding superior e distância após os títulos compartilham --n3-panel-pad. */
 .st-key-dashboard-client > [data-testid="stLayoutWrapper"]:has(.churn-panel-heading),
 .st-key-dashboard-workspace > [data-testid="stLayoutWrapper"]:has(.churn-workspace-heading) {
   box-sizing:border-box!important;margin:0!important;padding:0!important;
@@ -1317,6 +1119,24 @@ def _render_console(events: list[str], *, slot, complete: bool = False) -> None:
     slot.markdown(markup, unsafe_allow_html=True)
 
 
+def _render_logs(events: list[str], slots: dict, *, historical: bool = False,
+                 message: str = "") -> None:
+    _render_console([*events, message] if message else events,
+                    slot=slots["console"])
+    title = "Última execução" if historical else "Log da execução"
+    body = "\n".join(events) if events else (message or "Aguardando início da execução.")
+    slots["terminal"].markdown(
+        f'<section aria-label="{title}"><div class="churn-section-top"><h3>{title}</h3></div>'
+        f'<div class="n3-terminal-log" role="region" aria-label="Log cronológico" tabindex="0">{escape(body)}</div></section>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_metrics(run: dict | None, slots: dict, *, historical: bool = False) -> None:
+    _render_technical(run, slot=slots["technical"], historical=historical)
+    _render_technical(run, slot=slots["metrics"], historical=historical, link_metrics=False)
+
+
 def _render_chromosome(chromosome: tuple[int, ...] | None, title: str, *, slot) -> None:
     if chromosome is None:
         bits = '<span class="churn-bit" aria-label="Ainda indisponível">—</span>' * len(FEATURE_COLUMNS)
@@ -1373,7 +1193,8 @@ def _history_chart(history: list[dict], *, slot, historical: bool = False) -> No
     slot.markdown(markup, unsafe_allow_html=True)
 
 
-def _render_technical(run: dict | None, *, slot, historical: bool = False) -> None:
+def _render_technical(run: dict | None, *, slot, historical: bool = False,
+                      link_metrics: bool = True) -> None:
     if run is None:
         metrics = (("Referência", "—"), ("Genético", "—"), ("ΔF1", "—"))
         summary = "F1 no teste reservado · 20% dos dados"
@@ -1392,7 +1213,9 @@ def _render_technical(run: dict | None, *, slot, historical: bool = False) -> No
                   '<div class="churn-section-top"><h3>' +
                   ('Métricas · execução anterior' if historical else 'Desempenho no teste reservado') +
                   '</h3></div>'
-                  f'<dl class="churn-metrics">{rows}</dl><div class="churn-technical-note">{escape(summary)}</div>'
+                  f'<dl class="churn-metrics">{rows}</dl><div class="churn-technical-note">{escape(summary)}</div>' +
+                  ('<a class="n3-workspace-link" href="#n3-workspace-metrics" data-n3-prediction-tab="Métricas">Ver métricas</a>'
+                   if link_metrics else '') +
                   '</section>', unsafe_allow_html=True)
 
 
@@ -1403,10 +1226,10 @@ def _render_idle(slots: dict, *, status: str = "idle") -> None:
     slots["progress"].empty()
     message = ("Execução bloqueada pela validação dos dados."
                if status == "invalid" else "Aguardando início da execução.")
-    _render_console([message], slot=slots["console"])
+    _render_logs([], slots, message=message)
     _render_chromosome(None, "Aguardando avaliação", slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
-    _render_technical(None, slot=slots["technical"])
+    _render_metrics(None, slots)
 
 
 def _render_finished_run(run: dict, slots: dict) -> None:
@@ -1418,23 +1241,27 @@ def _render_finished_run(run: dict, slots: dict) -> None:
     label = "Última execução · 15 gerações concluídas" if historical else "15 gerações concluídas"
     slots["phase"].markdown(f'<span class="churn-phase">{label}</span>', unsafe_allow_html=True)
     slots["progress"].progress(1.0, text="Geração 15 de 15")
-    events = run["events"]
+    notice = ""
     if historical:
         notice = ("[VALIDAÇÃO] Dados inválidos. Nenhuma nova execução iniciada."
                   if status == "invalid" else "[ESTADO] Dados alterados. Execução anterior.")
-        events = [*events, notice]
-    _render_console(events, slot=slots["console"], complete=True)
+    _render_logs(run["events"], slots, historical=historical, message=notice)
     _render_chromosome(run["chromosome"],
                        "Subconjunto anterior" if historical else "Melhor cromossomo",
                        slot=slots["chromosome"])
     _history_chart(run["history"], slot=slots["chart"], historical=historical)
-    _render_technical(run, slot=slots["technical"], historical=historical)
+    _render_metrics(run, slots, historical=historical)
     if run.get("events"):
         slots["log"].download_button(
             "Baixar log", "\n".join(run["events"]) + "\n",
             file_name="execucao-genetica.log", mime="text/plain",
             key="download_full_log", type="tertiary",
             help="Baixar o histórico completo da execução genética",
+        )
+        slots["terminal_download"].download_button(
+            "Baixar log", "\n".join(run["events"]) + "\n",
+            file_name="execucao-genetica.log", mime="text/plain",
+            key="download_terminal_log", type="tertiary", on_click="ignore",
         )
 
 
@@ -1451,11 +1278,11 @@ def _execute_full_workflow(customer: dict, slots: dict) -> None:
     _render_chromosome(None, "Aguardando avaliação",
                        slot=slots["chromosome"])
     _history_chart([], slot=slots["chart"])
-    _render_technical(None, slot=slots["technical"])
+    _render_metrics(None, slots)
 
     def log(message: str) -> None:
         events.append(message)
-        _render_console(events, slot=slots["console"])
+        _render_logs(events, slots)
 
     def phase(label: str, message: str) -> None:
         slots["phase"].markdown(f'<div class="churn-phase">{escape(label)}</div>',
@@ -1573,15 +1400,20 @@ def _render_failed_attempt(attempt: dict, slots: dict, *, allow_download: bool =
     completed = len(attempt["history"])
     total = GeneticConfig().generations
     slots["progress"].progress(completed / total, text=f"Geração {completed} de {total}")
-    _render_console(attempt["events"], slot=slots["console"])
+    _render_logs(attempt["events"], slots)
     _render_chromosome(attempt["chromosome"], "Análise de subconjunto", slot=slots["chromosome"])
     _history_chart(attempt["history"], slot=slots["chart"])
-    _render_technical(None, slot=slots["technical"])
+    _render_metrics(None, slots)
     if allow_download and attempt["events"]:
         slots["log"].download_button(
             "Baixar log", "\n".join(attempt["events"]) + "\n",
             file_name="execucao-genetica.log", mime="text/plain",
             key="download_partial_log", type="tertiary",
+        )
+        slots["terminal_download"].download_button(
+            "Baixar log", "\n".join(attempt["events"]) + "\n",
+            file_name="execucao-genetica.log", mime="text/plain",
+            key="download_partial_terminal_log", type="tertiary", on_click="ignore",
         )
 
 
@@ -1698,62 +1530,53 @@ def _render_client_panel() -> bool:
     return bool(st.session_state.get("prediction_requested", False))
 
 
-class _BroadcastSlot:
-    """Atualiza as saídas visíveis em desktop e as abas compactas do celular."""
-
-    def __init__(self, *targets):
-        self.targets = targets
-
-    def __getattr__(self, method):
-        def dispatch(*args, **kwargs):
-            output = None
-            for index, target in enumerate(self.targets):
-                options = dict(kwargs)
-                if index and method == "download_button" and "key" in options:
-                    options["key"] += "_mobile"
-                output = getattr(target, method)(*args, **options)
-            return output
-        return dispatch
+PREDICTION_TABS = ("Painel", "Terminal", "Métricas", "Metodologia")
 
 
 def _workspace_slots() -> dict:
+    """Uma navegação nativa; todos os conteúdos recebem a mesma execução.
+
+    Trocar aba não solicita rerun, inclusive durante a busca síncrona.
+    """
     heading = st.empty()
-    comparison = st.empty()
-    with st.container(key="dashboard-desktop-detail", border=False):
-        with st.container(key="dashboard-analysis-section", border=False):
-            chart_desktop = st.empty()
-        with st.container(key="dashboard-selection-section", border=False):
-            chromosome_desktop = st.empty()
-            technical_desktop = st.empty()
-        with st.container(key="dashboard-monitor-section", border=False):
-            st.markdown('<div class="churn-monitor-title">Monitor</div>', unsafe_allow_html=True)
-            phase_desktop = st.empty()
-            progress_desktop = st.empty()
-            console_desktop = st.empty()
-            log_desktop = st.empty()
-    # As duas abas pertencem à apresentação móvel. Em desktop a grade técnica
-    # acima é mostrada integralmente e o contêiner abaixo fica oculto por CSS.
-    with st.container(key="dashboard-mobile-detail", border=False):
-        analysis_tab, execution_tab = st.tabs(["Análise", "Execução"])
-        with analysis_tab:
-            chart_mobile = st.empty()
-            chromosome_mobile = st.empty()
-            technical_mobile = st.empty()
-        with execution_tab:
-            phase_mobile = st.empty()
-            progress_mobile = st.empty()
-            console_mobile = st.empty()
-            log_mobile = st.empty()
+    with st.container(key="dashboard-prediction-tabs", border=False):
+        panel, terminal, metrics, methodology = st.tabs(
+            list(PREDICTION_TABS), key="dashboard_prediction_active_tab",
+            on_change="ignore",
+        )
+        with panel:
+            with st.container(key="dashboard-prediction-panel", border=False):
+                comparison = st.empty()
+                with st.container(key="dashboard-analysis-section", border=False):
+                    chart = st.empty()
+                with st.container(key="dashboard-selection-section", border=False):
+                    chromosome = st.empty()
+                    technical = st.empty()
+                with st.container(key="dashboard-monitor-section", border=False):
+                    st.markdown('<div class="churn-monitor-title">Monitor</div>', unsafe_allow_html=True)
+                    phase, progress, console, log = (st.empty() for _ in range(4))
+        with terminal:
+            terminal_download = st.empty()
+            terminal_log = st.empty()
+        with metrics:
+            metrics_slot = st.empty()
+        with methodology:
+            st.markdown(
+                "### Metodologia\n"
+                "Telco Customer Churn (Kaggle). Regressão logística de referência e "
+                "regressão logística com seleção genética de características. "
+                "Divisão estratificada 80/20, com teste reservado. "
+                "Imputação, padronização e one-hot ajustados apenas nos dados de treino."
+                "\n\nO experimento utiliza uma busca genética com penalização pelo número "
+                "de características e validação cruzada. A previsão é uma estimativa "
+                "de cancelamento, sujeita às limitações de generalização da base."
+            )
     return {
-        "heading": heading,
-        "comparison": comparison,
-        "chart": _BroadcastSlot(chart_desktop, chart_mobile),
-        "chromosome": _BroadcastSlot(chromosome_desktop, chromosome_mobile),
-        "technical": _BroadcastSlot(technical_desktop, technical_mobile),
-        "phase": _BroadcastSlot(phase_desktop, phase_mobile),
-        "progress": _BroadcastSlot(progress_desktop, progress_mobile),
-        "console": _BroadcastSlot(console_desktop, console_mobile),
-        "log": _BroadcastSlot(log_desktop, log_mobile),
+        "heading": heading, "comparison": comparison, "chart": chart,
+        "chromosome": chromosome, "technical": technical, "phase": phase,
+        "progress": progress, "console": console, "log": log,
+        "terminal": terminal_log, "terminal_download": terminal_download,
+        "metrics": metrics_slot,
     }
 
 

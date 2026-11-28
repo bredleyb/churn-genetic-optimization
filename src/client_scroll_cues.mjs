@@ -280,6 +280,37 @@ export default function () {
     queueBind();
   };
 
+  // A seleção de Previsão fica no navegador: navegação não interrompe
+  // o processamento síncrono. Preservar a aba se o Streamlit remontar o DOM.
+  const predictionTabKey = Symbol.for("n3.prediction.activeTab");
+  const predictionTabs = () => Array.from(document.querySelectorAll(
+    '.st-key-dashboard-prediction-tabs [role="tab"]'
+  ));
+  let predictionTabList = null;
+  const rememberPredictionTab = () => {
+    const selected = predictionTabs().find(tab => tab.getAttribute("aria-selected") === "true");
+    if (selected) window[predictionTabKey] = selected.textContent.trim();
+  };
+  const syncPredictionTab = () => {
+    const tabs = predictionTabs();
+    if (!tabs.length) return;
+    const list = tabs[0].closest('[role="tablist"]');
+    if (predictionTabList !== list) {
+      predictionTabList = list;
+      const wanted = tabs.find(tab => tab.textContent.trim() === window[predictionTabKey]);
+      if (wanted && wanted.getAttribute("aria-selected") !== "true") wanted.click();
+      else rememberPredictionTab();
+    } else rememberPredictionTab();
+  };
+  const onWorkspaceNavigation = event => {
+    const link = event.target instanceof Element
+      ? event.target.closest("[data-n3-prediction-tab]") : null;
+    if (!link) return;
+    event.preventDefault();
+    const target = predictionTabs().find(tab => tab.textContent.trim() === link.dataset.n3PredictionTab);
+    if (target) { window[predictionTabKey] = target.textContent.trim(); target.click(); target.focus(); }
+  };
+
   const clear = element => {
     element?.style.removeProperty("--n3-client-shadow-top");
     element?.style.removeProperty("--n3-client-shadow-bottom");
@@ -300,6 +331,7 @@ export default function () {
     locatorFrame = 0;
     if (abort.signal.aborted) return;
     syncPredictionButton();
+    syncPredictionTab();
     syncValidation();
     focusInvalidField();
     const nextPanel = document.querySelector(".st-key-dashboard-client");
@@ -338,6 +370,7 @@ export default function () {
   });
   document.addEventListener("click", onPredictionClick, { signal: abort.signal });
   document.addEventListener("click", onValidationClick, { signal: abort.signal });
+  document.addEventListener("click", onWorkspaceNavigation, { signal: abort.signal });
   window.addEventListener("resize", schedule, { signal: abort.signal });
   document.addEventListener("pointermove", onNumberPointerMove,
     { capture:true, signal:abort.signal });
